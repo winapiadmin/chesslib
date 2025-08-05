@@ -53,7 +53,7 @@ namespace chess {
         (initBothSliders<static_cast<Square>(sqs)>(), ...); // fold expression calls all
     }
 
-    constexpr int                   attacks::init_attacks()
+    int                   attacks::init_attacks()
     {
         BishopTable[0].attacks = BishopAttacks;
         RookTable[0].attacks   = RookAttacks;

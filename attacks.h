@@ -145,8 +145,7 @@ namespace chess::attacks {
     #endif
     extern Magic RookTable[64];
     extern Magic BishopTable[64];
-    constexpr int init_attacks();
-    static int a=init_attacks();
+    int init_attacks();
 }
 
 namespace chess::_chess {

@@ -6,6 +6,9 @@
 // no options required for GCC
 int main()
 {
+   {
+      chess::attacks::init_attacks();
+   }
     {
         chess::Position p("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
         std::cout << p.fen()<<'\n';
