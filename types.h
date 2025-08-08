@@ -7,16 +7,21 @@
 #include <ostream>
 #include <type_traits>
 #include <vector>
+#include <string_view>
 #if defined(_MSC_VER)
     #define ASSUME(expr) __assume(expr)
-#elif defined(__clang__) || defined(__GNUC__)
-    #if __cplusplus>=202207L
+#elif defined(__clang__)
+    #define ASSUME(expr) __builtin_assume(expr)
+#elif defined(__GNUC__)
+    #if __has_cpp_attribute(assume)
         #define ASSUME(expr) [[assume(expr)]]
+    #elif __GNUC__ >= 13
+        #define ASSUME(cond) __attribute__((assume(cond)))
     #else
-        #define ASSUME(expr) \
+        #define ASSUME(cond) \
             do \
             { \
-                if (!(expr)) \
+                if (!(cond)) \
                     __builtin_unreachable(); \
             } while (0)
     #endif
@@ -121,6 +126,36 @@ namespace chess {
         NORTH_WEST = NORTH + WEST
     };
     //clang-format on
+    inline constexpr Square relative_square(Color c, Square s) { return Square(s ^ (c * 56)); }
+
+    inline constexpr Rank relative_rank(Color c, Rank r) { return Rank(r ^ (c * 7)); }
+
+    inline constexpr Rank relative_rank(Color c, Square s) { return relative_rank(c, rank_of(s)); }
+    
+    inline constexpr Direction relative_direction(Color c, Direction d) { return static_cast<Direction>(c==WHITE?d:-d); }
+
+    inline constexpr Direction pawn_push(Color c) { return c == WHITE ? NORTH : SOUTH; }
+
+    /**
+     * @brief Get the destination square of the king after castling.
+     * @param is_king_side
+     * @param c
+     * @return
+     */
+    [[nodiscard]] inline constexpr Square castling_king_square(bool is_king_side, Color c) {
+        return relative_square(c, is_king_side ? SQ_G1 : Square::SQ_C1);
+    }
+
+    /**
+     * @brief Get the destination square of the rook after castling.
+     * @param is_king_side
+     * @param c
+     * @return
+     */
+    [[nodiscard]] inline constexpr Square castling_rook_square(bool is_king_side, Color c) {
+        return relative_square(c, is_king_side ? SQ_F1 : Square::SQ_D1);
+    }
+
 #define ENABLE_INCR_OPERATORS_ON(T) \
     constexpr T& operator++(T& d) { return d = T(int(d) + 1); } \
     constexpr T& operator--(T& d) { return d = T(int(d) - 1); } \
@@ -226,6 +261,8 @@ namespace chess {
                   "white knight != 3?");
     static_assert(make_piece<PolyglotPiece>(KNIGHT, BLACK) == PolyglotPiece::BKNIGHT,
                   "black knight != 2?");
+    static_assert(make_piece<PolyglotPiece>(ROOK, BLACK) == PolyglotPiece::BROOK,
+                  "black rook != 6?");
     static_assert(make_piece<EnginePiece>(KNIGHT, BLACK) == EnginePiece::BKNIGHT,
                   "black knight != 2?");
     static_assert(piece_of(EnginePiece::BBISHOP)==BISHOP, "piece_of faulty EnginePiece::BBISHOP!=BISHOP");
@@ -259,6 +296,10 @@ namespace chess {
         a = static_cast<CastlingRights>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
         return a;
     }
+    // Bitwise OR assignment operator
+    inline CastlingRights operator|(CastlingRights a, CastlingRights b) {
+        return static_cast<CastlingRights>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
+    }
 
     // Bitwise OR assignment operator
     inline CastlingRights& operator&=(CastlingRights& a, CastlingRights b) {
@@ -266,7 +307,7 @@ namespace chess {
         return a;
     }
     inline CastlingRights operator~(CastlingRights a) {
-        return static_cast<CastlingRights>(~static_cast<uint8_t>(a));
+        return static_cast<CastlingRights>(static_cast<uint8_t>(a)^ANY_CASTLING);
     }
 
     enum MoveType {
@@ -350,14 +391,18 @@ namespace chess {
         protected:
         std::uint16_t data;
     };
-    constexpr std::string squareToString(int sq) {
-        constexpr const char fileChars[] = "abcdefgh";
-        constexpr const char rankChars[] = "12345678";
-
-        // Assuming sq = 0..63 with 0 = a1, 1 = b1 ... up to 63 = h8
-        char file = fileChars[sq % 8];
-        char rank = rankChars[sq / 8];
-        return std::string{file, rank};
+    constexpr std::string_view squareToString(Square sq) {
+        constexpr std::string_view fileChars[64]={
+            "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
+            "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2",
+            "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3",
+            "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4",
+            "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5",
+            "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6",
+            "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
+            "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8"
+        };
+        return fileChars[sq];
     }
 
     inline std::ostream& operator<<(std::ostream& os, Move mv)
@@ -472,6 +517,48 @@ namespace chess {
             free(values_);
         }
 
+        HeapAllocatedValueList(const HeapAllocatedValueList& other)
+            : size_(other.size_) {
+            values_ = reinterpret_cast<T*>(calloc(MaxSize, sizeof(T)));
+            assert(values_);
+            std::copy(other.values_, other.values_ + size_, values_);
+        }
+        
+        HeapAllocatedValueList& operator=(const HeapAllocatedValueList& other) {
+            if (this != &other) {
+                // Allocate new memory and copy
+                T* new_values = reinterpret_cast<T*>(calloc(MaxSize, sizeof(T)));
+                assert(new_values);
+                std::copy(other.values_, other.values_ + other.size_, new_values);
+
+                // Free old memory
+                free(values_);
+
+                // Assign new data
+                values_ = new_values;
+                size_ = other.size_;
+            }
+            return *this;
+        }
+
+        // ✅ Move constructor
+        HeapAllocatedValueList(HeapAllocatedValueList&& other) noexcept
+            : size_(other.size_) {
+            values_ = reinterpret_cast<T*>(calloc(MaxSize, sizeof(T)));
+            assert(values_);
+            std::copy(other.values_, other.values_ + size_, values_);
+        }
+
+        // ✅ Move assignment operator
+        HeapAllocatedValueList& operator=(HeapAllocatedValueList&& other) noexcept {
+            if (this != &other) {
+                free(values_);
+                values_ = reinterpret_cast<T*>(calloc(MaxSize, sizeof(T)));
+                assert(values_);
+                std::copy(other.values_, other.values_ + size_, values_);
+            }
+            return *this;
+        }
         inline size_type size() const { return size_; }
 
         inline void push_back(const T& value)

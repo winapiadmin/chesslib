@@ -1,0 +1,9 @@
+*
+!*.cpp
+!*.h
+!README.md
+!LICENSE
+!CMakeLists.txt
+!.gitignore
+!tests/*
+!tests

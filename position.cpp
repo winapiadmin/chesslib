@@ -1,4 +1,5 @@
 #include "position.h"
+#include <bitset>
 #include <iomanip>
 namespace chess {
     template<typename PieceC>
@@ -28,142 +29,117 @@ namespace chess {
     {
         ValueList<Move, 2> ep_moves;
 
-        Square ep_sq = ep_square();
-        if (ep_sq == SQ_NONE)
-            return ep_moves;
+        const Square king_sq = square<KING>(c);
+        const Square ep_sq = ep_square();
+        if (ep_sq == SQ_NONE) return ep_moves; // unavoidable one-time exit
 
-        constexpr Bitboard NOT_A_FILE = 0xfefefefefefefefeULL;
-        constexpr Bitboard NOT_H_FILE = 0x7f7f7f7f7f7f7f7fULL;
+        Bitboard attackers = attacks::pawn(~c, ep_sq) & pieces<PAWN, c>();
+        attackers &= ~current_state._pin_mask;
+        attackers &= current_state.check_mask;
 
-        const Bitboard ep_bb           = 1ULL << ep_sq;
-        const Bitboard pawns           = pieces<PAWN, c>();
-        const Square   king_sq         = square<KING>(c);
-        Bitboard       left_attackers  = pawns & attacks::pawn(~c, ep_sq) & NOT_H_FILE;
-        Bitboard       right_attackers = pawns & attacks::pawn(~c, ep_sq) & NOT_A_FILE;
-        Square         from_left       = SQ_NONE;
-        Square         from_right      = SQ_NONE;
+        const Bitboard occ_base = this->occ() & ~(1ULL << (ep_sq - pawn_push(c)));
 
-        // We got pseudo-legal EP! But unfortunately.... there might be a pin at the capturing pawn (for example, 5k2/5b2/8/2pP4/2K5/8/8/8 w - c6 0 2)
+        const Square sq1 = static_cast<Square>(msb(attackers));
+        const Square sq2 = static_cast<Square>(lsb(attackers));
 
-        bool has_left  = left_attackers > 0;
-        bool has_right = right_attackers > 0;
-        from_left  = static_cast<Square>(lsb(left_attackers));
-        from_right =  static_cast<Square>(lsb(right_attackers));
-        // Because of how pins work, we just need to check if (bitboard<from_left> |bitboard<ep_square>) & pin mask == 0 to check if it's **not** pinned
-        // e.g. 1q5k/8/8/3pP3/8/6K1/8/8 w - d6 0 1
-        has_left &= (current_state._pin_mask & ((1ULL << from_left) | (1ULL << ep_sq))) == 0;
-        has_right &= (current_state._pin_mask & ((1ULL << from_right) | (1ULL << ep_sq))) == 0;
-        // EP capture, but after capturing it reveals a check, so illegal
-        {
-            const auto queens   = pieces<QUEEN, c>();
-            Bitboard   occupied = occ() ^ left_attackers;
-            if constexpr (c == WHITE)
-                occupied &= ~(ep_bb >> 8);
-            else
-                occupied &= ~(ep_bb << 8);
-            Bitboard enemy_rooks          = pieces<ROOK, ~c>();
-            Bitboard enemy_bishops        = pieces<BISHOP, ~c>();
-            Bitboard enemy_queens         = pieces<QUEEN, ~c>();
-            Bitboard enemy_rook_sliders   = enemy_rooks | enemy_queens;
-            Bitboard enemy_bishop_sliders = enemy_bishops | enemy_queens;
+        // Ensure attacker squares are valid
+        const Bitboard bb1 = 1ULL << sq1;
+        const Bitboard bb2 = 1ULL << sq2;
 
-            has_left &= !(attacks::rook(king_sq, occupied) & enemy_rook_sliders);
-            has_left &= !(attacks::bishop(king_sq, occupied) & enemy_bishop_sliders);
+        const Bitboard occ1 = occ_base & ~bb1;
+        const Bitboard occ2 = occ_base & ~bb2;
 
-            // Update occupied after first check
-            occupied ^= left_attackers ^ right_attackers;
+        // Compute legality masks as 0xFFFFFFFF if legal, 0 otherwise
+        const bool attacker_present = attackers != 0;
+        const bool second_valid = attacker_present && (sq1 != sq2);
 
-            has_right &= !(attacks::rook(king_sq, occupied) & enemy_rook_sliders);
-            has_right &= !(attacks::bishop(king_sq, occupied) & enemy_bishop_sliders);
-        }
-        ep_moves.size_ = static_cast<size_t>(has_left) + static_cast<size_t>(has_right);
-        ep_moves[0] = Move::make<MoveType::EN_PASSANT>(from_left, ep_sq);
-        ep_moves[has_left] = Move::make<MoveType::EN_PASSANT>(from_right, ep_sq);
+        const bool legal1 = attacker_present && !this->attackers(~c, king_sq, occ1);
+        const bool legal2 = second_valid   && !this->attackers(~c, king_sq, occ2);
+
+        const int count = static_cast<int>(legal1) + static_cast<int>(legal2);
+        ep_moves.size_ = count;
+        ep_moves[0] = Move::make<EN_PASSANT>(sq1, ep_sq);         // writes legal1 ? move1 : 0
+        ep_moves[legal1] = Move::make<EN_PASSANT>(sq2, ep_sq);         // writes legal2 ? move2 : 0
+
         return ep_moves;
     }
-
     template<typename PieceC, typename T>
     template<Color c>
     ValueList<Move, 86> Position<PieceC, T>::genPawnSingleMoves() const
     {
         ValueList<Move, 86> moves;
 
-        constexpr Direction push_shift  = (c == WHITE) ? NORTH : SOUTH;
+        constexpr Direction push_shift  = pawn_push(c);
         constexpr Direction left_shift  = (c == WHITE) ? NORTH_WEST : SOUTH_WEST;
         constexpr Direction right_shift = (c == WHITE) ? NORTH_EAST : SOUTH_EAST;
 
         constexpr Bitboard NOT_FILE_A = 0xfefefefefefefefeULL;
         constexpr Bitboard NOT_FILE_H = 0x7f7f7f7f7f7f7f7fULL;
-        constexpr Bitboard promotion_bb = (c == WHITE) ? attacks::MASK_RANK[6] : attacks::MASK_RANK[2];
+        constexpr Bitboard promotion_rank = (c == WHITE) ? attacks::MASK_RANK[6] : attacks::MASK_RANK[1];
+
         Bitboard pawns     = pieces<PAWN, c>();
         Bitboard enemy_occ = occ(~c);
         Bitboard all_occ   = occ();
 
-        // --- FORWARD PUSHES ---
-        Bitboard push_pawns = pawns & ~current_state._bishop_pin;  // disallow if diagonally pinned
-        Bitboard pushes_nopromo = (c == WHITE) ? (push_pawns << 8) : (push_pawns >> 8);
-        pushes_nopromo &= ~all_occ & current_state.check_mask;
-        pushes_nopromo &= ~promotion_bb;
-        Bitboard pushes     = pushes_nopromo & promotion_bb;
-        // now create moves from `pushes` to destination squares
-        // for each bit in `pushes`, derive source square: to - 8 or to + 8
-        // add Move(from, to) to moves
-
-        // --- LEFT CAPTURES ---
-        Bitboard left_cap_pawns = pawns & NOT_FILE_A;
-        Bitboard left_targets =
-          ((c == WHITE) ? ((left_cap_pawns << 7) & enemy_occ) : ((left_cap_pawns >> 9) & enemy_occ))
-          & current_state.check_mask;
-        Bitboard left_sources = (c == WHITE) ? (left_targets >> 7) : (left_targets << 9);
-
-        // --- RIGHT CAPTURES ---
-        Bitboard right_cap_pawns = pawns & NOT_FILE_H;
-        Bitboard right_targets   = ((c == WHITE) ? ((right_cap_pawns << 9) & enemy_occ)
-                                                 : ((right_cap_pawns >> 7) & enemy_occ))
-                               & current_state.check_mask;
-        Bitboard right_sources = (c == WHITE) ? (right_targets >> 9) : (right_targets << 7);
-
-        // --- Pin filtering ---
+        // Pin masks
         Bitboard bishop_pinned_pawns = pawns & current_state._bishop_pin;
         Bitboard rook_pinned_pawns   = pawns & current_state._rook_pin;
-        Bitboard not_pinned_pawns = pawns & ~(current_state._bishop_pin | current_state._rook_pin);
+        Bitboard not_pinned_pawns    = pawns & ~(bishop_pinned_pawns | rook_pinned_pawns);
 
-        Bitboard left_valid = left_sources & (not_pinned_pawns | bishop_pinned_pawns);
-        Bitboard right_valid = right_sources & (not_pinned_pawns | bishop_pinned_pawns);
+        // ========== FORWARD PUSHES ==========
 
-        Bitboard legal_left_cap_nopromo  = left_valid & ~promotion_bb;
-        Bitboard legal_right_cap_nopromo = right_valid & ~promotion_bb;
-        Bitboard legal_left_cap  = left_valid & promotion_bb;
-        Bitboard legal_right_cap = right_valid & promotion_bb;
+        // Pawns pinned diagonally can't push
+        Bitboard push_pawns = pawns & ~bishop_pinned_pawns;
 
-        // --- Add moves ---
+        Bitboard one_step_push = (c == WHITE) ? (push_pawns << 8) : (push_pawns >> 8);
+        one_step_push &= ~all_occ & current_state.check_mask;
+
+        Bitboard pushes_nopromo = one_step_push & ~promotion_rank;
+        Bitboard pushes_promo   = one_step_push &  promotion_rank;
+
         while (pushes_nopromo)
         {
-            Square to   = static_cast<Square>(lsb(pushes_nopromo));
-            Square from = Square(int(to) - (c == WHITE ? NORTH : SOUTH));
+            Square to   = static_cast<Square>(pop_lsb(pushes_nopromo));
+            Square from = Square(int(to) - push_shift);
             moves.push_back(Move(from, to));
-            pushes_nopromo &= pushes_nopromo - 1;
         }
 
-        while (legal_left_cap_nopromo)
+        while (pushes_promo)
         {
-            Square from = static_cast<Square>(lsb(legal_left_cap_nopromo));
+            Square to   = static_cast<Square>(pop_lsb(pushes_promo));
+            Square from = Square(int(to) - push_shift);
+            moves.push_back(Move::make<PROMOTION, KNIGHT>(from, to));
+            moves.push_back(Move::make<PROMOTION, BISHOP>(from, to));
+            moves.push_back(Move::make<PROMOTION, ROOK>(from, to));
+            moves.push_back(Move::make<PROMOTION, QUEEN>(from, to));
+        }
+
+        // ========== LEFT CAPTURES ==========
+
+        Bitboard left_cap_pawns = pawns & NOT_FILE_A;
+        Bitboard left_targets = (c == WHITE)
+            ? (left_cap_pawns << 7) & enemy_occ
+            : (left_cap_pawns >> 9) & enemy_occ;
+        left_targets &= current_state.check_mask;
+
+        Bitboard left_sources = (c == WHITE)
+            ? (left_targets >> 7)
+            : (left_targets << 9);
+        Bitboard left_valid = left_sources & (not_pinned_pawns | bishop_pinned_pawns);
+
+        Bitboard left_cap_nopromo = left_valid & ~promotion_rank;
+        Bitboard left_cap_promo   = left_valid &  promotion_rank;
+
+        while (left_cap_nopromo)
+        {
+            Square from = static_cast<Square>(pop_lsb(left_cap_nopromo));
             Square to   = Square(int(from) + left_shift);
             moves.push_back(Move(from, to));
-            legal_left_cap_nopromo &= legal_left_cap_nopromo - 1;
         }
 
-        while (legal_right_cap_nopromo)
+        while (left_cap_promo)
         {
-            Square from = static_cast<Square>(lsb(legal_right_cap_nopromo));
-            Square to   = Square(int(from) + right_shift);
-            moves.push_back(Move(from, to));
-            legal_right_cap_nopromo &= legal_right_cap_nopromo - 1;
-        }
-        //Promotions
-        while (legal_left_cap)
-        {
-            Square from = static_cast<Square>(pop_lsb(legal_left_cap));
+            Square from = static_cast<Square>(pop_lsb(left_cap_promo));
             Square to   = Square(int(from) + left_shift);
             moves.push_back(Move::make<PROMOTION, KNIGHT>(from, to));
             moves.push_back(Move::make<PROMOTION, BISHOP>(from, to));
@@ -171,25 +147,37 @@ namespace chess {
             moves.push_back(Move::make<PROMOTION, QUEEN>(from, to));
         }
 
-        while (legal_right_cap)
+        // ========== RIGHT CAPTURES ==========
+
+        Bitboard right_cap_pawns = pawns & NOT_FILE_H;
+        Bitboard right_targets = (c == WHITE)
+            ? (right_cap_pawns << 9) & enemy_occ
+            : (right_cap_pawns >> 7) & enemy_occ;
+        right_targets &= current_state.check_mask;
+
+        Bitboard right_sources = (c == WHITE)
+            ? (right_targets >> 9)
+            : (right_targets << 7);
+        Bitboard right_valid = right_sources & (not_pinned_pawns | bishop_pinned_pawns);
+
+        Bitboard right_cap_nopromo = right_valid & ~promotion_rank;
+        Bitboard right_cap_promo   = right_valid &  promotion_rank;
+
+        while (right_cap_nopromo)
         {
-            Square from = static_cast<Square>(pop_lsb(legal_right_cap));
+            Square from = static_cast<Square>(pop_lsb(right_cap_nopromo));
+            Square to   = Square(int(from) + right_shift);
+            moves.push_back(Move(from, to));
+        }
+
+        while (right_cap_promo)
+        {
+            Square from = static_cast<Square>(pop_lsb(right_cap_promo));
             Square to   = Square(int(from) + right_shift);
             moves.push_back(Move::make<PROMOTION, KNIGHT>(from, to));
             moves.push_back(Move::make<PROMOTION, BISHOP>(from, to));
             moves.push_back(Move::make<PROMOTION, ROOK>(from, to));
             moves.push_back(Move::make<PROMOTION, QUEEN>(from, to));
-        }
-
-        while (pushes)
-        {
-            Square to   = static_cast<Square>(lsb(pushes));
-            Square from = Square(int(to) - (c == WHITE ? NORTH : SOUTH));
-            moves.push_back(Move::make<PROMOTION, KNIGHT>(from, to));
-            moves.push_back(Move::make<PROMOTION, BISHOP>(from, to));
-            moves.push_back(Move::make<PROMOTION, ROOK>(from, to));
-            moves.push_back(Move::make<PROMOTION, QUEEN>(from, to));
-            pushes &= pushes - 1;
         }
 
         return moves;
@@ -201,9 +189,8 @@ namespace chess {
     {
         ValueList<Move, 8> moves;
 
-        constexpr Bitboard START_RANK =
-          (c == WHITE) ? attacks::MASK_RANK[1] : attacks::MASK_RANK[6];
-        constexpr Direction PUSH    = (c == WHITE) ? NORTH : SOUTH;
+        constexpr Bitboard START_RANK = attacks::MASK_RANK[relative_rank(c, RANK_2)];
+        constexpr Direction PUSH    = pawn_push(c);
         Bitboard            pawns   = pieces<PAWN, c>() & START_RANK;
         Bitboard            all_occ = occ();
 
@@ -232,7 +219,7 @@ namespace chess {
         return moves;
     }
     template<typename PieceC, typename T>
-    Position<PieceC, T>::Position(std::string fen, bool xfen)
+    Position<PieceC, T>::Position(std::string fen)
     {
         current_state = HistoryEntry<PieceC>();
         std::istringstream ss(fen);
@@ -369,35 +356,26 @@ namespace chess {
                 break;
             }
         }
-
-        // 4. En passant
-        if (enpassant != "-" && enpassant.length() == 2 && enpassant[0] >= 'a'
-            && enpassant[0] <= 'h' && enpassant[1] >= '1' && enpassant[1] <= '8')
+        if (enpassant != "-" && enpassant.length() == 2 &&
+            enpassant[0] >= 'a' && enpassant[0] <= 'h' &&
+            enpassant[1] >= '1' && enpassant[1] <= '8')
         {
-            File f                  = static_cast<File>(enpassant[0] - 'a');
-            Rank r                  = static_cast<Rank>(enpassant[1] - '1');
-            current_state.enPassant = make_sq(r, f);
-            if (!xfen)
-            {
-                // We need to check if there's a pawn next to the last-pushed pawn
-                constexpr Bitboard EP_Pawn_Lookup[2][8] = {
-                  {0x2000000, 0x5000000, 0xa000000, 0x14000000, 0x28000000, 0x50000000, 0xa0000000,
-                   0x40000000},
-                  {0x200000000, 0x500000000, 0xa00000000, 0x1400000000, 0x2800000000, 0x5000000000,
-                   0xa000000000, 0x4000000000}};
-                current_state.hash ^= zobrist::RandomEP[f]
-                                    * static_cast<bool>(occ(~sideToMove()) & EP_Pawn_Lookup[sideToMove()][f]);
+            File f = static_cast<File>(enpassant[0] - 'a');
+            Rank r = static_cast<Rank>(enpassant[1] - '1');
+            Square ep_sq = make_sq(r, f);
+            current_state.enPassant = ep_sq;
+            Bitboard ep_mask=1ULL<<ep_sq;
+            if (sideToMove()==WHITE){
+                ep_mask >>= 8;
             }
-            else
-            {
-                current_state.hash ^= zobrist::RandomEP[file_of(current_state.enPassant)];
+            else ep_mask <<= 8;
+            ep_mask = ((ep_mask << 1) & ~attacks::MASK_FILE[0]) | ((ep_mask >> 1) & ~attacks::MASK_FILE[7]);
+            if (ep_mask & pieces<PAWN>(sideToMove())){
+                current_state.hash ^= zobrist::RandomEP[f];
             }
         }
-        else
-        {
-            assert(
-              enpassant == "-"
-              && "What are you choosing? You only have two choices: 1. \"-\" 2. a valid chess square");
+        else {
+            assert(enpassant == "-" && "Invalid en passant FEN field");
             current_state.enPassant = SQ_NONE;
         }
 
@@ -406,7 +384,7 @@ namespace chess {
 
         // 6. Fullmove number
         current_state.fullMoveNumber = fullmove;
-        refresh_pin_mask();
+        refresh_attacks();
     }
 
     template<typename PieceC, typename T>
@@ -426,7 +404,39 @@ namespace chess {
         return list;
     }
     template <typename PieceC, typename T>
-    std::string Position<PieceC, T>::fen() const {
+    template <Color c>
+    ValueList<Move, 10> Position<PieceC, T>::genKingMoves() const
+    {
+        ValueList<Move, 10> a;
+        Square kingSq=current_state.kings[c];
+        Bitboard kingMoves=attacks::king(kingSq) & ~current_state.occ[c];
+        while (kingMoves)
+        {
+            Square sq=static_cast<Square>(pop_lsb(kingMoves));
+            Bitboard att=attackers(~c, sq);
+            bool add=!att;
+            // Add move at current size + add - 1 if add == 1, else no-op
+            a.size_ += add;
+            a[a.size_ - add] = Move(kingSq, sq);
+        }
+        int kingside_castle=!(current_state.checkers 
+                          || attackers(~c, relative_square(c, SQ_F1)) 
+                          || attackers(~c, relative_square(c, SQ_G1)))
+                          && (current_state.castlingRights&KING_SIDE);
+        int queenside_castle=!(current_state.checkers 
+                            || attackers(~c, relative_square(c, SQ_D1))
+                            || attackers(~c, relative_square(c, SQ_C1))
+                            || attackers(~c, relative_square(c, SQ_B1)))
+                            && (current_state.castlingRights&QUEEN_SIDE);
+        int index=a.size();
+        a.size_+=kingside_castle+queenside_castle;
+        a[index]=Move::make<CASTLING>(kingSq, relative_square(c, SQ_H1));
+        a[index+kingside_castle]=Move::make<CASTLING>(kingSq, relative_square(c, SQ_A1));
+        return a;
+    }
+    template <typename PieceC, typename T>
+    std::string Position<PieceC, T>::fen() const
+    {
         constexpr std::string_view EnginePieceToChar(" PNBRQK  pnbrqk ");
         constexpr std::string_view PolyglotPieceToChar("PNBRQKpnbrqk ");
         constexpr std::string_view PieceToChar =
@@ -505,11 +515,16 @@ namespace chess {
     template ValueList<Move, 104> Position<PolyglotPiece, void>::genKnightMoves<Color::WHITE>() const;
     template ValueList<Move, 104> Position<PolyglotPiece, void>::genKnightMoves<Color::BLACK>() const;
 
+    template ValueList<Move, 10> Position<EnginePiece, void>::genKingMoves<Color::WHITE>() const;
+    template ValueList<Move, 10> Position<EnginePiece, void>::genKingMoves<Color::BLACK>() const;
+    template ValueList<Move, 10> Position<PolyglotPiece, void>::genKingMoves<Color::WHITE>() const;
+    template ValueList<Move, 10> Position<PolyglotPiece, void>::genKingMoves<Color::BLACK>() const;
+
     template std::ostream& operator<<(std::ostream&, const Position<EnginePiece>&);
     template std::ostream& operator<<(std::ostream&, const Position<PolyglotPiece>&);
 
-    template Position<EnginePiece, void>::Position(std::string, bool);
-    template Position<PolyglotPiece, void>::Position(std::string, bool);
+    template Position<EnginePiece, void>::Position(std::string);
+    template Position<PolyglotPiece, void>::Position(std::string);
     template std::string Position<EnginePiece, void>::fen() const;
     template std::string Position<PolyglotPiece, void>::fen() const;
 }

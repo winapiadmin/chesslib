@@ -3,10 +3,9 @@
 #include "bitboard.h"
 #include "types.h"
 #include <iostream>
-#include <sstream>
 #include <string>
 #include <string_view>
-#include <vector>
+#include <utility>
 namespace chess::zobrist {  // ahh zobrist hash
     constexpr uint64_t RandomPiece[12][64] = {
       {0x9D39247E33776D41, 0x2AF7398005AAA5C7, 0x44DB015024623547, 0x9C15F73E62A76AE2,
@@ -205,23 +204,23 @@ namespace chess::zobrist {  // ahh zobrist hash
         0x0000000000000000, // 0000
         0x31D71DCE64B2C310, // 0001
         0xF165B587DF898190, // 0010
-        0xf1f7bdcfffbbc390, // 0011
+        0xc0b2a849bb3b4280, // 0011
         0xA57E6339DD2CF3A0, // 0100
-        0xb5ff7ffffdbef3b0, // 0101
-        0xf57ff7bfdfadf3b0, // 0110
-        0xf5ffffffffbff3b0, // 0111
+        0x94a97ef7b99e30b0, // 0101
+        0x541bd6be02a57230, // 0110
+        0x65cccb706617b120, // 0111
         0x1EF6E6DBB1961EC9, // 1000
-        0x3ff7ffdff5b6dfd9, // 1001
-        0xfff7f7dfff9f9fd9, // 1010
-        0xfff7ffdfffbfdfd9, // 1011
-        0xbffee7fbfdbeffe9, // 1100
-        0xbffffffffdbefff9, // 1101
-        0xfffff7ffffbffff9, // 1110
-        0xffffffffffbffff9, // 1111
+        0x2f21fb15d524ddd9, // 1001
+        0xef93535c6e1f9f59, // 1010
+        0xde444e920aad5c49, // 1011
+        0xbb8885e26cbaed69, // 1100
+        0x8a5f982c08082e79, // 1101
+        0x4aed3065b3336cf9, // 1110
+        0x7b3a2dabd781afe9, // 1111
         };
-    constexpr uint64_t RandomEP[8] = {0x70CC73D90BC26E24, 0xE21A6B35DF0C3AD7, 0x003A93D8B2806962,
+    constexpr uint64_t RandomEP[9] = {0x70CC73D90BC26E24, 0xE21A6B35DF0C3AD7, 0x003A93D8B2806962,
                                       0x1C99DED33CB890A1, 0xCF3145DE0ADD4289, 0xD0E4427A5514FB72,
-                                      0x77C621CC9FB3A483, 0x67A34DAC4356550B};
+                                      0x77C621CC9FB3A483, 0x67A34DAC4356550B, 0x0000000000000000};
     constexpr uint64_t RandomTurn  = 0xF8D626AAAF278509;
 
 }
@@ -236,7 +235,7 @@ namespace chess {
         Bitboard pieces[PIECE_TYPE_NB];
         Square   kings[COLOR_NB] = {SQ_NONE};
         Bitboard occ[COLOR_NB];
-        Piece    pieces_list[64] = {Piece::NO_PIECE};
+        Piece    pieces_list[SQUARE_NB] = {Piece::NO_PIECE};
         // Game state information
         Color    turn;            // true if white to move
         CastlingRights  castlingRights;  // Castling rights bitmask
@@ -251,6 +250,33 @@ namespace chess {
         Bitboard checkers, check_mask;
         // implementation-specific implementations goes here
     };
+    template<typename Piece>
+    bool operator==(const HistoryEntry<Piece>& a, const HistoryEntry<Piece>& b) {
+        for (int i = 0; i < PIECE_TYPE_NB; ++i)
+            if (a.pieces[i] != b.pieces[i]) return false;
+
+        for (int i = 0; i < SQUARE_NB; ++i)
+            if (a.pieces_list[i] != b.pieces_list[i]) return false;
+
+        for (int i = 0; i < COLOR_NB; ++i) {
+            if (a.kings[i] != b.kings[i]) return false;
+            if (a.occ[i] != b.occ[i]) return false;
+        }
+        // extensible for something more...
+        return a.turn            == b.turn
+            && a.castlingRights  == b.castlingRights
+            && a.enPassant       == b.enPassant
+            && a.halfMoveClock   == b.halfMoveClock
+            && a.fullMoveNumber  == b.fullMoveNumber
+            && a.mv              == b.mv
+            && a.hash            == b.hash
+            && a._pin_mask       == b._pin_mask
+            && a._rook_pin       == b._rook_pin
+            && a._bishop_pin     == b._bishop_pin
+            && a.checkers        == b.checkers
+            && a.check_mask      == b.check_mask;
+    }
+
     enum class MoveGenType : uint8_t {
         ALL,
         PAWN,
@@ -258,6 +284,7 @@ namespace chess {
         BISHOP,
         ROOK,
         QUEEN,
+        KING,
         CAPTURE
     };
     template<typename PieceC = EnginePiece,
@@ -284,26 +311,33 @@ namespace chess {
         // FEN: N1NNNN1N/1N1NN1Nk/N1N2N1N/1N1NN1N1/1NNNNNN1/NNN2NNN/KN4N1/N4N1N w - - 0 1 (104 legal knight moves)
         template<Color c>
         ValueList<Move, 104> genKnightMoves() const;
+        // yes.... 1 king+2 castling moves
+        template<Color c>
+        ValueList<Move, 10> genKingMoves() const;
         public:
         // Legal move generation functions
         template<MoveGenType type=MoveGenType::ALL, Color c>
         inline void                legals(ValueList<Move, 256>& out) const {
-            // If we combine all the limits, it would cross over 256 but... well, nope. Limits are DENSE and the exclusive OR of the limits are absolutely low (except some crafted positions)
+            // If we combine all the limits, it would cross over 256 but... well, nope. Limits are DENSE and the limits are absolutely low (except some crafted positions)
             if constexpr (type==MoveGenType::ALL){
                 // Simple cases
                 for (Move mv:genEP<c>()) out.push_back(mv);
                 for (Move mv:genPawnDoubleMoves<c>()) out.push_back(mv);
                 for (Move mv:genPawnSingleMoves<c>()) out.push_back(mv);
                 for (Move mv:genKnightMoves<c>()) out.push_back(mv);
+                for (Move mv:genKingMoves<c>()) out.push_back(mv);
                 // sliding pieces AHH not implemented
             }
             else if constexpr (type==MoveGenType::PAWN){
+                for (Move mv:genEP<c>()) out.push_back(mv);
                 for (Move mv:genPawnDoubleMoves<c>()) out.push_back(mv);
                 for (Move mv:genPawnSingleMoves<c>()) out.push_back(mv);
-                for (Move mv:genKnightMoves<c>()) out.push_back(mv);
             }
             else if constexpr (type==MoveGenType::KNIGHT){
                 for (Move mv:genKnightMoves<c>()) out.push_back(mv);
+            }
+            else if constexpr (type==MoveGenType::KING){
+                for (Move mv:genKingMoves<c>()) out.push_back(mv);
             }
             else if constexpr (type==MoveGenType::CAPTURE){
                 // Well.... it's SLOWER than everything because this uses branching and another pre-processing variable.
@@ -313,6 +347,24 @@ namespace chess {
                 for (Move mv:_out){
                     if (isCapture(mv)) out.push_back(mv);
                 }
+            }
+        }
+        // Legal move generation functions
+        template<MoveGenType type=MoveGenType::ALL>
+        inline void                legals(ValueList<Move, 256>& out) const{
+            const Color stm = sideToMove();  // Cache it
+            ASSUME(stm == WHITE || stm == BLACK);  // Now clearly no side effects
+
+            switch (stm) {
+                case WHITE:
+                    legals<type, WHITE>(out);
+                    return;
+                case BLACK:
+                    legals<type, BLACK>(out);
+                    return;
+                default:
+                    std::unreachable();
+                    return;
             }
         }
         /** \brief Initializes the board as empty.
@@ -325,14 +377,19 @@ namespace chess {
         // Constructor
         inline Position() {
             current_state = HistoryEntry<PieceC>();
-            history.push_back(current_state);
+            refresh_attacks();
         }
         inline Position(HistoryEntry<PieceC> state)
         {
             // compatible!
             current_state = state;
-            history.push_back(current_state);
+            refresh_attacks();
         }
+        Position(const Position& other)
+            : current_state(other.current_state),
+            history(other.history)  // calls HeapAllocatedValueList's copy constructor
+        {}
+
         template<
           typename T,
           std::enable_if_t<(std::is_same_v<T, PolyglotPiece> || std::is_same_v<T, EnginePiece>)
@@ -353,136 +410,125 @@ namespace chess {
             for (int s = 0; s < 64; ++s)
             {
                 current_state.pieces_list[s] = make_piece<PieceC>(
-                  type_of<T>(state.pieces_list[s]), color_of<T>(state.pieces_list[s].color));
+                  type_of(state.pieces_list[s]), color_of(state.pieces_list[s]));
             }
-            history.push_back(current_state);
+            refresh_attacks();
         }
-
-        // Move application and undo
-        inline void doMove(const Move& move){
-            Color us=sideToMove(), them=~us;
-            Square from=move.from_sq(), dest=move.to_sq();
-            PieceC pFrom=piece_on(from), pTo=piece_on(dest);
-            PieceType ptFrom=piece_of(pFrom), ptTo=piece_of(pTo);
-            removePiece(ptFrom, us, from);
-            removePiece(ptTo, them, dest);
-            File f                  = file_of(dest);
-            Rank r                  = rank_of(dest);
+        inline void doMove(const Move& move) {
+            Square from_sq=move.from_sq(), to_sq=move.to_sq();
+            Color us=side_to_move(), them=~us;
+            MoveType move_type=move.type_of();
+            PieceC moving_piece = piece_on(from_sq);
+            PieceC target_piece = piece_on(to_sq);
+            PieceType moving_piecetype = piece_of(moving_piece);
+            PieceType target_piecetype = piece_of(target_piece);
+            Color target_color = color_of(target_piece);
+            bool is_capture=isCapture(move);
+            history.push_back(current_state);
+            current_state.mv = move; // Update the move in the current state
+            removePiece(moving_piecetype, us, from_sq);
+            removePiece(target_piecetype, target_color, to_sq);
             {
-                int _T=move.type_of()>>14;
-                ASSUME(0<=_T<=3);
-                switch(_T){
-                case 0:
-                    placePiece(ptFrom, us, dest);
-                    break;
-                case 1:
-                    placePiece(move.promotion_type(), us, dest);
-                    break;
-                case 2:
-                    removePiece<PAWN>(them, dest+(us==WHITE?SOUTH:NORTH));
-                    placePiece<PAWN>(us, dest);
-                    current_state.hash ^= zobrist::RandomEP[f];
-                    break;
-                case 3:
-                    {
-                        // didn't implement move generation yet, i'll implement it later
-                        Square kDest, rDest;
-                        switch(move.to_sq()){
-                            case SQ_H1 :
-                                kDest=SQ_G1;
-                                rDest=SQ_F1;
-                                break;
-                            case SQ_A1 :
-                                kDest=SQ_C1;
-                                rDest=SQ_D1;
-                                break;
-                            case SQ_H8 :
-                                kDest=SQ_G8;
-                                rDest=SQ_F8;
-                                break;
-                            case SQ_A8 :
-                                kDest=SQ_C8;
-                                rDest=SQ_D8;
-                                break;
+                ASSUME(move_type==NORMAL||move_type==PROMOTION||move_type==EN_PASSANT||move_type==CASTLING);
+                switch(move_type){
+                    case NORMAL:
+                        placePiece(moving_piecetype, us, to_sq);
+                        break;
+                    case PROMOTION:
+                        placePiece(move.promotion_type(), us, to_sq);
+                        break;
+                    case EN_PASSANT:
+                        {
+                            Square ep_capture_sq = to_sq+pawn_push(them);
+                            removePiece<PAWN>(them, ep_capture_sq);
+                            placePiece<PAWN>(us, to_sq);
+                            break;
                         }
-                        placePiece<KING>(us, kDest);
-                        placePiece<ROOK>(us, rDest);
+                    case CASTLING: 
+                        {
+                        bool kingside_castle=from_sq<to_sq;
+                        Square rook_dest=castling_rook_square(kingside_castle, us),
+                               king_dest=castling_king_square(kingside_castle, us);
+                        placePiece<ROOK>(us, rook_dest);
+                        placePiece<KING>(us, king_dest);
                         break;
                     }
-                default:
-                    assert(false && "IMPOSSIBLE. How can 4 or larger value cram into 2 bits?");
-                    break;
+                    default:
+                        std::unreachable();
+                        return;
                 }
             }
-            // Post-update castling rights
             {
-                #ifndef __GNUC__
-                constexpr CastlingRights square_to_castle_mask[64] = {
-                    [SQ_A1] = WHITE_OOO,
-                    [SQ_H1] = WHITE_OO,
-                    [SQ_A8] = BLACK_OOO,
-                    [SQ_H8] = BLACK_OO,
-                    // all others are zero by default
-                };
-                #else
-                /** https://gcc.gnu.org/bugzilla/show_bug.cgi?id=55606
-                    > sorry, unimplemented: non-trivial designated initializers not supported
+                bool isDoublePush=(from_sq+2*pawn_push(us))==to_sq && moving_piecetype == PAWN;
+                current_state.hash ^= zobrist::RandomEP[file_of(current_state.enPassant)]*(current_state.enPassant!=SQ_NONE);
+                current_state.enPassant=isDoublePush?(from_sq+pawn_push(us)):SQ_NONE;
+                File f=file_of(current_state.enPassant);
+                Bitboard ep_mask = 1ULL << current_state.enPassant;
+                ep_mask = (them == WHITE) ? (ep_mask >> 8) : (ep_mask << 8);
+                ep_mask = ((ep_mask << 1) & ~attacks::MASK_FILE[0]) | ((ep_mask >> 1) & ~attacks::MASK_FILE[7]);
 
-                    Due to that bug, designated initializers aren't supported in g++ (yes, exactly)
-                */
-                // Mapping of squares to castling rights masks (only rook starting squares matter)
-                constexpr CastlingRights square_to_castle_mask[64] = {
-                    // Rank 1 (White back rank)
-                    WHITE_OOO, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, WHITE_OO,
-                    // Rank 2
-                    NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING,
-                    // Rank 3
-                    NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING,
-                    // Rank 4
-                    NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING,
-                    // Rank 5
-                    NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING,
-                    // Rank 6
-                    NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING,
-                    // Rank 7
-                    NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING,
-                    // Rank 8 (Black back rank)
-                    BLACK_OOO, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, NO_CASTLING, BLACK_OO
-                };
+                current_state.hash ^= (ep_mask & pieces<PAWN>(them))?zobrist::RandomEP[f]:0;
+            }
+            {
+                constexpr Square white_king_start = SQ_E1,
+                                 black_king_start = SQ_E8,
+                                 white_rook_ks_start = SQ_H1,
+                                 white_rook_qs_start = SQ_A1,
+                                 black_rook_ks_start = SQ_H8,
+                                 black_rook_qs_start = SQ_A8;
+                CastlingRights clear_white_king = (us == WHITE && moving_piecetype == KING && from_sq == white_king_start)
+                                            ? WHITE_CASTLING : NO_CASTLING;
 
-                #endif
-                CastlingRights clearMask = NO_CASTLING, prev=current_state.castlingRights;
-                clearMask |= (ptFrom == KING) ? (us == WHITE ? WHITE_CASTLING : BLACK_CASTLING) : NO_CASTLING;
-                clearMask |= (ptFrom == ROOK) ? square_to_castle_mask[from] : NO_CASTLING;
-                clearMask |= (ptTo == ROOK) ? square_to_castle_mask[dest] : NO_CASTLING;
-                current_state.castlingRights &= ~clearMask;
-                current_state.hash ^= zobrist::RandomCastle[static_cast<uint8_t>(prev)];
-                current_state.hash ^= zobrist::RandomCastle[static_cast<uint8_t>(current_state.castlingRights)];
-            }
-            // Post-update pawn double push - update EP if legal
-            {
-                // We need to check if there's a pawn next to the last-pushed pawn
-                constexpr Bitboard EP_Pawn_Lookup[2][8] = {
-                  {0x2000000, 0x5000000, 0xa000000, 0x14000000, 0x28000000, 0x50000000, 0xa0000000,
-                   0x40000000},
-                  {0x200000000, 0x500000000, 0xa00000000, 0x1400000000, 0x2800000000, 0x5000000000,
-                   0xa000000000, 0x4000000000}};
-                bool hasEP = (ptFrom==PAWN && dest==(from+2*NORTH)) &&
-                              static_cast<bool>(occ(them) & EP_Pawn_Lookup[us][f]);
-                current_state.hash ^= hasEP?(zobrist::RandomEP[f]):0;
-                current_state.enPassant = hasEP?dest:SQ_NONE;
-            }
-            // Post-update 50 move rule
-            {
-                // Pawn push/capture
-                bool reset50MoveRule = (ptFrom==PAWN) || (ptTo!=NO_PIECE_TYPE && move.type_of()!=CASTLING);
-                current_state.halfMoveClock+=reset50MoveRule;
+                CastlingRights clear_black_king = (us == BLACK && moving_piecetype == KING && from_sq == black_king_start)
+                                            ? BLACK_CASTLING : NO_CASTLING;
+
+                CastlingRights clear_white_rook_ks = (us == WHITE && moving_piecetype == ROOK && from_sq == white_rook_ks_start)
+                                                ? WHITE_OO : NO_CASTLING;
+
+                CastlingRights clear_white_rook_qs = (us == WHITE && moving_piecetype == ROOK && from_sq == white_rook_qs_start)
+                                                ? WHITE_OOO : NO_CASTLING;
+
+                CastlingRights clear_black_rook_ks = (us == BLACK && moving_piecetype == ROOK && from_sq == black_rook_ks_start)
+                                                ? BLACK_OO : NO_CASTLING;
+
+                CastlingRights clear_black_rook_qs = (us == BLACK && moving_piecetype == ROOK && from_sq == black_rook_qs_start)
+                                                ? BLACK_OOO : NO_CASTLING;
+
+                CastlingRights clear_white_rook_ks_captured = (target_color == WHITE && target_piecetype == ROOK && to_sq == white_rook_ks_start)
+                                                        ? WHITE_OO : NO_CASTLING;
+
+                CastlingRights clear_white_rook_qs_captured = (target_color == WHITE && target_piecetype == ROOK && to_sq == white_rook_qs_start)
+                                                        ? WHITE_OOO : NO_CASTLING;
+
+                CastlingRights clear_black_rook_ks_captured = (target_color == BLACK && target_piecetype == ROOK && to_sq == black_rook_ks_start)
+                                                        ? BLACK_OO : NO_CASTLING;
+
+                CastlingRights clear_black_rook_qs_captured = (target_color == BLACK && target_piecetype == ROOK && to_sq == black_rook_qs_start)
+                                                        ? BLACK_OOO : NO_CASTLING;
+
+                CastlingRights clear_mask =
+                    clear_white_king
+                    | clear_black_king
+                    | clear_white_rook_ks
+                    | clear_white_rook_qs
+                    | clear_black_rook_ks
+                    | clear_black_rook_qs
+                    | clear_white_rook_ks_captured
+                    | clear_white_rook_qs_captured
+                    | clear_black_rook_ks_captured
+                    | clear_black_rook_qs_captured;
+                CastlingRights prev=current_state.castlingRights;
+                current_state.castlingRights &= ~clear_mask;
+                current_state.hash ^= zobrist::RandomCastle[prev]^zobrist::RandomCastle[current_state.castlingRights];
             }
             current_state.turn = ~current_state.turn;
+            // Update halfmoves, fullmoves and stm
+            current_state.fullMoveNumber += (current_state.turn == WHITE);
+            current_state.halfMoveClock = (is_capture || moving_piecetype == PAWN) ? 0 : (current_state.halfMoveClock+1);
             current_state.hash ^= zobrist::RandomTurn;
-            current_state.fullMoveNumber+=(current_state.turn==WHITE);
-            history.push_back(current_state);
+            refresh_attacks();
         }
+
         template<bool RetAll = false>
         inline auto undoMove()
         {
@@ -498,7 +544,7 @@ namespace chess {
         {
             current_state.turn = ~current_state.turn;
             current_state.hash ^= zobrist::RandomTurn;
-            current_state.fullMoveNumber+=(current_state.turn==WHITE);
+            current_state.fullMoveNumber += (current_state.turn == WHITE);
             history.push_back(current_state);
         }
 
@@ -561,10 +607,9 @@ namespace chess {
         }
         ```
          */
-        [[nodiscard]] inline Bitboard attackers(Color color, Square square) const
+        [[nodiscard]] inline Bitboard attackers(Color color, Square square, Bitboard occupied) const
         {
             const auto queens   = pieces<QUEEN>(color);
-            const auto occupied = occ();
 
             // using the fact that if we can attack PieceType from square, they can attack us back
             auto atks = (attacks::pawn(~color, square) & pieces<PAWN>(color));
@@ -575,9 +620,11 @@ namespace chess {
 
             return atks & occupied;
         }
+        [[nodiscard]] inline Bitboard attackers(Color color, Square square) const { return attackers(color, square, occ()); }
         template<PieceType pt, Color c, Square s>
         inline void placePiece()
         {
+            if constexpr (pt == NO_PIECE_TYPE) return;  // no-op for NO_PIECE_TYPE
             ASSUME(0 <= s && s <= 64);
             current_state.pieces[pt] |= 1ULL << s;
             current_state.occ[c] |= 1ULL << s;
@@ -590,6 +637,8 @@ namespace chess {
         template<PieceType pt>
         inline void placePiece(Color c, Square s)
         {
+            ASSUME(0 <= s && s <= 64);
+            if constexpr (pt == NO_PIECE_TYPE) return;  // no-op for NO_PIECE_TYPE
             current_state.pieces[pt] |= 1ULL << s;
             current_state.occ[c] |= 1ULL << s;
             current_state.pieces_list[s] = make_piece<PieceC>(pt, c);
@@ -601,6 +650,8 @@ namespace chess {
         template<Color c, PieceType pt>
         inline void placePiece(Square s)
         {
+            ASSUME(0 <= s && s <= 64);
+            if constexpr (pt == NO_PIECE_TYPE) return;  // no-op for NO_PIECE_TYPE
             current_state.pieces[pt] |= 1ULL << s;
             current_state.occ[c] |= 1ULL << s;
             current_state.pieces_list[s] = make_piece<PieceC>(pt, c);
@@ -611,14 +662,14 @@ namespace chess {
         }
         inline void placePiece(PieceType pt, Color c, Square s)
         {
+            if (pt == NO_PIECE_TYPE) return;  // no-op for NO_PIECE_TYPE
             // ahh pipeline flushing
             current_state.pieces[pt] |= 1ULL << s;
             current_state.occ[c] |= 1ULL << s;
             current_state.pieces_list[s] = make_piece<PieceC>(pt, c);
             current_state.hash ^=
               zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s];
-            if (pt == KING)
-                current_state.kings[c] = s;
+            current_state.kings[c] = (pt == KING) ? s : current_state.kings[c];
         }
         template<PieceType pt, Color c, Square s>
         inline void place_piece() { placePiece<pt, c, s>(); }
@@ -688,7 +739,7 @@ namespace chess {
         template<Color c, PieceType pt>
         inline void remove_piece(Square s) { removePiece<c, pt>(s); }
         inline void remove_piece(PieceType pt, Color c, Square s) { removePiece(pt, c, s); }
-        inline Bitboard occ(Color c) const { return current_state.occ[c]; }
+        inline Bitboard occ(Color c) const { ASSUME(c!=COLOR_NB); return current_state.occ[c]; }
         inline Bitboard occ() const { return current_state.occ[0] | current_state.occ[1]; }
         PieceC          piece_on(Square s) const { return current_state.pieces_list[s]; }
         inline Color    sideToMove() const { return current_state.turn; }
@@ -699,8 +750,9 @@ namespace chess {
         template<PieceType pt>
         inline Square square(Color c) const { return Square(lsb(pieces<pt>(c))); }
         inline Bitboard checkers() const { return current_state.checkers; }
-        Position(std::string fen, bool xfen = false);
-        inline bool isCapture(Move mv) const { return (mv.type_of()!=CASTLING) && (mv.type_of() == EN_PASSANT) || (piece_on(mv.to_sq()) != PieceC::NO_PIECE); }
+        Position(std::string fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        inline bool isCapture(Move mv) const { return mv.type_of() == EN_PASSANT || (mv.type_of() != CASTLING && piece_on(mv.to_sq()) != PieceC::NO_PIECE); }
+
         std::string fen() const;
         inline int halfmoveClock() const { return current_state.halfMoveClock; }
         inline int fullmoveNumber() const { return current_state.fullMoveNumber; }
@@ -731,7 +783,7 @@ namespace chess {
 
             return pin;
         }
-        inline void refresh_pin_mask()
+        inline void refresh_attacks()
         {
             current_state._bishop_pin = pinMask<BISHOP>(sideToMove(), square<KING>(sideToMove()));
             current_state._rook_pin   = pinMask<ROOK>(sideToMove(), square<KING>(sideToMove()));

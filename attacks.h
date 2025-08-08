@@ -127,25 +127,78 @@ namespace chess::attacks {
 
     //clang-format on
     #ifdef __BMI2__
+        constexpr uint64_t software_pext_u64(uint64_t val, uint64_t mask) {
+            uint64_t result = 0;
+            uint64_t bit_position = 0;
+
+            for (uint64_t bit = 1; bit!= 0; bit <<= 1) {
+                if (mask & bit) {
+                    if (val & bit) {
+                        result |= 1ULL << bit_position;
+                    }
+                    ++bit_position;
+                }
+            }
+            return result;
+        }
         struct Magic {
             Bitboard       mask;
-            Bitboard*      attacks;
-            Bitboard       operator()(Bitboard b) const noexcept { return _pext_u64(b, mask); }
+            int            index;
+            constexpr Bitboard       operator()(Bitboard b) const {
+                if consteval { return software_pext_u64(b, mask); }
+                else { return _pext_u64(b, mask); }
+            }
         };
     #else
         struct Magic {
             Bitboard       mask;
             Bitboard       magic;
-            Bitboard*      attacks;
+            int            index;
             Bitboard       shift;
-            Bitboard       operator()(Bitboard b) const noexcept {
+            constexpr Bitboard       operator()(Bitboard b) const {
                 return (((b & mask)) * magic) >> shift;
             }
         };
     #endif
-    extern Magic RookTable[64];
-    extern Magic BishopTable[64];
-    int init_attacks();
+    template <auto AttackFunc, const Bitboard* Magics, size_t TableSize>
+    constexpr auto generate_magic_table() {
+        std::array<Magic, 64> table{};
+        std::array<Bitboard, TableSize> attacks{};
+
+        size_t offset = 0;
+
+        for (Square sq = SQ_A1; sq < SQ_NONE; ++sq) {
+            Bitboard occ = 0;
+            Bitboard edges =
+                ((attacks::MASK_RANK[0] | attacks::MASK_RANK[7]) & ~attacks::MASK_RANK[rank_of(sq)]) |
+                ((attacks::MASK_FILE[0] | attacks::MASK_FILE[7]) & ~attacks::MASK_FILE[file_of(sq)]);
+
+            Bitboard mask = AttackFunc(static_cast<Square>(sq), 0) & ~edges;
+            int bits = popcount(mask);
+            int shift = 64 - bits;
+            Bitboard magic = Magics[sq];
+
+            auto& entry = table[sq];
+            entry.mask = mask;
+            #ifndef __BMI2__
+            entry.magic = magic;
+            entry.shift = shift;
+            #endif
+            entry.index = offset;
+
+            // Carry-rippler loop over all blocker subsets
+            occ = 0;
+            do {
+                size_t idx = entry(occ);
+                attacks[offset + idx] = AttackFunc(static_cast<Square>(sq), occ);
+                occ = (occ - mask) & mask;
+            } while (occ);
+
+            offset += (1ULL << bits);
+        }
+
+        return std::pair{table, attacks};
+    }
 }
 
 namespace chess::_chess {
@@ -225,6 +278,16 @@ namespace chess::_chess {
 }  // namespace chess::_chess [INTERNAL]
 namespace chess::attacks{
 
+    constexpr auto bishopData =
+        generate_magic_table<_chess::_HyperbolaBishopAttacks, attacks::BishopMagics, 0x1480>();
+    constexpr auto BishopTable = bishopData.first;
+    constexpr auto BishopAttacks = bishopData.second;
+
+    constexpr auto rookData =
+        generate_magic_table<_chess::_HyperbolaRookAttacks, attacks::RookMagics, 0x19000>();
+    constexpr auto RookTable = rookData.first;
+    constexpr auto RookAttacks = rookData.second;
+
     /**
      * @brief  Shifts a bitboard in a given direction
      * @tparam direction
@@ -299,23 +362,6 @@ namespace chess::attacks{
     [[nodiscard]] constexpr Bitboard knight(Square sq) {
 		return KnightAttacks[(int)sq];
 	}
-
-    constexpr Bitboard knight(Bitboard knights) {
-        constexpr Bitboard FILE_A  = 0x0101010101010101ULL;
-        constexpr Bitboard FILE_AB = 0x0303030303030303ULL;
-        constexpr Bitboard FILE_H  = 0x8080808080808080ULL;
-        constexpr Bitboard FILE_GH = 0xC0C0C0C0C0C0C0C0ULL;
-        Bitboard l1 = (knights >> 1) & ~FILE_H;
-        Bitboard l2 = (knights >> 2) & ~FILE_GH;
-        Bitboard r1 = (knights << 1) & ~FILE_A;
-        Bitboard r2 = (knights << 2) & ~FILE_AB;
-
-        Bitboard h1 = l1 | r1;
-        Bitboard h2 = l2 | r2;
-
-        return (h1 << 16) | (h1 >> 16) | (h2 << 8) | (h2 >> 8);
-    }
-    static_assert(knight(0xf)==(knight(SQ_A1)|knight(SQ_B1)|knight(SQ_C1)|knight(SQ_D1)), "ahh this function is FAULTY, 0xf=0b1111");
     /**
      * @brief Returns the bishop attacks for a given square
      * @param sq
@@ -324,7 +370,7 @@ namespace chess::attacks{
      */
     [[nodiscard]] constexpr Bitboard bishop(Square sq, Bitboard occupied) {
         if consteval { return _chess::_HyperbolaBishopAttacks(sq, occupied); }
-		else { return BishopTable[(int)sq].attacks[BishopTable[(int)sq](occupied)]; }
+		else { return BishopAttacks[BishopTable[(int)sq].index+BishopTable[(int)sq](occupied)]; }
 	}
 
     /**
@@ -335,7 +381,7 @@ namespace chess::attacks{
      */
     [[nodiscard]] constexpr Bitboard rook(Square sq, Bitboard occupied) {
         if consteval { return _chess::_HyperbolaRookAttacks(sq, occupied); }
-		else { return RookTable[(int)sq].attacks[RookTable[(int)sq](occupied)]; }
+		else { return RookAttacks[RookTable[(int)sq].index+RookTable[(int)sq](occupied)]; }
 	}
 
     /**

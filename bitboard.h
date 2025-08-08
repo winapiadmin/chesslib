@@ -31,7 +31,14 @@ namespace chess {
         return (b << 48) | ((b & 0xffff0000) << 16) | ((b >> 16) & 0xffff0000) | (b >> 48);
     }
     inline int pop_lsb(Bitboard& b) {
-        return std::countr_zero(b ^ (b = b & (b - 1)));
+        auto c= lsb(b);
+        b &= b - 1;  // clear the least significant bit
+        return c;
+    }
+    inline int pop_msb(Bitboard& b) {
+        auto c = msb(b);
+        b &= ~(1<<b);
+        return c;
     }
     static_assert(reverseBits64(0x8000000000000000ULL) == 0x1ULL,
                   "reverseBits64(0x8000000000000000ULL) ? 0x1ULL");
