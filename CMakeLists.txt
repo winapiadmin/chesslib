@@ -14,7 +14,7 @@ endif()
 # Enable AddressSanitizer when in Debug mode
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     message(STATUS "Enabling AddressSanitizer")
-    set(SANITIZER_FLAGS "-fsanitize=address -fno-omit-frame-pointer")
+    set(SANITIZER_FLAGS "-fsanitize=address")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SANITIZER_FLAGS}")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SANITIZER_FLAGS}")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${SANITIZER_FLAGS}")
@@ -23,9 +23,10 @@ endif()
 # Main library sources
 set(SOURCES
     position.cpp
+    attacks.cpp
 )
 
-add_library(MultiTypeChess STATIC ${SOURCES})
+add_library(MultiTypeChess STATIC ${SOURCES} "attacks.cpp")
 target_include_directories(MultiTypeChess PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Catch2 test executable
@@ -33,7 +34,7 @@ add_executable(test_chess
     tests/hello_catch2.test.cpp
     tests/catch_amalgamated.cpp
     position.cpp
-)
+    "attacks.cpp")
 target_link_libraries(test_chess PRIVATE MultiTypeChess)
 
 enable_testing()

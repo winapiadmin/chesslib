@@ -592,4 +592,5 @@ namespace chess {
         private:
         T* values_;
     };
+	using Movelist = ValueList<Move, 256>;
 }

@@ -299,45 +299,87 @@ namespace chess {
           history;  // ahh, but i hope it fulfils before I manages to find the absolute limit of a game
         // Move generation functions, but INTERNAL. (they're kind of long so i put them into a source file)
         // Pawns (fully extensively tested)
-        // only 2 possible EP capture due to the last move is a double push next to a ep candidate capturer
         template<Color c>
-        ValueList<Move, 2> genEP() const;
+        void genEP(Movelist &mv) const;
         template<Color c>
-        ValueList<Move, 8> genPawnDoubleMoves() const;
-        // Single pawn move limit FEN: pppppppp/PPPPPPPP/pppppppp/PPPPPPPP/pppppppp/PPPPPPPP/5K2/7k w - - 0 1 (86 legal pawn moves, including promotions)
+        void genPawnDoubleMoves(Movelist &mv) const;
         template<Color c>
-        ValueList<Move, 86> genPawnSingleMoves() const;
-        // knights (just some simple ANDs)
-        // FEN: N1NNNN1N/1N1NN1Nk/N1N2N1N/1N1NN1N1/1NNNNNN1/NNN2NNN/KN4N1/N4N1N w - - 0 1 (104 legal knight moves)
+        void genPawnSingleMoves(Movelist &mv) const;
         template<Color c>
-        ValueList<Move, 104> genKnightMoves() const;
-        // yes.... 1 king+2 castling moves
+        void genKnightMoves(Movelist &list) const
+        {
+            Bitboard knights = pieces<KNIGHT, c>() & ~current_state._pin_mask; // yes, unconditionally.
+            while (knights) {
+                Square x = static_cast<Square>(pop_lsb(knights));
+                Bitboard moves = attacks::knight(x) & ~occ(c);
+                while (moves) {
+                    Square y = static_cast<Square>(pop_lsb(moves));
+                    list.push_back(Move(x, y));
+                }
+            }
+        }
         template<Color c>
-        ValueList<Move, 10> genKingMoves() const;
+        void genKingMoves(Movelist &mv) const;
+        template<Color c, PieceType pt>
+        void genSlidingMoves(Movelist& list) const
+        {
+            Bitboard pins=0;
+
+            if constexpr (pt == BISHOP) {
+                pins = current_state._bishop_pin;
+            }
+            else if constexpr (pt == ROOK) {
+                pins = current_state._rook_pin;
+            }
+            else {
+                pins = current_state._pin_mask; // For queens or others
+            }
+            if (pins == 0) {
+                pins = ~0ULL;
+            }
+            Bitboard sliders = pieces<pt, c>();
+            Bitboard occ_all = this->occ();
+
+            while (sliders) {
+                Square from = static_cast<Square>(pop_lsb(sliders));
+                Bitboard target_squares = attacks::slider<pt>(from, occ_all) & ~occ(c);
+
+                // Only moves allowed along pin ray, and on check mask
+                target_squares &= pins & current_state.check_mask;
+
+                while (target_squares) {
+                    Square to = static_cast<Square>(pop_lsb(target_squares));
+                    list.push_back(Move(from, to));
+                }
+            }
+        }
+
         public:
         // Legal move generation functions
         template<MoveGenType type=MoveGenType::ALL, Color c>
-        inline void                legals(ValueList<Move, 256>& out) const {
-            // If we combine all the limits, it would cross over 256 but... well, nope. Limits are DENSE and the limits are absolutely low (except some crafted positions)
+        inline void                legals(Movelist& out) const {
             if constexpr (type==MoveGenType::ALL){
                 // Simple cases
-                for (Move mv:genEP<c>()) out.push_back(mv);
-                for (Move mv:genPawnDoubleMoves<c>()) out.push_back(mv);
-                for (Move mv:genPawnSingleMoves<c>()) out.push_back(mv);
-                for (Move mv:genKnightMoves<c>()) out.push_back(mv);
-                for (Move mv:genKingMoves<c>()) out.push_back(mv);
+                genEP<c>(out);
+				genPawnDoubleMoves<c>(out);
+				genPawnSingleMoves<c>(out);
+				genKnightMoves<c>(out);
+				genKingMoves<c>(out);
+				genSlidingMoves<c, BISHOP>(out);
+				genSlidingMoves<c, ROOK>(out);
+				genSlidingMoves<c, QUEEN>(out);
                 // sliding pieces AHH not implemented
             }
             else if constexpr (type==MoveGenType::PAWN){
-                for (Move mv:genEP<c>()) out.push_back(mv);
-                for (Move mv:genPawnDoubleMoves<c>()) out.push_back(mv);
-                for (Move mv:genPawnSingleMoves<c>()) out.push_back(mv);
+				genEP<c>(out);
+				genPawnDoubleMoves<c>(out);
+				genPawnSingleMoves<c>(out);
             }
             else if constexpr (type==MoveGenType::KNIGHT){
-                for (Move mv:genKnightMoves<c>()) out.push_back(mv);
+				genKnightMoves<c>(out);
             }
             else if constexpr (type==MoveGenType::KING){
-                for (Move mv:genKingMoves<c>()) out.push_back(mv);
+                genKingMoves<c>(out);
             }
             else if constexpr (type==MoveGenType::CAPTURE){
                 // Well.... it's SLOWER than everything because this uses branching and another pre-processing variable.
@@ -426,22 +468,22 @@ namespace chess {
             bool is_capture=isCapture(move);
             history.push_back(current_state);
             current_state.mv = move; // Update the move in the current state
-            removePiece(moving_piecetype, us, from_sq);
-            removePiece(target_piecetype, target_color, to_sq);
+            removePiece(moving_piecetype, from_sq, us);
+            removePiece(target_piecetype, to_sq, target_color);
             {
                 ASSUME(move_type==NORMAL||move_type==PROMOTION||move_type==EN_PASSANT||move_type==CASTLING);
                 switch(move_type){
                     case NORMAL:
-                        placePiece(moving_piecetype, us, to_sq);
+                        placePiece(moving_piecetype, to_sq, us);
                         break;
                     case PROMOTION:
-                        placePiece(move.promotion_type(), us, to_sq);
+                        placePiece(move.promotion_type(), to_sq, us);
                         break;
                     case EN_PASSANT:
                         {
                             Square ep_capture_sq = to_sq+pawn_push(them);
-                            removePiece<PAWN>(them, ep_capture_sq);
-                            placePiece<PAWN>(us, to_sq);
+                            removePiece<PAWN>(ep_capture_sq, them);
+                            placePiece<PAWN>(to_sq, us);
                             break;
                         }
                     case CASTLING: 
@@ -449,8 +491,8 @@ namespace chess {
                         bool kingside_castle=from_sq<to_sq;
                         Square rook_dest=castling_rook_square(kingside_castle, us),
                                king_dest=castling_king_square(kingside_castle, us);
-                        placePiece<ROOK>(us, rook_dest);
-                        placePiece<KING>(us, king_dest);
+                        placePiece<ROOK>(rook_dest, us);
+                        placePiece<KING>(king_dest, us);
                         break;
                     }
                     default:
@@ -621,127 +663,65 @@ namespace chess {
             return atks & occupied;
         }
         [[nodiscard]] inline Bitboard attackers(Color color, Square square) const { return attackers(color, square, occ()); }
-        template<PieceType pt, Color c, Square s>
-        inline void placePiece()
-        {
-            if constexpr (pt == NO_PIECE_TYPE) return;  // no-op for NO_PIECE_TYPE
-            ASSUME(0 <= s && s <= 64);
-            current_state.pieces[pt] |= 1ULL << s;
-            current_state.occ[c] |= 1ULL << s;
-            current_state.pieces_list[s] = make_piece<PieceC>(pt, c);
-            current_state.hash ^=
-              zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s];
-            if constexpr (pt == KING)
-                current_state.kings[c] = s;
-        }
+        // Compile-time piece type and color, runtime square
         template<PieceType pt>
-        inline void placePiece(Color c, Square s)
-        {
-            ASSUME(0 <= s && s <= 64);
-            if constexpr (pt == NO_PIECE_TYPE) return;  // no-op for NO_PIECE_TYPE
-            current_state.pieces[pt] |= 1ULL << s;
-            current_state.occ[c] |= 1ULL << s;
-            current_state.pieces_list[s] = make_piece<PieceC>(pt, c);
-            current_state.hash ^=
-              zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s];
-            if constexpr (pt == KING)
-                current_state.kings[c] = s;
+        inline void placePiece(Square s, Color c) {
+            if constexpr (pt != NO_PIECE_TYPE) {
+                current_state.pieces[pt] |= 1ULL << s;
+                current_state.occ[c] |= 1ULL << s;
+                current_state.pieces_list[s] = make_piece<PieceC>(pt, c);
+                current_state.hash ^= zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s];
+                if constexpr (pt == KING) current_state.kings[c] = s;
+            }
         }
-        template<Color c, PieceType pt>
-        inline void placePiece(Square s)
-        {
-            ASSUME(0 <= s && s <= 64);
-            if constexpr (pt == NO_PIECE_TYPE) return;  // no-op for NO_PIECE_TYPE
-            current_state.pieces[pt] |= 1ULL << s;
-            current_state.occ[c] |= 1ULL << s;
-            current_state.pieces_list[s] = make_piece<PieceC>(pt, c);
-            current_state.hash ^=
-              zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s];
-            if constexpr (pt == KING)
-                current_state.kings[c] = s;
-        }
-        inline void placePiece(PieceType pt, Color c, Square s)
-        {
-            if (pt == NO_PIECE_TYPE) return;  // no-op for NO_PIECE_TYPE
-            // ahh pipeline flushing
-            current_state.pieces[pt] |= 1ULL << s;
-            current_state.occ[c] |= 1ULL << s;
-            current_state.pieces_list[s] = make_piece<PieceC>(pt, c);
-            current_state.hash ^=
-              zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s];
-            current_state.kings[c] = (pt == KING) ? s : current_state.kings[c];
-        }
-        template<PieceType pt, Color c, Square s>
-        inline void place_piece() { placePiece<pt, c, s>(); }
+
         template<PieceType pt>
-        inline void place_piece(Color c, Square s) { placePiece<pt>(c, s); }
-        template<Color c, PieceType pt>
-        inline void place_piece(Square s) { placePiece<c, pt>(s); }
-        inline void place_piece(PieceType pt, Color c, Square s) { placePiece(pt, c, s); }
-        template<PieceType pt, Color c, Square s>
-        inline void removePiece()
-        {
-            ASSUME(0 <= s && s <= 64);
-            current_state.pieces[pt] &= ~(1ULL << s);
-            current_state.occ[c] &= ~(1ULL << s);
-            current_state.pieces_list[s] = PieceC::NO_PIECE;
-            current_state.hash ^=
-              zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s];
-            if constexpr (pt == KING)
-                current_state.kings[c] = SQ_NONE;
-        }
-        template<PieceType pt>
-        inline void removePiece(Color c, Square s)
-        {
-            ASSUME(0 <= s && s <= 64);
-            if constexpr (pt != NO_PIECE_TYPE){
+        inline void removePiece(Square s, Color c) {
+            if constexpr (pt != NO_PIECE_TYPE) {
                 current_state.pieces[pt] &= ~(1ULL << s);
                 current_state.occ[c] &= ~(1ULL << s);
                 current_state.pieces_list[s] = PieceC::NO_PIECE;
-                current_state.hash ^=
-                  zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s];
+                current_state.hash ^= zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s];
+                if constexpr (pt == KING) current_state.kings[c] = SQ_NONE;
             }
-            if constexpr (pt == KING)
-                current_state.kings[c] = SQ_NONE;
         }
-        template<Color c, PieceType pt>
-        inline void removePiece(Square s)
-        {
-            ASSUME(0 <= s && s <= 64);
-            if constexpr (pt != NO_PIECE_TYPE){
+
+        inline void placePiece(PieceType pt, Square s, Color c) {
+            if (pt != NO_PIECE_TYPE) {
+                current_state.pieces[pt] |= 1ULL << s;
+                current_state.occ[c] |= 1ULL << s;
+                current_state.pieces_list[s] = make_piece<PieceC>(pt, c);
+                current_state.hash ^= zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s];
+                if (pt == KING) current_state.kings[c] = s;
+            }
+        }
+
+        inline void removePiece(PieceType pt, Square s, Color c) {
+            if (pt != NO_PIECE_TYPE) {
                 current_state.pieces[pt] &= ~(1ULL << s);
                 current_state.occ[c] &= ~(1ULL << s);
                 current_state.pieces_list[s] = PieceC::NO_PIECE;
-                current_state.hash ^=
-                  zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s];
+                current_state.hash ^= zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s];
+                if (pt == KING) current_state.kings[c] = SQ_NONE;
             }
-            if constexpr (pt == KING)
-                current_state.kings[c] = SQ_NONE;
-        }
-        inline void removePiece(PieceType pt, Color c, Square s)
-        {
-            ASSUME(0 <= s && s <= 64);
-
-            // Use ternary to skip all ops if NO_PIECE_TYPE
-            current_state.pieces[pt] &= (pt != NO_PIECE_TYPE) ? ~(1ULL << s) : current_state.pieces[pt];
-            current_state.occ[c] &= (pt != NO_PIECE_TYPE) ? ~(1ULL << s) : current_state.occ[c];
-            current_state.pieces_list[s] = (pt != NO_PIECE_TYPE) ? PieceC::NO_PIECE : current_state.pieces_list[s];
-            current_state.hash ^= (pt != NO_PIECE_TYPE)
-                                 ? zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s]
-                                 : 0;
-            current_state.kings[c] = (pt == KING) ? SQ_NONE : current_state.kings[c];
         }
 
-        template<PieceType pt, Color c, Square s>
-        inline void remove_piece() { removePiece<pt, c, s>(); }
-        template<PieceType pt>
-        inline void remove_piece(Color c, Square s) { removePiece<pt>(c, s); }
-        template<Color c, PieceType pt>
-        inline void remove_piece(Square s) { removePiece<c, pt>(s); }
-        inline void remove_piece(PieceType pt, Color c, Square s) { removePiece(pt, c, s); }
         inline Bitboard occ(Color c) const { ASSUME(c!=COLOR_NB); return current_state.occ[c]; }
         inline Bitboard occ() const { return current_state.occ[0] | current_state.occ[1]; }
-        PieceC          piece_on(Square s) const { return current_state.pieces_list[s]; }
+        PieceC          piece_on(Square s) const { 
+#ifndef _DEBUG
+            return current_state.pieces_list[s];
+#else
+            auto p=current_state.pieces_list[s];
+            auto p2 = piece_of(p);
+            if (p2 == ALL_PIECES)return p;
+            else {
+                Bitboard bb = 1ULL << s;
+                assert(pieces(p2, color_of(p)) & bb);
+			}
+            return p;
+#endif
+        }
         inline Color    sideToMove() const { return current_state.turn; }
         inline uint64_t hash() const { return current_state.hash; }
         inline uint64_t key() const { return current_state.hash; }
@@ -819,4 +799,5 @@ namespace chess {
     };
     template<typename PieceC = EnginePiece>
     std::ostream& operator<<(std::ostream& os, const Position<PieceC>& pos);
+	using PositionE = Position<EnginePiece>; // for some fun because I HATE HARDCODING
 };

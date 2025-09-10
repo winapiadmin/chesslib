@@ -277,17 +277,10 @@ namespace chess::_chess {
     }
 }  // namespace chess::_chess [INTERNAL]
 namespace chess::attacks{
-
-    constexpr auto bishopData =
-        generate_magic_table<_chess::_HyperbolaBishopAttacks, attacks::BishopMagics, 0x1480>();
-    constexpr auto BishopTable = bishopData.first;
-    constexpr auto BishopAttacks = bishopData.second;
-
-    constexpr auto rookData =
-        generate_magic_table<_chess::_HyperbolaRookAttacks, attacks::RookMagics, 0x19000>();
-    constexpr auto RookTable = rookData.first;
-    constexpr auto RookAttacks = rookData.second;
-
+	extern const std::array<Magic, 64> RookTable;
+	extern const std::array<Bitboard, 0x19000> RookAttacks;
+	extern const std::array<Magic, 64> BishopTable;
+	extern const std::array<Bitboard, 0x1480> BishopAttacks;
     /**
      * @brief  Shifts a bitboard in a given direction
      * @tparam direction

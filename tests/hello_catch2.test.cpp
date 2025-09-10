@@ -69,7 +69,7 @@ TEST_CASE("EP ignore on non-EP move"){
 }
 uint64_t perft_king(int depth, Position<EnginePiece, void> &p){
     ValueList<Move, 256> out;
-    p.template legals<MoveGenType::KING>(out);
+    p.legals<MoveGenType::KING>(out);
     if (depth==1) return out.size();
     uint64_t s=0;
     for (auto m:out){
@@ -83,4 +83,82 @@ TEST_CASE("King walk empty board wking e4 bking f8 depth 6") {
     std::string fen = "5k2/8/8/8/3K4/8/8/8 w - - 0 1";
     Position position(fen);
     REQUIRE(perft_king(6, position)==95366);
+}
+TEST_CASE("Pin detection double push movegen") {
+	std::string fen = "rnbqkbnr/1ppppppp/8/p7/Q1P5/8/PP1PPPPP/RNB1KBNR b KQkq - 1 2";
+	Position position(fen);
+    ValueList<Move, 256> out;
+    position.legals<MoveGenType::PAWN>(out);
+    REQUIRE(out.size() == 12);
+    REQUIRE(position.state()._pin_mask!=0); // this was the old bug
+    REQUIRE(position.state()._pin_mask & 0x8000000000000);
+    REQUIRE(position.state()._pin_mask == 0x8040201000000);
+}
+TEST_CASE("Move making pin update") {
+    Position pos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    pos.doMove(Move(SQ_C2, SQ_C4));
+	pos.doMove(Move(SQ_A7, SQ_A5));
+	pos.doMove(Move(SQ_D1, SQ_A4));
+    {
+		Movelist out;
+        pos.legals<MoveGenType::PAWN>(out);
+        REQUIRE(out.size() == 12);
+        REQUIRE(pos.state()._pin_mask != 0); // this was the old bug
+        REQUIRE(pos.state()._pin_mask & 0x8000000000000);
+        REQUIRE(pos.state()._pin_mask == 0x8040201000000);
+    }
+}
+template<bool EnableDiv = true, MoveGenType MGen = MoveGenType::ALL>
+uint64_t perft(int depth, Position<EnginePiece, void>& p, bool isRoot = true) {
+    //std::cout << p.fen() << "\n";
+    if (depth == 0) {
+        // No moves to generate, current position counts as one leaf
+        return 1;
+    }
+
+    ValueList<Move, 256> moves;
+    p.legals<MGen>(moves);
+
+    uint64_t total = 0;
+
+    for (const Move& m : moves) {
+        p.doMove(m);
+
+        uint64_t nodes;
+        if (depth == 1) {
+            // At depth 1, leaf nodes: count = 1 for each move
+            nodes = 1;
+        }
+        else {
+            nodes = perft<EnableDiv, MGen>(depth - 1, p, false);
+        }
+
+        p.undoMove();
+
+        if (isRoot&&EnableDiv) {
+            std::cout << m << ": " << nodes << '\n';
+        }
+        total += nodes;
+    }
+
+    if (isRoot&&EnableDiv) {
+        std::cout << "Total: " << total << '\n';
+    }
+
+    return total;
+}
+
+TEST_CASE("Perft startpos") {
+    Position pos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    REQUIRE(perft<false>(1, pos) == 20);
+    REQUIRE(perft<false>(2, pos) == 400);
+    REQUIRE(perft<false>(3, pos) == 8902);
+	pos.doMove(Move(SQ_E2, SQ_E3));
+    //REQUIRE(perft<true>(3, pos) == 13134);
+    pos.doMove(Move(SQ_B7, SQ_B6));
+    //REQUIRE(perft<true>(2, pos) == 622);
+    pos.doMove(Move(SQ_F1, SQ_B5));
+    std::cout << pos;
+    REQUIRE(perft<true>(1, pos) == 18);
+    //REQUIRE(perft<true>(4, pos) == 197281);
 }

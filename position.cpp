@@ -1,6 +1,7 @@
 #include "position.h"
 #include <bitset>
 #include <iomanip>
+#include <sstream>
 namespace chess {
     template<typename PieceC>
     std::ostream& operator<<(std::ostream& os, const Position<PieceC>& pos)
@@ -25,13 +26,12 @@ namespace chess {
     }
     template<typename PieceC, typename T>
     template<Color c>
-    ValueList<Move, 2> Position<PieceC, T>::genEP() const
+    void Position<PieceC, T>::genEP(Movelist &ep_moves) const
     {
-        ValueList<Move, 2> ep_moves;
 
         const Square king_sq = square<KING>(c);
         const Square ep_sq = ep_square();
-        if (ep_sq == SQ_NONE) return ep_moves; // unavoidable one-time exit
+        if (ep_sq == SQ_NONE) return; // unavoidable one-time exit
 
         Bitboard attackers = attacks::pawn(~c, ep_sq) & pieces<PAWN, c>();
         attackers &= ~current_state._pin_mask;
@@ -56,167 +56,235 @@ namespace chess {
         const bool legal1 = attacker_present && !this->attackers(~c, king_sq, occ1);
         const bool legal2 = second_valid   && !this->attackers(~c, king_sq, occ2);
 
-        const int count = static_cast<int>(legal1) + static_cast<int>(legal2);
+        const int count = static_cast<int>(legal1) + static_cast<int>(legal2), i=ep_moves.size_;
         ep_moves.size_ = count;
-        ep_moves[0] = Move::make<EN_PASSANT>(sq1, ep_sq);         // writes legal1 ? move1 : 0
-        ep_moves[legal1] = Move::make<EN_PASSANT>(sq2, ep_sq);         // writes legal2 ? move2 : 0
+        ep_moves[i] = Move::make<EN_PASSANT>(sq1, ep_sq);         // writes legal1 ? move1 : 0
+        ep_moves[i+legal1] = Move::make<EN_PASSANT>(sq2, ep_sq);         // writes legal2 ? move2 : 0
 
-        return ep_moves;
+        return;
     }
     template<typename PieceC, typename T>
     template<Color c>
-    ValueList<Move, 86> Position<PieceC, T>::genPawnSingleMoves() const
+    void Position<PieceC, T>::genPawnSingleMoves(Movelist& moves) const
     {
-        ValueList<Move, 86> moves;
+        constexpr Direction UP = pawn_push(c);
+        constexpr Bitboard PROMO_RANK = (c == WHITE) ? attacks::MASK_RANK[6] : attacks::MASK_RANK[1];
+        constexpr Bitboard PROMO_NEXT_RANK = (c == WHITE) ? attacks::MASK_RANK[7] : attacks::MASK_RANK[0];
 
-        constexpr Direction push_shift  = pawn_push(c);
-        constexpr Direction left_shift  = (c == WHITE) ? NORTH_WEST : SOUTH_WEST;
-        constexpr Direction right_shift = (c == WHITE) ? NORTH_EAST : SOUTH_EAST;
+        Bitboard pawns = pieces<PAWN, c>();
+
+        Bitboard enemy_occ = occ(~c);
+        Bitboard all_occ = occ();
+
+        // Split pawns by pin direction
+        Bitboard pawns_lr = pawns & ~current_state._rook_pin;  // pawns that can capture (not pinned along ranks/files)
+        Bitboard unpinned_pawns_lr = pawns_lr & ~current_state._bishop_pin;
+        Bitboard pinned_pawns_lr = pawns_lr & current_state._bishop_pin;
+
+        Bitboard pawns_hv = pawns & ~current_state._bishop_pin; // pawns that can push (not pinned diagonally)
+        Bitboard pinned_pawns_hv = pawns_hv & current_state._rook_pin;
+        Bitboard unpinned_pawns_hv = pawns_hv & ~current_state._rook_pin;
+
+        // ========== PAWN PUSHES (single step) ==========
+
+        // Push squares for unpinned pawns
+        Bitboard single_push_unpinned = (c == WHITE) ? (unpinned_pawns_hv << 8) : (unpinned_pawns_hv >> 8);
+        single_push_unpinned &= ~all_occ;                // empty squares only
+
+        // Push squares for pinned pawns: push only allowed if inside pin mask (rank/file)
+        Bitboard single_push_pinned = (c == WHITE) ? (pinned_pawns_hv << 8) : (pinned_pawns_hv >> 8);
+        single_push_pinned &= current_state._rook_pin & ~all_occ;
+
+        // Combine pushes and mask by check mask
+        Bitboard single_push = (single_push_unpinned | single_push_pinned) & current_state.check_mask;
+
+        // ========== PAWN CAPTURES ==========
 
         constexpr Bitboard NOT_FILE_A = 0xfefefefefefefefeULL;
         constexpr Bitboard NOT_FILE_H = 0x7f7f7f7f7f7f7f7fULL;
-        constexpr Bitboard promotion_rank = (c == WHITE) ? attacks::MASK_RANK[6] : attacks::MASK_RANK[1];
 
-        Bitboard pawns     = pieces<PAWN, c>();
-        Bitboard enemy_occ = occ(~c);
-        Bitboard all_occ   = occ();
+        // Left captures
+        Bitboard left_cap_pawns = pawns_lr & NOT_FILE_A;
+        Bitboard left_targets = (c == WHITE) ? (left_cap_pawns << 7) : (left_cap_pawns >> 9);
+        left_targets &= enemy_occ & current_state.check_mask;
 
-        // Pin masks
-        Bitboard bishop_pinned_pawns = pawns & current_state._bishop_pin;
-        Bitboard rook_pinned_pawns   = pawns & current_state._rook_pin;
-        Bitboard not_pinned_pawns    = pawns & ~(bishop_pinned_pawns | rook_pinned_pawns);
+        Bitboard left_sources_unpinned = (c == WHITE) ? (left_targets >> 7) : (left_targets << 9);
+        Bitboard left_sources_pinned = left_sources_unpinned & current_state._bishop_pin;
+        Bitboard left_sources_unpinned_only = left_sources_unpinned & ~current_state._bishop_pin;
 
-        // ========== FORWARD PUSHES ==========
+        Bitboard left_valid = left_sources_unpinned_only | (left_sources_pinned & current_state._bishop_pin);
 
-        // Pawns pinned diagonally can't push
-        Bitboard push_pawns = pawns & ~bishop_pinned_pawns;
+        // Right captures
+        Bitboard right_cap_pawns = pawns_lr & NOT_FILE_H;
+        Bitboard right_targets = (c == WHITE) ? (right_cap_pawns << 9) : (right_cap_pawns >> 7);
+        right_targets &= enemy_occ & current_state.check_mask;
 
-        Bitboard one_step_push = (c == WHITE) ? (push_pawns << 8) : (push_pawns >> 8);
-        one_step_push &= ~all_occ & current_state.check_mask;
+        Bitboard right_sources_unpinned = (c == WHITE) ? (right_targets >> 9) : (right_targets << 7);
+        Bitboard right_sources_pinned = right_sources_unpinned & current_state._bishop_pin;
+        Bitboard right_sources_unpinned_only = right_sources_unpinned & ~current_state._bishop_pin;
 
-        Bitboard pushes_nopromo = one_step_push & ~promotion_rank;
-        Bitboard pushes_promo   = one_step_push &  promotion_rank;
+        Bitboard right_valid = right_sources_unpinned_only | (right_sources_pinned & current_state._bishop_pin);
 
-        while (pushes_nopromo)
+        // ========== PROMOTIONS ==========
+
+        // Promotions from pushes
+        Bitboard promo_push = single_push & PROMO_RANK;
+
+        // Promotions from captures (left)
+        Bitboard promo_left = left_targets & PROMO_RANK;
+
+        // Promotions from captures (right)
+        Bitboard promo_right = right_targets & PROMO_RANK;
+
+        // Pushes that are not promotions
+        Bitboard normal_push = single_push & ~PROMO_RANK;
+
+        // Left captures that are not promotions
+        Bitboard normal_left = left_valid & ~PROMO_RANK;
+
+        // Right captures that are not promotions
+        Bitboard normal_right = right_valid & ~PROMO_RANK;
+
+        // Generate normal pushes (non-promotions)
+        while (normal_push)
         {
-            Square to   = static_cast<Square>(pop_lsb(pushes_nopromo));
-            Square from = Square(int(to) - push_shift);
+            Square to = static_cast<Square>(pop_lsb(normal_push));
+            Square from = static_cast<Square>(to - UP);
             moves.push_back(Move(from, to));
         }
 
-        while (pushes_promo)
+        // Generate normal captures (non-promotions)
+        while (normal_left)
         {
-            Square to   = static_cast<Square>(pop_lsb(pushes_promo));
-            Square from = Square(int(to) - push_shift);
+            Square from = static_cast<Square>(pop_lsb(normal_left));
+            Square to = static_cast<Square>(from + ((c == WHITE) ? 7 : -9));
+            moves.push_back(Move(from, to));
+        }
+
+        while (normal_right)
+        {
+            Square from = static_cast<Square>(pop_lsb(normal_right));
+            Square to = static_cast<Square>(from + ((c == WHITE) ? 9 : -7));
+            moves.push_back(Move(from, to));
+        }
+
+        // Generate promotion pushes
+        while (promo_push)
+        {
+            Square to = static_cast<Square>(pop_lsb(promo_push));
+            Square from = static_cast<Square>(to - UP);
             moves.push_back(Move::make<PROMOTION, KNIGHT>(from, to));
             moves.push_back(Move::make<PROMOTION, BISHOP>(from, to));
             moves.push_back(Move::make<PROMOTION, ROOK>(from, to));
             moves.push_back(Move::make<PROMOTION, QUEEN>(from, to));
         }
 
-        // ========== LEFT CAPTURES ==========
-
-        Bitboard left_cap_pawns = pawns & NOT_FILE_A;
-        Bitboard left_targets = (c == WHITE)
-            ? (left_cap_pawns << 7) & enemy_occ
-            : (left_cap_pawns >> 9) & enemy_occ;
-        left_targets &= current_state.check_mask;
-
-        Bitboard left_sources = (c == WHITE)
-            ? (left_targets >> 7)
-            : (left_targets << 9);
-        Bitboard left_valid = left_sources & (not_pinned_pawns | bishop_pinned_pawns);
-
-        Bitboard left_cap_nopromo = left_valid & ~promotion_rank;
-        Bitboard left_cap_promo   = left_valid &  promotion_rank;
-
-        while (left_cap_nopromo)
+        // Generate promotion captures (left)
+        while (promo_left)
         {
-            Square from = static_cast<Square>(pop_lsb(left_cap_nopromo));
-            Square to   = Square(int(from) + left_shift);
-            moves.push_back(Move(from, to));
-        }
-
-        while (left_cap_promo)
-        {
-            Square from = static_cast<Square>(pop_lsb(left_cap_promo));
-            Square to   = Square(int(from) + left_shift);
+            Square to = static_cast<Square>(pop_lsb(promo_left));
+            Square from = static_cast<Square>(to - ((c == WHITE) ? 7 : -9));
             moves.push_back(Move::make<PROMOTION, KNIGHT>(from, to));
             moves.push_back(Move::make<PROMOTION, BISHOP>(from, to));
             moves.push_back(Move::make<PROMOTION, ROOK>(from, to));
             moves.push_back(Move::make<PROMOTION, QUEEN>(from, to));
         }
 
-        // ========== RIGHT CAPTURES ==========
-
-        Bitboard right_cap_pawns = pawns & NOT_FILE_H;
-        Bitboard right_targets = (c == WHITE)
-            ? (right_cap_pawns << 9) & enemy_occ
-            : (right_cap_pawns >> 7) & enemy_occ;
-        right_targets &= current_state.check_mask;
-
-        Bitboard right_sources = (c == WHITE)
-            ? (right_targets >> 9)
-            : (right_targets << 7);
-        Bitboard right_valid = right_sources & (not_pinned_pawns | bishop_pinned_pawns);
-
-        Bitboard right_cap_nopromo = right_valid & ~promotion_rank;
-        Bitboard right_cap_promo   = right_valid &  promotion_rank;
-
-        while (right_cap_nopromo)
+        // Generate promotion captures (right)
+        while (promo_right)
         {
-            Square from = static_cast<Square>(pop_lsb(right_cap_nopromo));
-            Square to   = Square(int(from) + right_shift);
-            moves.push_back(Move(from, to));
-        }
-
-        while (right_cap_promo)
-        {
-            Square from = static_cast<Square>(pop_lsb(right_cap_promo));
-            Square to   = Square(int(from) + right_shift);
+            Square to = static_cast<Square>(pop_lsb(promo_right));
+            Square from = static_cast<Square>(to - ((c == WHITE) ? 9 : -7));
             moves.push_back(Move::make<PROMOTION, KNIGHT>(from, to));
             moves.push_back(Move::make<PROMOTION, BISHOP>(from, to));
             moves.push_back(Move::make<PROMOTION, ROOK>(from, to));
             moves.push_back(Move::make<PROMOTION, QUEEN>(from, to));
         }
-
-        return moves;
     }
 
     template<typename PieceC, typename T>
     template<Color c>
-    ValueList<Move, 8> Position<PieceC, T>::genPawnDoubleMoves() const
+    void Position<PieceC, T>::genPawnDoubleMoves(Movelist& moves) const
     {
-        ValueList<Move, 8> moves;
+        constexpr Bitboard RANK_2 = (c == WHITE) ? attacks::MASK_RANK[1] : attacks::MASK_RANK[6];
+        constexpr Direction UP = pawn_push(c);
 
-        constexpr Bitboard START_RANK = attacks::MASK_RANK[relative_rank(c, RANK_2)];
-        constexpr Direction PUSH    = pawn_push(c);
-        Bitboard            pawns   = pieces<PAWN, c>() & START_RANK;
-        Bitboard            all_occ = occ();
+        Bitboard all_occ = occ();
+        Bitboard pawns = pieces<PAWN, c>()& RANK_2;
 
-        // First step must be free
-        Bitboard first_step = (c == WHITE) ? (pawns << 8) : (pawns >> 8);
-        first_step &= ~all_occ;
+        // Split pin types
+        Bitboard pin_mask = current_state._pin_mask;
+        Bitboard pin_file = pin_mask & attacks::MASK_FILE[file_of(square<KING>(c))];
 
-        // Second step must also be free
-        Bitboard second_step = (c == WHITE) ? (first_step << 8) : (first_step >> 8);
-        second_step &= ~all_occ & current_state.check_mask;
-        // Map back to source squares
-        Bitboard double_pushers = (c == WHITE) ? (second_step >> 16) : (second_step << 16);
+        Bitboard unpinned = pawns & ~pin_mask;
+        Bitboard file_pinned = pawns & pin_file;
 
-        // Exclude diagonally pinned pawns (illegal double push)
-        double_pushers &= ~current_state._bishop_pin;
+        // First step must be empty
+        Bitboard step1_unpinned = attacks::shift<UP>(unpinned) & ~all_occ;
+        Bitboard step1_pinned = attacks::shift<UP>(file_pinned) & pin_file & ~all_occ;
 
-        // Generate moves
-        while (double_pushers)
+        // Second step must also be empty
+        Bitboard step2_unpinned = attacks::shift<UP>(step1_unpinned) & ~all_occ;
+        Bitboard step2_pinned = attacks::shift<UP>(step1_pinned) & pin_file & ~all_occ;
+
+        Bitboard destinations = (step2_unpinned | step2_pinned) & current_state.check_mask;
+
+        // Source pawns = only from RANK_2 (already masked above)
+        Bitboard sources = (c == WHITE) ? (destinations >> 16) : (destinations << 16);
+
+        while (sources)
         {
-            Square from = static_cast<Square>(lsb(double_pushers));
-            Square to   = from + 2 * PUSH;
+            Square from = static_cast<Square>(pop_lsb(sources));
+            Square to = from + 2 * UP;
             moves.push_back(Move(from, to));
-            double_pushers &= double_pushers - 1;
         }
+    }
 
-        return moves;
+    template <typename PieceC, typename T>
+    template <Color c>
+    void Position<PieceC, T>::genKingMoves(Movelist& a) const
+    {
+		constexpr CastlingRights K_CASTLING = (c == WHITE) ? WHITE_OO : BLACK_OO;
+		constexpr CastlingRights Q_CASTLING = (c == WHITE) ? WHITE_OOO : BLACK_OOO;
+        Square kingSq=current_state.kings[c];
+        Bitboard kingMoves=attacks::king(kingSq) & ~current_state.occ[c];
+        while (kingMoves)
+        {
+            Square sq=static_cast<Square>(pop_lsb(kingMoves));
+            Bitboard att=attackers(~c, sq);
+            bool add=!att;
+            // Add move at current size + add - 1 if add == 1, else no-op
+            a.size_ += add;
+            a[a.size_ - add] = Move(kingSq, sq);
+        }
+        constexpr Square f1 = relative_square(c, SQ_F1);
+        constexpr Square g1 = relative_square(c, SQ_G1);
+        constexpr Square d1 = relative_square(c, SQ_D1);
+        constexpr Square c1 = relative_square(c, SQ_C1);
+        constexpr Square b1 = relative_square(c, SQ_B1);
+        constexpr Square h1 = relative_square(c, SQ_H1);
+        constexpr Square a1 = relative_square(c, SQ_A1);
+
+        bool kingside_castle =
+            (current_state.castlingRights & K_CASTLING) &&
+            piece_on(f1) == PieceC::NO_PIECE &&
+            piece_on(g1) == PieceC::NO_PIECE &&
+            !current_state.checkers &&
+            !attackers(~c, f1) &&
+            !attackers(~c, g1);
+
+        bool queenside_castle =
+            (current_state.castlingRights & Q_CASTLING) &&
+            piece_on(d1) == PieceC::NO_PIECE &&
+            piece_on(c1) == PieceC::NO_PIECE &&
+            piece_on(b1) == PieceC::NO_PIECE && // optional but commonly required
+            !current_state.checkers &&
+            !attackers(~c, d1) &&
+            !attackers(~c, c1);
+        int index=a.size_;
+        a.size_+=kingside_castle+queenside_castle;
+        a[index]=Move::make<CASTLING>(kingSq, relative_square(c, SQ_H1));
+        a[index+kingside_castle]=Move::make<CASTLING>(kingSq, relative_square(c, SQ_A1));
     }
     template<typename PieceC, typename T>
     Position<PieceC, T>::Position(std::string fen)
@@ -225,8 +293,12 @@ namespace chess {
         std::istringstream ss(fen);
         std::string        board_fen, active_color, castling, enpassant;
         int                halfmove = 0, fullmove = 1;
-
-        ss >> board_fen >> active_color >> castling >> enpassant >> halfmove >> fullmove;
+        ss >> board_fen;
+        ss >> active_color;
+        ss >> castling;
+        ss >> enpassant;
+        ss >> halfmove;
+        ss >> fullmove;
 
         // 1. Parse board
         {
@@ -260,40 +332,40 @@ namespace chess {
                     switch (c)
                     {
                     case 'p' :
-                        placePiece<BLACK, PAWN>(make_sq(r, f));
+                        placePiece<PAWN>(make_sq(r, f), BLACK);
                         break;
                     case 'P' :
-                        placePiece<WHITE, PAWN>(make_sq(r, f));
+                        placePiece<PAWN>(make_sq(r, f), WHITE);
                         break;
                     case 'n' :
-                        placePiece<BLACK, KNIGHT>(make_sq(r, f));
+                        placePiece<KNIGHT>(make_sq(r, f), BLACK);
                         break;
                     case 'N' :
-                        placePiece<WHITE, KNIGHT>(make_sq(r, f));
+                        placePiece<KNIGHT>(make_sq(r, f), WHITE);
                         break;
                     case 'b' :
-                        placePiece<BLACK, BISHOP>(make_sq(r, f));
+                        placePiece<BISHOP>(make_sq(r, f), BLACK);
                         break;
                     case 'B' :
-                        placePiece<WHITE, BISHOP>(make_sq(r, f));
+                        placePiece<BISHOP>(make_sq(r, f), WHITE);
                         break;
                     case 'r' :
-                        placePiece<BLACK, ROOK>(make_sq(r, f));
+                        placePiece<ROOK>(make_sq(r, f), BLACK);
                         break;
                     case 'R' :
-                        placePiece<WHITE, ROOK>(make_sq(r, f));
+                        placePiece<ROOK>(make_sq(r, f), WHITE);
                         break;
                     case 'q' :
-                        placePiece<BLACK, QUEEN>(make_sq(r, f));
+                        placePiece<QUEEN>(make_sq(r, f), BLACK);
                         break;
                     case 'Q' :
-                        placePiece<WHITE, QUEEN>(make_sq(r, f));
+                        placePiece<QUEEN>(make_sq(r, f), WHITE);
                         break;
                     case 'k' :
-                        placePiece<BLACK, KING>(make_sq(r, f));
+                        placePiece<KING>(make_sq(r, f), BLACK);
                         break;
                     case 'K' :
-                        placePiece<WHITE, KING>(make_sq(r, f));
+                        placePiece<KING>(make_sq(r, f), WHITE);
                         break;
                     default :
                         assert(false && "Invalid FEN character");
@@ -387,53 +459,6 @@ namespace chess {
         refresh_attacks();
     }
 
-    template<typename PieceC, typename T>
-    template<Color c>
-    ValueList<Move, 104> Position<PieceC, T>::genKnightMoves() const
-    {
-        ValueList<Move, 104> list;
-        Bitboard knights=pieces<KNIGHT, c>() & ~current_state._pin_mask; // yes, unconditionally.
-        while (knights){
-            Square x=static_cast<Square>(pop_lsb(knights));
-            Bitboard moves=attacks::knight(x) & ~occ(c);
-            while (moves){
-                Square y=static_cast<Square>(pop_lsb(moves));
-                list.push_back(Move(x,y));
-            }
-        }
-        return list;
-    }
-    template <typename PieceC, typename T>
-    template <Color c>
-    ValueList<Move, 10> Position<PieceC, T>::genKingMoves() const
-    {
-        ValueList<Move, 10> a;
-        Square kingSq=current_state.kings[c];
-        Bitboard kingMoves=attacks::king(kingSq) & ~current_state.occ[c];
-        while (kingMoves)
-        {
-            Square sq=static_cast<Square>(pop_lsb(kingMoves));
-            Bitboard att=attackers(~c, sq);
-            bool add=!att;
-            // Add move at current size + add - 1 if add == 1, else no-op
-            a.size_ += add;
-            a[a.size_ - add] = Move(kingSq, sq);
-        }
-        int kingside_castle=!(current_state.checkers 
-                          || attackers(~c, relative_square(c, SQ_F1)) 
-                          || attackers(~c, relative_square(c, SQ_G1)))
-                          && (current_state.castlingRights&KING_SIDE);
-        int queenside_castle=!(current_state.checkers 
-                            || attackers(~c, relative_square(c, SQ_D1))
-                            || attackers(~c, relative_square(c, SQ_C1))
-                            || attackers(~c, relative_square(c, SQ_B1)))
-                            && (current_state.castlingRights&QUEEN_SIDE);
-        int index=a.size();
-        a.size_+=kingside_castle+queenside_castle;
-        a[index]=Move::make<CASTLING>(kingSq, relative_square(c, SQ_H1));
-        a[index+kingside_castle]=Move::make<CASTLING>(kingSq, relative_square(c, SQ_A1));
-        return a;
-    }
     template <typename PieceC, typename T>
     std::string Position<PieceC, T>::fen() const
     {
@@ -495,30 +520,30 @@ namespace chess {
         return fen;
     }
 
-    template ValueList<Move, 2> Position<EnginePiece, void>::genEP<Color::WHITE>() const;
-    template ValueList<Move, 2> Position<EnginePiece, void>::genEP<Color::BLACK>() const;
-    template ValueList<Move, 2> Position<PolyglotPiece, void>::genEP<Color::WHITE>() const;
-    template ValueList<Move, 2> Position<PolyglotPiece, void>::genEP<Color::BLACK>() const;
+    template void Position<EnginePiece, void>::genEP<Color::WHITE>(Movelist&) const;
+    template void Position<EnginePiece, void>::genEP<Color::BLACK>(Movelist&) const;
+    template void Position<PolyglotPiece, void>::genEP<Color::WHITE>(Movelist&) const;
+    template void Position<PolyglotPiece, void>::genEP<Color::BLACK>(Movelist&) const;
 
-    template ValueList<Move, 8> Position<EnginePiece, void>::genPawnDoubleMoves<Color::WHITE>() const;
-    template ValueList<Move, 8> Position<EnginePiece, void>::genPawnDoubleMoves<Color::BLACK>() const;
-    template ValueList<Move, 8> Position<PolyglotPiece, void>::genPawnDoubleMoves<Color::WHITE>() const;
-    template ValueList<Move, 8> Position<PolyglotPiece, void>::genPawnDoubleMoves<Color::BLACK>() const;
+    template void Position<EnginePiece, void>::genPawnDoubleMoves<Color::WHITE>(Movelist&) const;
+    template void Position<EnginePiece, void>::genPawnDoubleMoves<Color::BLACK>(Movelist&) const;
+    template void Position<PolyglotPiece, void>::genPawnDoubleMoves<Color::WHITE>(Movelist&) const;
+    template void Position<PolyglotPiece, void>::genPawnDoubleMoves<Color::BLACK>(Movelist&) const;
 
-    template ValueList<Move, 86> Position<EnginePiece, void>::genPawnSingleMoves<Color::WHITE>() const;
-    template ValueList<Move, 86> Position<EnginePiece, void>::genPawnSingleMoves<Color::BLACK>() const;
-    template ValueList<Move, 86> Position<PolyglotPiece, void>::genPawnSingleMoves<Color::WHITE>() const;
-    template ValueList<Move, 86> Position<PolyglotPiece, void>::genPawnSingleMoves<Color::BLACK>() const;
+    template void Position<EnginePiece, void>::genPawnSingleMoves<Color::WHITE>(Movelist&) const;
+    template void Position<EnginePiece, void>::genPawnSingleMoves<Color::BLACK>(Movelist&) const;
+    template void Position<PolyglotPiece, void>::genPawnSingleMoves<Color::WHITE>(Movelist&) const;
+    template void Position<PolyglotPiece, void>::genPawnSingleMoves<Color::BLACK>(Movelist&) const;
 
-    template ValueList<Move, 104> Position<EnginePiece, void>::genKnightMoves<Color::WHITE>() const;
-    template ValueList<Move, 104> Position<EnginePiece, void>::genKnightMoves<Color::BLACK>() const;
-    template ValueList<Move, 104> Position<PolyglotPiece, void>::genKnightMoves<Color::WHITE>() const;
-    template ValueList<Move, 104> Position<PolyglotPiece, void>::genKnightMoves<Color::BLACK>() const;
+    template void Position<EnginePiece, void>::genKnightMoves<Color::WHITE>(Movelist&) const;
+    template void Position<EnginePiece, void>::genKnightMoves<Color::BLACK>(Movelist&) const;
+    template void Position<PolyglotPiece, void>::genKnightMoves<Color::WHITE>(Movelist&) const;
+    template void Position<PolyglotPiece, void>::genKnightMoves<Color::BLACK>(Movelist&) const;
 
-    template ValueList<Move, 10> Position<EnginePiece, void>::genKingMoves<Color::WHITE>() const;
-    template ValueList<Move, 10> Position<EnginePiece, void>::genKingMoves<Color::BLACK>() const;
-    template ValueList<Move, 10> Position<PolyglotPiece, void>::genKingMoves<Color::WHITE>() const;
-    template ValueList<Move, 10> Position<PolyglotPiece, void>::genKingMoves<Color::BLACK>() const;
+    template void Position<EnginePiece, void>::genKingMoves<Color::WHITE>(Movelist&) const;
+    template void Position<EnginePiece, void>::genKingMoves<Color::BLACK>(Movelist&) const;
+    template void Position<PolyglotPiece, void>::genKingMoves<Color::WHITE>(Movelist&) const;
+    template void Position<PolyglotPiece, void>::genKingMoves<Color::BLACK>(Movelist&) const;
 
     template std::ostream& operator<<(std::ostream&, const Position<EnginePiece>&);
     template std::ostream& operator<<(std::ostream&, const Position<PolyglotPiece>&);
