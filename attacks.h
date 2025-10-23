@@ -1,3 +1,4 @@
+#pragma once
 #include "bitboard.h"
 #include "types.h"
 #include <array>
@@ -160,45 +161,7 @@ namespace chess::attacks {
             }
         };
     #endif
-    template <auto AttackFunc, const Bitboard* Magics, size_t TableSize>
-    constexpr auto generate_magic_table() {
-        std::array<Magic, 64> table{};
-        std::array<Bitboard, TableSize> attacks{};
-
-        size_t offset = 0;
-
-        for (Square sq = SQ_A1; sq < SQ_NONE; ++sq) {
-            Bitboard occ = 0;
-            Bitboard edges =
-                ((attacks::MASK_RANK[0] | attacks::MASK_RANK[7]) & ~attacks::MASK_RANK[rank_of(sq)]) |
-                ((attacks::MASK_FILE[0] | attacks::MASK_FILE[7]) & ~attacks::MASK_FILE[file_of(sq)]);
-
-            Bitboard mask = AttackFunc(static_cast<Square>(sq), 0) & ~edges;
-            int bits = popcount(mask);
-            int shift = 64 - bits;
-            Bitboard magic = Magics[sq];
-
-            auto& entry = table[sq];
-            entry.mask = mask;
-            #ifndef __BMI2__
-            entry.magic = magic;
-            entry.shift = shift;
-            #endif
-            entry.index = offset;
-
-            // Carry-rippler loop over all blocker subsets
-            occ = 0;
-            do {
-                size_t idx = entry(occ);
-                attacks[offset + idx] = AttackFunc(static_cast<Square>(sq), occ);
-                occ = (occ - mask) & mask;
-            } while (occ);
-
-            offset += (1ULL << bits);
-        }
-
-        return std::pair{table, attacks};
-    }
+    
 }
 
 namespace chess::_chess {
@@ -309,6 +272,8 @@ namespace chess::attacks{
 			return (b & ~MASK_FILE[7]) << 1;
 		case Direction::SOUTH_EAST :
 			return (b & ~MASK_FILE[7]) >> 7;
+        default:
+            UNREACHABLE();
 		}
 	}
 
@@ -337,6 +302,28 @@ namespace chess::attacks{
 		return c == WHITE ? (pawns << 9) & ~MASK_FILE[0]
                                         : (pawns >> 9) & ~MASK_FILE[7];
 	}
+
+    /**
+     * @brief Generate the right side pawn attacks.
+     * @tparam c
+     * @param pawns
+     * @return
+     */
+    template<Color c>
+    [[nodiscard]] constexpr Bitboard pawn(const Bitboard pawns) {
+        ASSUME(c==WHITE||c==BLACK);
+        Bitboard attacks = 0ULL;
+        if constexpr (c == WHITE) {
+            attacks |= ((pawns & ~MASK_FILE[FILE_A]) << 7); // left captures
+            attacks |= ((pawns & ~MASK_FILE[FILE_H]) << 9); // right captures
+        }
+        else {
+            attacks |= ((pawns & ~MASK_FILE[FILE_H]) >> 7);
+            attacks |= ((pawns & ~MASK_FILE[FILE_A]) >> 9);
+        }
+        return attacks;
+	}
+
     /**
      * @brief Returns the pawn attacks for a given color and square
      * @param c
@@ -362,7 +349,7 @@ namespace chess::attacks{
      * @return
      */
     [[nodiscard]] constexpr Bitboard bishop(Square sq, Bitboard occupied) {
-        if consteval { return _chess::_HyperbolaBishopAttacks(sq, occupied); }
+        if (is_constant_evaluated()) { return _chess::_HyperbolaBishopAttacks(sq, occupied); }
 		else { return BishopAttacks[BishopTable[(int)sq].index+BishopTable[(int)sq](occupied)]; }
 	}
 
@@ -373,7 +360,7 @@ namespace chess::attacks{
      * @return
      */
     [[nodiscard]] constexpr Bitboard rook(Square sq, Bitboard occupied) {
-        if consteval { return _chess::_HyperbolaRookAttacks(sq, occupied); }
+        if (is_constant_evaluated()) { return _chess::_HyperbolaRookAttacks(sq, occupied); }
 		else { return RookAttacks[RookTable[(int)sq].index+RookTable[(int)sq](occupied)]; }
 	}
 
@@ -422,7 +409,7 @@ namespace chess::movegen{
                                 : attacks::rook(sq, occ);
     }
 
-    constexpr std::array<std::array<Bitboard, 64>, 64> generate_between()
+    inline constexpr std::array<std::array<Bitboard, 64>, 64> generate_between()
     {
         std::array<std::array<Bitboard, 64>, 64> squares_between_bb{};
 
@@ -445,7 +432,7 @@ namespace chess::movegen{
         return squares_between_bb;
     }
     constexpr std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB = generate_between();
-    [[nodiscard]] constexpr Bitboard between(Square sq1, Square sq2) {
+    [[nodiscard]] inline constexpr Bitboard between(Square sq1, Square sq2) {
         return SQUARES_BETWEEN_BB[sq1][sq2];
     }
 }
