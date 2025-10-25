@@ -238,7 +238,7 @@ TEST_CASE("P[4] (normal) (chessprogramming)") {
     REQUIRE(perft<2, false>(pos) == 264);
     REQUIRE(perft<3, false>(pos) == 9467);
     REQUIRE(perft<4, false>(pos) == 422333);
-    REQUIRE(perft<5, true>(pos) == 15833292); // the most affordable
+    REQUIRE(perft<5, false>(pos) == 15833292); // the most affordable
     pos.doMove(Move(SQ_F1, SQ_F2));
     REQUIRE(perft<4, false>(pos) == 2703427);
     pos.doMove(Move(SQ_A3, SQ_F3));
@@ -267,21 +267,25 @@ TEST_CASE("P[5] (chessprogramming)") {
     REQUIRE(perft<4, false>(pos) == 2103487);
     REQUIRE(perft<5, false>(pos) == 89941194); // the most affordable
 }
-TEST_CASE("P[5] no accidental trailing spaces (chessprogramming)") {
-    Position pos("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
-    REQUIRE(perft<1, false>(pos) == 44);
-    REQUIRE(perft<2, false>(pos) == 1486);
-    REQUIRE(perft<3, false>(pos) == 62379);
-    REQUIRE(perft<4, false>(pos) == 2103487);
-    REQUIRE(perft<5, false>(pos) == 89941194); // the most affordable
-}
 TEST_CASE("P[6] (chessprogramming)") {
-    Position pos("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10 ");
+    Position pos("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
     REQUIRE(perft<1, false>(pos) == 46);
     REQUIRE(perft<2, false>(pos) == 2079);
     REQUIRE(perft<3, false>(pos) == 89890);
     REQUIRE(perft<4, false>(pos) == 3894594);
     REQUIRE(perft<5, false>(pos) == 164075551);
+}
+TEST_CASE("Promotion") {
+    Position pos("7K/5kP1/8/8/8/8/8/8 w - - 0 1");
+    REQUIRE(perft<1, false>(pos) == 5);
+    REQUIRE(perft<2, false>(pos) == 18);
+    REQUIRE(perft<3, false>(pos) == 176);
+    REQUIRE(perft<4, false>(pos) == 859);
+    REQUIRE(perft<5, false>(pos) == 12510);
+    REQUIRE(perft<6, false>(pos) == 63994);
+    REQUIRE(perft<7, false>(pos) == 1109712);
+    REQUIRE(perft<8, false>(pos) == 5763773);
+    REQUIRE(perft<9, false>(pos) == 109424670);
 }
 TEST_CASE("Minor position test perft") {
     //https://www.chessprogramming.net/perfect-perft/
@@ -341,6 +345,85 @@ TEST_CASE("Minor position test perft") {
         Position pos("8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1");
         REQUIRE(perft<4, false>(pos) == 23527);
     }
+}
+struct TestEntry {
+    std::string FEN;
+    int depth;
+    uint64_t nodes;
+};
+template <typename T>
+uint64_t perft(_Position<T>& pos, int depth) {
+    if (depth == 0) return 1;
+    Movelist moves;
+    pos.legals(moves);
+    uint64_t nodes = 0;
+    for (auto& move : moves) {
+        pos.doMove(move);
+        nodes += perft(pos, depth - 1);
+        pos.undoMove();
+    }
+    return nodes;
+}
+template <typename T>
+void check_perfts(const std::vector<TestEntry>& entries) {
+    for (auto& entry : entries) {
+        _Position<T> pos(entry.FEN);
+        REQUIRE(perft(pos, entry.depth) == entry.nodes);
+    }
+}
+TEST_CASE("Random position perfts") {
+    std::vector<TestEntry> positions = {
+        {"6k1/2nNrq2/bb1P2NR/P2bqqN1/qpKQ3n/2Rn2B1/B1r1N3/1Q1Nb3 w - - 0 1", 5, 0}, // checkmate
+        {"K7/3n3R/1r4k1/8/8/8/2p5/8 w - - 0 1", 5, 1056215},
+        {"1Qn2n1k/P1K2P2/1pr2nrP/1p2Q1b1/bPP2B2/p2B1q1N/2Rpp1pn/Q3Q1N1 w - - 0 1", 1, 2},
+        {"1Qn2n1k/P1K2P2/1pr2nrP/1p2Q1b1/bPP2B2/p2B1q1N/2Rpp1pn/Q3Q1N1 w - - 0 1", 5, 11921325},
+        {"8/7K/8/8/8/5R2/8/k7 b - - 0 1", 1, 3},
+        {"8/7K/8/8/8/5R2/8/k7 b - - 0 1", 2, 57},
+        {"8/7K/8/8/8/5R2/8/k7 b - - 0 1", 3, 261},
+        {"8/7K/8/8/8/5R2/8/k7 b - - 0 1", 4, 4897},
+        {"8/7K/8/8/8/5R2/8/k7 b - - 0 1", 5, 22176},
+        {"8/7K/8/8/8/5R2/8/k7 b - - 0 1", 6, 413723},
+        {"8/7K/8/8/8/5R2/8/k7 b - - 0 1", 7, 2109569},
+        {"8/7K/8/8/8/5R2/8/k7 b - - 0 1", 8, 39470570},
+        {"8/5K1p/r7/6q1/2p5/5qk1/8/8 w - - 0 1", 1, 1},
+        {"8/5K1p/r7/6q1/2p5/5qk1/8/8 w - - 0 1", 5, 17218},
+        {"3n2r1/2k2B1q/3B2Q1/N1n1P3/1r1R1NQ1/2brB1r1/PQB5/bK6 b - - 0 1", 1, 1},
+        {"3n2r1/2k2B1q/3B2Q1/N1n1P3/1r1R1NQ1/2brB1r1/PQB5/bK6 b - - 0 1", 5, 7037862},
+        {"4q2R/BQ1Np2k/4pn2/bK1N4/4p3/1n6/8/8 b - - 0 1", 1, 4},
+        {"4q2R/BQ1Np2k/4pn2/bK1N4/4p3/1n6/8/8 b - - 0 1", 5, 3945793},
+        {"1K6/6N1/5Q2/5p2/4Pk2/8/8/8 b - - 0 1", 1, 5},
+        {"1K6/6N1/5Q2/5p2/4Pk2/8/8/8 b - - 0 1", 5, 188155},
+        {"1K6/6N1/5Q2/5p2/4Pk2/8/8/8 b - - 0 1", 6, 5537444},
+        {"1K6/6N1/5Q2/5p2/4Pk2/8/8/8 b - - 0 1", 7, 33107724},
+        {"k2bR1B1/NR3B2/2BR4/1N1p1bN1/N3b3/7r/B2n1KN1/2Q5 w - - 0 1", 1, 64},
+        {"k2bR1B1/NR3B2/2BR4/1N1p1bN1/N3b3/7r/B2n1KN1/2Q5 w - - 0 1", 4, 2641743},
+        {"4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 1, 6},
+        {"4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 5, 71831},
+        {"4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 6, 1376826},
+        {"4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 8, 150141373},
+        {"3q3B/3Q4/1k1N4/5Q2/6Q1/1B2N2Q/K4bB1/2q2N2 b - - 0 1", 1, 35},
+        {"3q3B/3Q4/1k1N4/5Q2/6Q1/1B2N2Q/K4bB1/2q2N2 b - - 0 1", 4, 5855605},
+        {"8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 1, 8},
+        {"8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 5, 50950},
+        {"8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 7, 3844295},
+        {"8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 8, 47694794},
+        {"8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 9, 289421008},
+        {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 1, 63},
+        {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 2, 168},
+        {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 3, 10739},
+        {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 4, 28349},
+        {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 5, 1804208},
+        {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 6, 5073106},
+        //{"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 7, 324276886},
+        {"2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 1, 13},
+        {"2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 2, 376},
+        {"2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 3, 3875},
+        {"2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 4, 112556},
+        {"2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 5, 1189238},
+        {"2K2q1q/2n4n/3qb3/1r2qq2/5n2/k4n2/r5Q1/1q6 w - - 0 1", 1, 0} // checkmate
+    };
+    check_perfts<EnginePiece>(positions);
+    check_perfts<PolyglotPiece>(positions);
 }
 int main(int argc, char** argv) {
     doctest::Context ctx;

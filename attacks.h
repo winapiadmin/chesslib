@@ -343,6 +343,21 @@ namespace chess::attacks{
 		return KnightAttacks[(int)sq];
 	}
     /**
+     * @brief Returns the knight attacks for a given knights
+     * @param sq
+     * @return
+     */
+    [[nodiscard]]constexpr Bitboard knight(Bitboard knights) {
+        Bitboard l1 = (knights >> 1) & 0x7f7f7f7f7f7f7f7fULL;  // shift left by 1, mask out file A
+        Bitboard l2 = (knights >> 2) & 0x3f3f3f3f3f3f3f3fULL;  // shift left by 2, mask out files A+B
+        Bitboard r1 = (knights << 1) & 0xfefefefefefefefeULL;  // shift right by 1, mask out file H
+        Bitboard r2 = (knights << 2) & 0xfcfcfcfcfcfcfcfcULL;  // shift right by 2, mask out files G+H
+        Bitboard h1 = l1 | r1; // 1-square horizontal shifts
+        Bitboard h2 = l2 | r2; // 2-square horizontal shifts
+        return (h1 << 16) | (h1 >> 16) | (h2 << 8) | (h2 >> 8);  // vertical shifts: +2,+1,-2,-1
+    }
+
+    /**
      * @brief Returns the bishop attacks for a given square
      * @param sq
      * @param occupied
