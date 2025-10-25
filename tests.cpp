@@ -156,7 +156,9 @@ TEST_CASE("Perft startpos") {
     REQUIRE(perft<3, false>(pos) == 8902);
     REQUIRE(perft<4, false>(pos) == 197281);
     REQUIRE(perft<5, false>(pos) == 4865609);
+#ifndef _DEBUG
     REQUIRE(perft<6, false>(pos) == 119060324);
+#endif
     pos.doMove(Move(SQ_D2, SQ_D3));
     REQUIRE(perft<4, false>(pos) == 328511);
     pos.doMove(Move(SQ_C7, SQ_C6));
@@ -207,7 +209,9 @@ TEST_CASE("kiwipete") {
     REQUIRE(perft<2, false>(pos) == 2039);
     REQUIRE(perft<3, false>(pos) == 97862);
     REQUIRE(perft<4, false>(pos) == 4085603);
+#ifndef _DEBUG
     REQUIRE(perft<5, false>(pos) == 193690690);
+#endif
     pos.doMove(Move(SQ_A2, SQ_A3));
     REQUIRE(perft<4, false>(pos) == 4627439);
     pos.doMove(Move(SQ_B4, SQ_B3));
@@ -265,7 +269,9 @@ TEST_CASE("P[5] (chessprogramming)") {
     REQUIRE(perft<2, false>(pos) == 1486);
     REQUIRE(perft<3, false>(pos) == 62379);
     REQUIRE(perft<4, false>(pos) == 2103487);
+#ifndef _DEBUG
     REQUIRE(perft<5, false>(pos) == 89941194); // the most affordable
+#endif
 }
 TEST_CASE("P[6] (chessprogramming)") {
     Position pos("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
@@ -273,7 +279,9 @@ TEST_CASE("P[6] (chessprogramming)") {
     REQUIRE(perft<2, false>(pos) == 2079);
     REQUIRE(perft<3, false>(pos) == 89890);
     REQUIRE(perft<4, false>(pos) == 3894594);
+#ifndef _DEBUG
     REQUIRE(perft<5, false>(pos) == 164075551);
+#endif
 }
 TEST_CASE("Promotion") {
     Position pos("7K/5kP1/8/8/8/8/8/8 w - - 0 1");
@@ -285,7 +293,9 @@ TEST_CASE("Promotion") {
     REQUIRE(perft<6, false>(pos) == 63994);
     REQUIRE(perft<7, false>(pos) == 1109712);
     REQUIRE(perft<8, false>(pos) == 5763773);
+#ifndef _DEBUG
     REQUIRE(perft<9, false>(pos) == 109424670);
+#endif
 }
 TEST_CASE("Minor position test perft") {
     //https://www.chessprogramming.net/perfect-perft/
@@ -384,7 +394,9 @@ TEST_CASE("Random position perfts") {
         {"8/7K/8/8/8/5R2/8/k7 b - - 0 1", 5, 22176},
         {"8/7K/8/8/8/5R2/8/k7 b - - 0 1", 6, 413723},
         {"8/7K/8/8/8/5R2/8/k7 b - - 0 1", 7, 2109569},
+#ifndef _DEBUG
         {"8/7K/8/8/8/5R2/8/k7 b - - 0 1", 8, 39470570},
+#endif
         {"8/5K1p/r7/6q1/2p5/5qk1/8/8 w - - 0 1", 1, 1},
         {"8/5K1p/r7/6q1/2p5/5qk1/8/8 w - - 0 1", 5, 17218},
         {"3n2r1/2k2B1q/3B2Q1/N1n1P3/1r1R1NQ1/2brB1r1/PQB5/bK6 b - - 0 1", 1, 1},
@@ -394,27 +406,35 @@ TEST_CASE("Random position perfts") {
         {"1K6/6N1/5Q2/5p2/4Pk2/8/8/8 b - - 0 1", 1, 5},
         {"1K6/6N1/5Q2/5p2/4Pk2/8/8/8 b - - 0 1", 5, 188155},
         {"1K6/6N1/5Q2/5p2/4Pk2/8/8/8 b - - 0 1", 6, 5537444},
+#ifndef _DEBUG
         {"1K6/6N1/5Q2/5p2/4Pk2/8/8/8 b - - 0 1", 7, 33107724},
+#endif
         {"k2bR1B1/NR3B2/2BR4/1N1p1bN1/N3b3/7r/B2n1KN1/2Q5 w - - 0 1", 1, 64},
         {"k2bR1B1/NR3B2/2BR4/1N1p1bN1/N3b3/7r/B2n1KN1/2Q5 w - - 0 1", 4, 2641743},
         {"4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 1, 6},
         {"4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 5, 71831},
         {"4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 6, 1376826},
+#ifndef _DEBUG
         {"4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 8, 150141373},
+#endif
         {"3q3B/3Q4/1k1N4/5Q2/6Q1/1B2N2Q/K4bB1/2q2N2 b - - 0 1", 1, 35},
         {"3q3B/3Q4/1k1N4/5Q2/6Q1/1B2N2Q/K4bB1/2q2N2 b - - 0 1", 4, 5855605},
         {"8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 1, 8},
         {"8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 5, 50950},
         {"8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 7, 3844295},
+#ifndef _DEBUG
         {"8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 8, 47694794},
         {"8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 9, 289421008},
+#endif
         {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 1, 63},
         {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 2, 168},
         {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 3, 10739},
         {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 4, 28349},
         {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 5, 1804208},
         {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 6, 5073106},
-        //{"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 7, 324276886},
+#ifndef _DEBUG
+        {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 7, 324276886},
+#endif
         {"2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 1, 13},
         {"2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 2, 376},
         {"2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 3, 3875},
