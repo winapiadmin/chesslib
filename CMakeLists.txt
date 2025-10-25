@@ -32,22 +32,82 @@ endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     include(CheckCXXCompilerFlag)
-    # Check for the ASan flag used by GCC/Clang
-    check_cxx_compiler_flag("-fsanitize=address" COMPILER_SUPPORTS_ASAN_GCC_CLANG)
+    include(CheckCXXSourceCompiles)
 
-    # Check for the ASan flag used by MSVC
-    check_cxx_compiler_flag("/fsanitize=address" COMPILER_SUPPORTS_ASAN_MSVC)
-    if(COMPILER_SUPPORTS_ASAN_GCC_CLANG OR COMPILER_SUPPORTS_ASAN_MSVC)
-        message(STATUS "Enabling AddressSanitizer")
-        if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-            set(SANITIZER_FLAGS "/fsanitize=address")
-        else()
-            message(STATUS "Enabling UndefinedBehaviorSanitizer")
-            set(SANITIZER_FLAGS "-fsanitize=address -fsanitize=undefined")
-        endif()
-        add_compile_options(${SANITIZER_FLAGS})
-        add_link_options(${SANITIZER_FLAGS})
+    # ----------------------------
+    # Sanitizer flags per compiler
+    # ----------------------------
+    if(MSVC)
+        set(ASAN_FLAG "/fsanitize=address")
+        set(UBSAN_FLAG "/fsanitize=undefined")
+    else()
+        set(ASAN_FLAG "-fsanitize=address")
+        set(UBSAN_FLAG "-fsanitize=undefined")
     endif()
+
+    # ----------------------------
+    # Helper function to check a sanitizer
+    # ----------------------------
+    function(check_sanitizer FLAG VAR_NAME)
+        check_cxx_compiler_flag(${FLAG} COMPILER_SUPPORTS_FLAG)
+
+        if(COMPILER_SUPPORTS_FLAG)
+            message(STATUS "Compiler supports ${FLAG}")
+
+            # Compile + link test
+            set(CMAKE_REQUIRED_FLAGS "${FLAG}")
+            check_cxx_source_compiles("
+                int main() { return 0; }
+            " CAN_LINK)
+
+            if(CAN_LINK)
+                # Optional runtime check
+                file(WRITE "${CMAKE_BINARY_DIR}/sanitizer_test.cpp" "int main() { return 0; }")
+                try_run(RUN_RESULT COMPILE_RESULT
+                    "${CMAKE_BINARY_DIR}"
+                    "${CMAKE_BINARY_DIR}/sanitizer_test.cpp"
+                    CMAKE_FLAGS "-DCMAKE_CXX_FLAGS=${FLAG}"
+                )
+                if(RUN_RESULT EQUAL 0)
+                    message(STATUS "${FLAG} works at runtime")
+                    set(${VAR_NAME} TRUE PARENT_SCOPE)
+                else()
+                    message(WARNING "${FLAG} compile/link succeeded but runtime test failed")
+                    set(${VAR_NAME} FALSE PARENT_SCOPE)
+                endif()
+            else()
+                message(WARNING "Cannot compile/link with ${FLAG}")
+                set(${VAR_NAME} FALSE PARENT_SCOPE)
+            endif()
+        else()
+            message(STATUS "Compiler does not support ${FLAG}")
+            set(${VAR_NAME} FALSE PARENT_SCOPE)
+        endif()
+    endfunction()
+
+    # ----------------------------
+    # Check ASan
+    # ----------------------------
+    check_sanitizer(${ASAN_FLAG} ENABLE_ASAN)
+
+    # ----------------------------
+    # Check UBSan
+    # ----------------------------
+    check_sanitizer(${UBSAN_FLAG} ENABLE_UBSAN)
+
+    # ----------------------------
+    # Set CXX flags if supported
+    # ----------------------------
+    if(ENABLE_ASAN)
+        message(STATUS "Enabling ASan for build")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ASAN_FLAG}" CACHE STRING "CXX flags" FORCE)
+    endif()
+
+    if(ENABLE_UBSAN)
+        message(STATUS "Enabling UBSan for build")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${UBSAN_FLAG}" CACHE STRING "CXX flags" FORCE)
+    endif()
+
 endif()
 add_compile_definitions(GENERATE_AT_RUNTIME)
 # --- Core Library ---
