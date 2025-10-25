@@ -1,50 +1,83 @@
 #pragma once
 #include "types.h"
-#include <immintrin.h>
-#include <nmmintrin.h>
-#include <pmmintrin.h>
-#include <smmintrin.h>
-#include <xmmintrin.h>
-#ifdef _MSC_VER
-    #include <intrin.h>
-    #include <softintrin.h>
-#endif
-#include <ammintrin.h>
-#include <emmintrin.h>
-#include <tmmintrin.h>
-#include <wmmintrin.h>
-// #include <zmmintrin.h> (immintrin.h)
-#include <bit>
-// That's.... enough.
-namespace chess {
-    // Use __builtin_popcountll for GCC/Clang, _mm_popcnt_u64 for MSVC, fallback otherwise
-    constexpr int      popcount(Bitboard x) { return std::popcount(static_cast<uint64_t>(x)); }
-    constexpr int      lsb(Bitboard x) { return std::countr_zero(static_cast<uint64_t>(x)); }
-    constexpr int      msb(Bitboard x) { return 63 - std::countl_zero(static_cast<uint64_t>(x)); }
-    constexpr uint64_t reverseBits64(uint64_t b)
-    {
-        b = (b & 0x5555555555555555) << 1 | ((b >> 1) & 0x5555555555555555);
-        b = (b & 0x3333333333333333) << 2 | ((b >> 2) & 0x3333333333333333);
-        b = (b & 0x0f0f0f0f0f0f0f0f) << 4 | ((b >> 4) & 0x0f0f0f0f0f0f0f0f);
-        b = (b & 0x00ff00ff00ff00ff) << 8 | ((b >> 8) & 0x00ff00ff00ff00ff);
 
-        return (b << 48) | ((b & 0xffff0000) << 16) | ((b >> 16) & 0xffff0000) | (b >> 48);
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
+
+namespace chess {
+    // -------------------------------
+    // constexpr fallbacks
+    // -------------------------------
+    constexpr int popcount_constexpr(Bitboard x) noexcept {
+        int count = 0;
+        while (x) { x &= x - 1; ++count; }
+        return count;
     }
-    inline int pop_lsb(Bitboard& b) {
-        auto c= lsb(b);
-        b &= b - 1;  // clear the least significant bit
+
+    constexpr int lsb_constexpr(Bitboard x) noexcept {
+        int pos = 0;
+        while ((x & 1) == 0) { x >>= 1; ++pos; }
+        return pos;
+    }
+
+    constexpr int msb_constexpr(Bitboard x) noexcept {
+        int pos = 63;
+        Bitboard mask = 1ULL << 63;
+        while ((x & mask) == 0) { mask >>= 1; --pos; }
+        return pos;
+    }
+
+    // -------------------------------
+    // runtime + constexpr aware
+    // -------------------------------
+    inline constexpr int popcount(Bitboard x) noexcept {
+#if defined(__GNUG__) || defined(__clang__)
+        if (!is_constant_evaluated()) return __builtin_popcountll(x);
+#elif defined(_MSC_VER)
+        if (!is_constant_evaluated()) return static_cast<int>(_mm_popcnt_u64(x));
+#endif
+        return popcount_constexpr(x);
+    }
+
+    inline constexpr int lsb(Bitboard x) noexcept {
+#if defined(__GNUG__) || defined(__clang__)
+        if (!is_constant_evaluated()) return __builtin_ctzll(x);
+#elif defined(_MSC_VER)
+        if (!is_constant_evaluated()) {
+            unsigned long index = 0;
+            _BitScanForward64(&index, x);
+            return static_cast<int>(index);
+        }
+#endif
+        return lsb_constexpr(x);
+    }
+
+    inline constexpr int msb(Bitboard x) noexcept {
+#if defined(__GNUG__) || defined(__clang__)
+        if (!is_constant_evaluated()) return 63 - __builtin_clzll(x);
+#elif defined(_MSC_VER)
+        if (!is_constant_evaluated()) {
+            unsigned long index = 0;
+            _BitScanReverse64(&index, x);
+            return static_cast<int>(index);
+        }
+#endif
+        return msb_constexpr(x);
+    }
+
+    // -------------------------------
+    // destructive variants
+    // -------------------------------
+    inline int pop_lsb(Bitboard& b) noexcept {
+        int c = lsb(b);
+        b &= b - 1;
         return c;
     }
-    inline int pop_msb(Bitboard& b) {
-        auto c = msb(b);
-        b &= ~(1<<b);
+
+    inline int pop_msb(Bitboard& b) noexcept {
+        int c = msb(b);
+        b &= ~(1ULL << c);
         return c;
     }
-    static_assert(reverseBits64(0x8000000000000000ULL) == 0x1ULL,
-                  "reverseBits64(0x8000000000000000ULL) ? 0x1ULL");
-    static_assert(reverseBits64(0x0000000000000001ULL) == 0x8000000000000000ULL,
-                  "reverseBits64(0x0000000000000001ULL) ? 0x8000000000000000ULLL");
-    static_assert(reverseBits64(0xF0F0F0F0F0F0F0F0ULL) == 0x0F0F0F0F0F0F0F0FULL,
-                  "reverseBits64(0xF0F0F0F0F0F0F0F0ULL) ? 0x0F0F0F0F0F0F0F0FULLL");
-    constexpr Bitboard byteswap(Bitboard x) { return std::byteswap(static_cast<uint64_t>(x)); }
-};
+}

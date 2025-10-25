@@ -9,6 +9,15 @@
 #include <vector>
 #include <string_view>
 #if defined(_MSC_VER)
+#define UNREACHABLE() __assume(false)
+#elif defined(__clang__) || defined(__GNUC__)
+#define UNREACHABLE() __builtin_unreachable()
+#elif defined(__cpp_lib_unreachable)
+#define UNREACHABLE() std::unreachable()
+#else
+#define UNREACHABLE() assert(0)
+#endif
+#if defined(_MSC_VER)
     #define ASSUME(expr) __assume(expr)
 #elif defined(__clang__)
     #define ASSUME(expr) __builtin_assume(expr)
@@ -22,13 +31,33 @@
             do \
             { \
                 if (!(cond)) \
-                    __builtin_unreachable(); \
+                    UNREACHABLE(); \
             } while (0)
     #endif
 #else
-    #define ASSUME(expr) ((void) 0)
+    #define ASSUME(cond) \
+            do \
+            { \
+                if (!(cond)) \
+                    UNREACHABLE(); \
+            } while (0)
 #endif
 
+constexpr bool is_constant_evaluated() {
+#if __cpp_if_consteval >= 202106L
+    if consteval { return true; }
+    // both MSVC (non-comformant __cplusplus) and by-default _MSVC_LANG and other compiles with conformant __cplusplus
+#elif __cplusplus >= 202002L || _MSVC_LANG>= 202002L
+    if (std::is_constant_evaluated()) return true;
+#elif defined(__GNUC__) // defined for both GCC and clang
+    if (__builtin_is_constant_evaluated()) return true;
+#elif _MSC_VER>=1925
+    if (__builtin_is_constant_evaluated()) return true;
+#else
+#error "NAWH we don't think we can detect compile time in this compiler";
+#endif
+    return false;
+}
 namespace chess {
     using Bitboard = uint64_t;
     //clang-format off
@@ -73,6 +102,10 @@ namespace chess {
     {
         return 0 <= r && r <= 7 && 0 <= f && f <= 7;
     }  // unsigned already fix signedness
+    constexpr bool is_valid(const Square s)
+    {
+        return 0 <= s && s < 64;
+    }
     constexpr File file_of(Square s)
     {
         ASSUME(0 <= s && s < 64);
@@ -123,7 +156,8 @@ namespace chess {
         NORTH_EAST = NORTH + EAST,
         SOUTH_EAST = SOUTH + EAST,
         SOUTH_WEST = SOUTH + WEST,
-        NORTH_WEST = NORTH + WEST
+        NORTH_WEST = NORTH + WEST,
+        DIR_NONE=0
     };
     //clang-format on
     inline constexpr Square relative_square(Color c, Square s) { return Square(s ^ (c * 56)); }
@@ -462,7 +496,7 @@ namespace chess {
         static_assert(MaxSize, "what are you doing with 0 items");
         public:
         using size_type = std::size_t;
-
+        ValueList() = default;
         inline size_type size() const { return size_; }
 
         inline void push_back(const T& value)
@@ -541,7 +575,6 @@ namespace chess {
             return *this;
         }
 
-        // ✅ Move constructor
         HeapAllocatedValueList(HeapAllocatedValueList&& other) noexcept
             : size_(other.size_) {
             values_ = reinterpret_cast<T*>(calloc(MaxSize, sizeof(T)));
@@ -549,7 +582,6 @@ namespace chess {
             std::copy(other.values_, other.values_ + size_, values_);
         }
 
-        // ✅ Move assignment operator
         HeapAllocatedValueList& operator=(HeapAllocatedValueList&& other) noexcept {
             if (this != &other) {
                 free(values_);
@@ -592,5 +624,5 @@ namespace chess {
         private:
         T* values_;
     };
-	using Movelist = ValueList<Move, 256>;
+    using Movelist = ValueList<Move, 256>;
 }
