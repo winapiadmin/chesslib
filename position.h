@@ -14,7 +14,15 @@ namespace chess {
         Bitboard pieces[PIECE_TYPE_NB];
         Square   kings[COLOR_NB] = {SQ_NONE};
         Bitboard occ[COLOR_NB], seen[COLOR_NB];
-        Piece    pieces_list[SQUARE_NB] = {Piece::NO_PIECE};
+        Piece    pieces_list[SQUARE_NB]
+            = { Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
+                Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
+                Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
+                Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
+                Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
+                Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
+                Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
+                Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE };
         // Game state information
         Color    turn;            // true if white to move
         CastlingRights  castlingRights;  // Castling rights bitmask
@@ -198,6 +206,7 @@ namespace chess {
             }
             refresh_attacks();
         }
+
         inline void doMove(const Move& move) {
             Square from_sq=move.from_sq(), to_sq=move.to_sq();
             Color us=side_to_move(), them=~us;
@@ -210,6 +219,7 @@ namespace chess {
             bool is_capture=isCapture(move);
             history.push_back(current_state);
             current_state.mv = move; // Update the move in the current state
+            //if (target_piecetype == KING) throw std::invalid_argument("NO WAY");
             removePiece(moving_piecetype, from_sq, us);
             removePiece(target_piecetype, to_sq, target_color);
             {
@@ -230,9 +240,9 @@ namespace chess {
                         }
                     case CASTLING: 
                         {
-                        bool kingside_castle=from_sq<to_sq;
-                        Square rook_dest=castling_rook_square(kingside_castle, us),
-                               king_dest=castling_king_square(kingside_castle, us);
+                        bool is_king_side = from_sq < to_sq;
+                        Square rook_dest = relative_square(us, is_king_side ? SQ_F1 : Square::SQ_D1),
+                               king_dest = relative_square(us, is_king_side ? SQ_G1 : Square::SQ_C1);
                         placePiece<ROOK>(rook_dest, us);
                         placePiece<KING>(king_dest, us);
                         break;
@@ -482,12 +492,14 @@ namespace chess {
 #ifndef _DEBUG
             return current_state.pieces_list[s];
 #else
-            auto p=current_state.pieces_list[s];
+            auto p = current_state.pieces_list[s];
             auto p2 = piece_of(p);
             if (p2 == ALL_PIECES)return p;
             else {
                 Bitboard bb = 1ULL << s;
-                assert(pieces(p2, color_of(p)) & bb);
+                Bitboard _ = pieces(p2, color_of(p));
+                Bitboard b = _ & bb;
+                assert(b);
 			}
             return p;
 #endif

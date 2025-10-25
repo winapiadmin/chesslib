@@ -52,28 +52,27 @@ namespace chess {
 
         const Square ep_pawn_sq = static_cast<Square>(ep_sq - pawn_push(c));
         const Bitboard ep_mask = 1ULL << ep_pawn_sq;
-
+        Bitboard _ir_1 = occ() & ~ep_mask;
         while (candidates) {
             Square from = static_cast<Square>(pop_lsb(candidates));
             Bitboard from_mask = 1ULL << from;
 
             // Remove the EP pawn and this attacker from occupancy
-            Bitboard occ_temp = occ() & ~ep_mask & ~from_mask;
+            Bitboard occ_temp = _ir_1 & ~from_mask;
 
             // inline attackers check
             Bitboard atks = 0;
-            atks |= attacks::pawn(c, king_sq) & (pieces<PAWN, ~c>() &~ep_mask);
-            atks |= attacks::knight(king_sq) & pieces<KNIGHT, ~c>();
+            //atks |= attacks::pawn(c, king_sq) & (pieces<PAWN, ~c>() &~ep_mask);
+            //atks |= attacks::knight(king_sq) & pieces<KNIGHT, ~c>();
             atks |= attacks::bishop(king_sq, occ_temp) & (pieces<BISHOP, ~c>() | pieces<QUEEN, ~c>());
             atks |= attacks::rook(king_sq, occ_temp) & (pieces<ROOK, ~c>() | pieces<QUEEN, ~c>());
-            atks |= attacks::king(king_sq) & pieces<KING, ~c>();
+            //atks |= attacks::king(king_sq) & pieces<KING, ~c>();
             atks &= occ_temp;
             if (!atks) {
                 ep_moves.push_back(Move::make<EN_PASSANT>(from, ep_sq));
             }
         }
     }
-
     template<typename PieceC, typename T>
     template<Color c>
     void _Position<PieceC, T>::genPawnSingleMoves(Movelist& moves) const
@@ -95,66 +94,103 @@ namespace chess {
         Bitboard one_push = (c == WHITE ? unpinned << 8 : unpinned >> 8) & ~all_occ;
         one_push &= current_state.check_mask;
 
-        // Pinned pawns: only if pin direction is vertical (same file)
         Bitboard pinned_push = (c == WHITE ? pinned << 8 : pinned >> 8) & ~all_occ;
-        pinned_push &= current_state._rook_pin;  // only straight pins allow push
-        pinned_push &= current_state.check_mask;
+        pinned_push &= current_state._rook_pin & current_state.check_mask;
 
         Bitboard push_targets = one_push | pinned_push;
-
-        while (push_targets)
-        {
-            Square to = Square(pop_lsb(push_targets));
+        Bitboard promo_targets = push_targets & PROMO_NEXT;
+        Bitboard non_promo_targets = push_targets&~promo_targets; // NAND
+        while (promo_targets) {
+            Square to = Square(pop_lsb(promo_targets));
             Square from = Square(to - UP);
 
-            if ((1ULL << from) & PROMO_RANK)
-            {
-                moves.push_back(Move::make<PROMOTION, KNIGHT>(from, to));
-                moves.push_back(Move::make<PROMOTION, BISHOP>(from, to));
-                moves.push_back(Move::make<PROMOTION, ROOK>(from, to));
-                moves.push_back(Move::make<PROMOTION, QUEEN>(from, to));
-            }
-            else
-                moves.push_back(Move(from, to));
+            moves.push_back(Move::make<PROMOTION, KNIGHT>(from, to));
+            moves.push_back(Move::make<PROMOTION, BISHOP>(from, to));
+            moves.push_back(Move::make<PROMOTION, ROOK>(from, to));
+            moves.push_back(Move::make<PROMOTION, QUEEN>(from, to));
         }
 
-        // ---------- 2. Captures ----------
-        auto gen_captures = [&](Bitboard candidates, int shift)
-            {
-                while (candidates)
-                {
-                    Square to = Square(pop_lsb(candidates));
-                    Square from = Square(to - shift);
-                    Bitboard from_bb = 1ULL << from;
-                    Bitboard move_bb = from_bb | (1ULL << to);
+        while (non_promo_targets) {
+            Square to = Square(pop_lsb(non_promo_targets));
+            Square from = Square(to - UP);
 
-                    // skip if pinned but capture not along pin ray
-                    if ((pinned & from_bb) &&
-                        !((move_bb & current_state._bishop_pin) == move_bb ||
-                            (move_bb & current_state._rook_pin) == move_bb))
-                        continue;
-
-                    if ((1ULL << from) & PROMO_RANK)
-                    {
-                        moves.push_back(Move::make<PROMOTION, KNIGHT>(from, to));
-                        moves.push_back(Move::make<PROMOTION, BISHOP>(from, to));
-                        moves.push_back(Move::make<PROMOTION, ROOK>(from, to));
-                        moves.push_back(Move::make<PROMOTION, QUEEN>(from, to));
-                    }
-                    else
-                        moves.push_back(Move(from, to));
-                }
-            };
-
-        // left and right captures, masked early for correctness
+            moves.push_back(Move(from, to));
+        }
+        // ---------- 2. Left captures ----------
         Bitboard left = (pawns & NOT_FILE_A);
-        Bitboard right = (pawns & NOT_FILE_H);
-
         Bitboard left_tgt = (c == WHITE ? (left << 7) : (left >> 9)) & enemy_occ & current_state.check_mask;
-        Bitboard right_tgt = (c == WHITE ? (right << 9) : (right >> 7)) & enemy_occ & current_state.check_mask;
+        Bitboard promo_left_targets = left_tgt & PROMO_NEXT;
+        Bitboard non_promo_left_targets = left_tgt & ~promo_left_targets; // NAND
 
-        gen_captures(left_tgt, (c == WHITE) ? 7 : -9);
-        gen_captures(right_tgt, (c == WHITE) ? 9 : -7);
+        while (promo_left_targets) {
+            Square to = Square(pop_lsb(promo_left_targets));
+            Square from = Square(to - ((c == WHITE) ? 7 : -9));
+            Bitboard from_bb = 1ULL << from;
+            Bitboard move_bb = from_bb | (1ULL << to);
+
+            // skip if pinned but capture not along pin ray
+            if ((pinned & from_bb) &&
+                !((move_bb & current_state._bishop_pin) == move_bb ||
+                    (move_bb & current_state._rook_pin) == move_bb))
+                continue;
+
+            moves.push_back(Move::make<PROMOTION, KNIGHT>(from, to));
+            moves.push_back(Move::make<PROMOTION, BISHOP>(from, to));
+            moves.push_back(Move::make<PROMOTION, ROOK>(from, to));
+            moves.push_back(Move::make<PROMOTION, QUEEN>(from, to));
+        }
+
+        while (non_promo_left_targets) {
+            Square to = Square(pop_lsb(non_promo_left_targets));
+            Square from = Square(to - ((c == WHITE) ? 7 : -9));
+            Bitboard from_bb = 1ULL << from;
+            Bitboard move_bb = from_bb | (1ULL << to);
+
+            // skip if pinned but capture not along pin ray
+            if ((pinned & from_bb) &&
+                !((move_bb & current_state._bishop_pin) == move_bb ||
+                    (move_bb & current_state._rook_pin) == move_bb))
+                continue;
+
+            moves.push_back(Move(from, to));
+        }
+
+        // ---------- 3. Right captures ----------
+        Bitboard right = (pawns & NOT_FILE_H);
+        Bitboard right_tgt = (c == WHITE ? (right << 9) : (right >> 7)) & enemy_occ & current_state.check_mask;
+        Bitboard promo_right_targets = right_tgt & PROMO_NEXT;
+        Bitboard non_promo_right_targets = right_tgt & ~promo_right_targets; // NAND
+
+        while (promo_right_targets) {
+            Square to = Square(pop_lsb(promo_right_targets));
+            Square from = Square(to - ((c == WHITE) ? 9 : -7));
+            Bitboard from_bb = 1ULL << from;
+            Bitboard move_bb = from_bb | (1ULL << to);
+
+            if ((pinned & from_bb) &&
+                !((move_bb & current_state._bishop_pin) == move_bb ||
+                    (move_bb & current_state._rook_pin) == move_bb))
+                continue;
+
+            moves.push_back(Move::make<PROMOTION, KNIGHT>(from, to));
+            moves.push_back(Move::make<PROMOTION, BISHOP>(from, to));
+            moves.push_back(Move::make<PROMOTION, ROOK>(from, to));
+            moves.push_back(Move::make<PROMOTION, QUEEN>(from, to));
+        }
+
+        while (non_promo_right_targets) {
+            Square to = Square(pop_lsb(non_promo_right_targets));
+            Square from = Square(to - ((c == WHITE) ? 9 : -7));
+            Bitboard from_bb = 1ULL << from;
+            Bitboard move_bb = from_bb | (1ULL << to);
+
+            if ((pinned & from_bb) &&
+                !((move_bb & current_state._bishop_pin) == move_bb ||
+                    (move_bb & current_state._rook_pin) == move_bb))
+                continue;
+
+            moves.push_back(Move(from, to));
+        }
     }
 
     template<typename PieceC, typename T>
@@ -216,9 +252,7 @@ namespace chess {
             enemyAttacks |= attacks::rook(static_cast<Square>(pop_lsb(rLike)), occWithoutKing);
 
         // Knights
-        Bitboard n = pieces<KNIGHT, them>();
-        while (n)
-            enemyAttacks |= attacks::knight(static_cast<Square>(pop_lsb(n)));
+        enemyAttacks |= attacks::knight(pieces<KNIGHT, them>());
 
         // Pawns
         enemyAttacks |= attacks::pawn<them>(pieces<PAWN, them>());
@@ -524,6 +558,7 @@ namespace chess {
         Bitboard bishop_pinners = current_state._bishop_pin;
         if constexpr (pt == BISHOP) sliders &= ~rook_pinners;
         if constexpr (pt == ROOK) sliders &= ~bishop_pinners;
+        Bitboard filter_list = ~occ(c) & current_state.check_mask;
         while (sliders)
         {
             Square from = static_cast<Square>(pop_lsb(sliders));
@@ -547,7 +582,8 @@ namespace chess {
                 pin_mask = bishop_pinners;
                 func = attacks::bishop;
             }
-            Bitboard targets = func(from, occ_all) & pin_mask & ~occ(c) & current_state.check_mask;
+            Bitboard _ir_1=pin_mask & filter_list;
+            Bitboard targets = func(from, occ_all) & _ir_1;
             while (targets)
             {
                 Square to = static_cast<Square>(pop_lsb(targets));
