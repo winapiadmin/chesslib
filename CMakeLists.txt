@@ -28,18 +28,6 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   add_compile_options(/constexpr:steps2000000000 /constexpr:depth1024 /arch:AVX) # I'll assume everybody has this since this is 2025.
 endif()
 
-# --- AddressSanitizer for Debug builds ---
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    message(STATUS "Enabling AddressSanitizer")
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        set(SANITIZER_FLAGS "/fsanitize=address")
-    else()
-        message(STATUS "Enabling UndefinedBehaviorSanitizer")
-        set(SANITIZER_FLAGS "-fsanitize=address -fsanitize=undefined")
-    endif()
-    add_compile_options(${SANITIZER_FLAGS})
-    add_link_options(${SANITIZER_FLAGS})
-endif()
 add_compile_definitions(GENERATE_AT_RUNTIME)
 # --- Core Library ---
 set(SOURCES

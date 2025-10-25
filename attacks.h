@@ -2,6 +2,7 @@
 #include "bitboard.h"
 #include "types.h"
 #include <array>
+#include <immintrin.h>
 namespace chess::attacks {
     // clang-format off
     // pre-calculated lookup table for pawn attacks

@@ -6,7 +6,7 @@ namespace chess::attacks {
 #define _POSSIBLY_CONSTEXPR const
 #endif
     template <auto AttackFunc, const Bitboard* Magics, size_t TableSize>
-    _POSSIBLY_CONSTEXPR auto generate_magic_table() {
+    _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, TableSize>> generate_magic_table() {
         std::array<Magic, 64> table{};
         std::array<Bitboard, TableSize> attacks{};
 
@@ -44,13 +44,13 @@ namespace chess::attacks {
 
         return std::pair{ table, attacks };
     }
-    _POSSIBLY_CONSTEXPR auto bishopData =
+    _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, 0x1480>> bishopData =
         generate_magic_table<_chess::_HyperbolaBishopAttacks, attacks::BishopMagics, 0x1480>();
-    _POSSIBLY_CONSTEXPR auto BishopTable = bishopData.first;
-    _POSSIBLY_CONSTEXPR auto BishopAttacks = bishopData.second;
+    _POSSIBLY_CONSTEXPR std::array<Magic, 64> BishopTable = bishopData.first;
+    _POSSIBLY_CONSTEXPR std::array<Bitboard, 0x1480> BishopAttacks = bishopData.second;
 
-    _POSSIBLY_CONSTEXPR auto rookData =
+    _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, 0x19000>> rookData =
         generate_magic_table<_chess::_HyperbolaRookAttacks, attacks::RookMagics, 0x19000>();
-    _POSSIBLY_CONSTEXPR auto RookTable = rookData.first;
-    _POSSIBLY_CONSTEXPR auto RookAttacks = rookData.second;
+    _POSSIBLY_CONSTEXPR std::array<Magic, 64> RookTable = rookData.first;
+    _POSSIBLY_CONSTEXPR std::array<Bitboard, 0x19000> RookAttacks = rookData.second;
 }
