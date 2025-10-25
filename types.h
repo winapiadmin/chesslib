@@ -156,7 +156,8 @@ namespace chess {
         NORTH_EAST = NORTH + EAST,
         SOUTH_EAST = SOUTH + EAST,
         SOUTH_WEST = SOUTH + WEST,
-        NORTH_WEST = NORTH + WEST
+        NORTH_WEST = NORTH + WEST,
+        DIR_NONE=0
     };
     //clang-format on
     inline constexpr Square relative_square(Color c, Square s) { return Square(s ^ (c * 56)); }

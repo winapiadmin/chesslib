@@ -11,18 +11,21 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     add_compile_options(
       /clang:-fconstexpr-steps=2000000000
       /clang:-fconstexpr-depth=1024
+      /clang:-march=native
+      /clang:-mtune=native
     )
   else()
     # native clang++ on *nix or Windows
     add_compile_options(
       -fconstexpr-steps=2000000000
       -fconstexpr-depth=1024
+      -march=native -mtune=native
     )
   endif()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  add_compile_options(-fconstexpr-ops-limit=2000000000 -fconstexpr-depth=1024)
+  add_compile_options(-fconstexpr-ops-limit=2000000000 -fconstexpr-depth=1024 -march=native -mtune=native)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  add_compile_options(/constexpr:steps2000000000 /constexpr:depth1024)
+  add_compile_options(/constexpr:steps2000000000 /constexpr:depth1024 /arch:AVX) # I'll assume everybody has this since this is 2025.
 endif()
 
 # --- AddressSanitizer for Debug builds ---

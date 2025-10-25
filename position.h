@@ -96,32 +96,7 @@ namespace chess {
         template<Color c>
         void genKingMoves(Movelist &mv) const;
         template<Color c, PieceType pt>
-        void genSlidingMoves(Movelist& list) const {
-            Bitboard sliders = pieces<pt, c>();
-            Bitboard occ_all = occ();
-
-            while (sliders) {
-                Square from = static_cast<Square>(pop_lsb(sliders));
-                Bitboard from_bb = 1ULL << from;
-
-                Bitboard pin_mask = ~0ULL;
-                if (current_state._rook_pin & from_bb)
-                    pin_mask = current_state._rook_pin;
-                else if (current_state._bishop_pin & from_bb)
-                    pin_mask = current_state._bishop_pin;
-
-                Bitboard targets = attacks::slider<pt>(from, occ_all)
-                    & ~occ(c)
-                    & pin_mask
-                    & current_state.check_mask;
-
-                while (targets) {
-                    Square to = static_cast<Square>(pop_lsb(targets));
-                    list.push_back(Move(from, to));
-                }
-            }
-        }
-
+        void genSlidingMoves(Movelist& mv) const;
         public:
         // Legal move generation functions
         template<MoveGenType type=MoveGenType::ALL, Color c>

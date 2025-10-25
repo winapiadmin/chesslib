@@ -146,7 +146,7 @@ namespace chess::attacks {
             Bitboard       mask;
             int            index;
             constexpr Bitboard       operator()(Bitboard b) const {
-                if consteval { return software_pext_u64(b, mask); }
+                if (is_constant_evaluated()) { return software_pext_u64(b, mask); }
                 else { return _pext_u64(b, mask); }
             }
         };
@@ -370,7 +370,7 @@ namespace chess::attacks{
      * @param occupied
      * @return
      */
-    [[nodiscard]] inline Bitboard queen(Square sq, Bitboard occupied) {
+    [[nodiscard]] constexpr Bitboard queen(Square sq, Bitboard occupied) {
 		return bishop(sq, occupied) | rook(sq, occupied);
 	}
 
