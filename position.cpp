@@ -532,7 +532,7 @@ namespace chess {
             Bitboard pin_mask = ~0ULL;
 
             Bitboard blockers = occ() ^ from_bb; // remove piece temporarily
-            std::function<Bitboard(Square, Bitboard)> func;
+            auto func = attacks::queen;
             if constexpr (pt == PieceType::BISHOP)
                 func = attacks::bishop;
             if constexpr (pt == PieceType::ROOK)
