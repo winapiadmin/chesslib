@@ -2,6 +2,12 @@
 #include "bitboard.h"
 #include "types.h"
 #include <array>
+#if !(defined(_MSC_VER) || defined(__SCE__)) || __has_feature(modules) ||      \
+    defined(__BMI2__) || defined(__M_INTRINSIC_PROMOTE__)
+#include <bmi2intrin.h>
+#else
+#include <immintrin.h>
+#endif
 namespace chess::attacks {
     // clang-format off
     // pre-calculated lookup table for pawn attacks
