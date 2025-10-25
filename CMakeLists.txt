@@ -29,16 +29,25 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 # --- AddressSanitizer for Debug builds ---
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    message(STATUS "Enabling AddressSanitizer")
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        set(SANITIZER_FLAGS "/fsanitize=address")
-    else()
-        message(STATUS "Enabling UndefinedBehaviorSanitizer")
-        set(SANITIZER_FLAGS "-fsanitize=address -fsanitize=undefined")
+    include(CheckCXXCompilerFlag)
+    # Check for the ASan flag used by GCC/Clang
+    check_cxx_compiler_flag("-fsanitize=address" COMPILER_SUPPORTS_ASAN_GCC_CLANG)
+
+    # Check for the ASan flag used by MSVC
+    check_cxx_compiler_flag("/fsanitize=address" COMPILER_SUPPORTS_ASAN_MSVC)
+    if(COMPILER_SUPPORTS_ASAN_GCC_CLANG OR COMPILER_SUPPORTS_ASAN_MSVC)
+        message(STATUS "Enabling AddressSanitizer")
+        if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+            set(SANITIZER_FLAGS "/fsanitize=address")
+        else()
+            message(STATUS "Enabling UndefinedBehaviorSanitizer")
+            set(SANITIZER_FLAGS "-fsanitize=address -fsanitize=undefined")
+        endif()
+        add_compile_options(${SANITIZER_FLAGS})
+        add_link_options(${SANITIZER_FLAGS})
     endif()
-    add_compile_options(${SANITIZER_FLAGS})
-    add_link_options(${SANITIZER_FLAGS})
 endif()
 add_compile_definitions(GENERATE_AT_RUNTIME)
 # --- Core Library ---
