@@ -58,7 +58,9 @@ namespace chess {
             Bitboard from_mask = 1ULL << from;
 
             // Remove the EP pawn and this attacker from occupancy
-            Bitboard occ_temp = _ir_1 & ~from_mask;
+            Bitboard occ_temp = occ();
+            occ_temp ^= (1ULL << from) | (1ULL << ep_pawn_sq) | (1ULL << ep_sq);
+
 
             // inline attackers check
             Bitboard atks = 0;
@@ -67,7 +69,7 @@ namespace chess {
             atks |= attacks::bishop(king_sq, occ_temp) & (pieces<BISHOP, ~c>() | pieces<QUEEN, ~c>());
             atks |= attacks::rook(king_sq, occ_temp) & (pieces<ROOK, ~c>() | pieces<QUEEN, ~c>());
             //atks |= attacks::king(king_sq) & pieces<KING, ~c>();
-            atks &= occ_temp;
+            atks &= occ(~c);
             if (!atks) {
                 ep_moves.push_back(Move::make<EN_PASSANT>(from, ep_sq));
             }

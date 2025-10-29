@@ -13,6 +13,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       /clang:-fconstexpr-depth=1024
       /clang:-march=native
       /clang:-mtune=native
+      /clang:-ftemplate-backtrace-limit=0
     )
   else()
     # native clang++ on *nix or Windows
@@ -20,10 +21,11 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       -fconstexpr-steps=2000000000
       -fconstexpr-depth=1024
       -march=native -mtune=native
+      -ftemplate-backtrace-limit=0
     )
   endif()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  add_compile_options(-fconstexpr-ops-limit=2000000000 -fconstexpr-depth=1024 -march=native -mtune=native)
+  add_compile_options(-fconstexpr-ops-limit=2000000000 -fconstexpr-depth=1024 -march=native -mtune=native -ftemplate-backtrace-limit=0)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   add_compile_options(/constexpr:steps2000000000 /constexpr:depth1024 /arch:AVX) # I'll assume everybody has this since this is 2025.
 endif()
@@ -37,6 +39,10 @@ set(SOURCES
 )
 add_library(chesslib STATIC ${SOURCES})
 target_include_directories(chesslib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+add_executable(perft_tt examples/perft_with_tt.cpp)
+target_link_libraries(perft_tt PRIVATE chesslib)
+# --- Enable CTest integration ---
+enable_testing()
 include(FetchContent)
 FetchContent_Declare(
     doctest
@@ -44,15 +50,10 @@ FetchContent_Declare(
     GIT_TAG v2.4.12
 )
 FetchContent_MakeAvailable(doctest)
-add_executable(speedperft perft_speed.cpp)
-target_link_libraries(speedperft PRIVATE chesslib)
 # --- Test executable ---
 add_executable(test_chess
     tests.cpp
 )
 target_link_libraries(test_chess PRIVATE chesslib)
 target_include_directories(test_chess PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${doctest_SOURCE_DIR})
-
-# --- Enable CTest integration ---
-enable_testing()
 add_test(NAME tests COMMAND test_chess)

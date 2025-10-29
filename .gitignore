@@ -1,4 +1,6 @@
-*
+out/
+build/
+.vs/
 !*.cpp
 !*.h
 !README.md

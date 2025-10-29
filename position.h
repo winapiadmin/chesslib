@@ -593,16 +593,17 @@ namespace chess {
 
             // --- Knights ---
             Bitboard wn = pieces<KNIGHT, WHITE>();
+            //current_state.seen[WHITE] |= attacks::knight(wn);
             while (wn) {
                 Square sq = static_cast<Square>(pop_lsb(wn));
                 current_state.seen[WHITE] |= attacks::knight(sq);
             }
             Bitboard bn = pieces<KNIGHT, BLACK>();
+            //current_state.seen[BLACK] |= attacks::knight(bn);
             while (bn) {
                 Square sq = static_cast<Square>(pop_lsb(bn));
                 current_state.seen[BLACK] |= attacks::knight(sq);
             }
-
             // --- Bishops & Queens (diagonals) ---
             Bitboard wb = pieces<BISHOP, WHITE>() | pieces<QUEEN, WHITE>();
             while (wb) {

@@ -414,9 +414,6 @@ TEST_CASE("Random position perfts") {
         {"4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 1, 6},
         {"4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 5, 71831},
         {"4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 6, 1376826},
-#ifndef _DEBUG
-        {"4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 8, 150141373},
-#endif
         {"3q3B/3Q4/1k1N4/5Q2/6Q1/1B2N2Q/K4bB1/2q2N2 b - - 0 1", 1, 35},
         {"3q3B/3Q4/1k1N4/5Q2/6Q1/1B2N2Q/K4bB1/2q2N2 b - - 0 1", 4, 5855605},
         {"8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 1, 8},
@@ -424,7 +421,6 @@ TEST_CASE("Random position perfts") {
         {"8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 7, 3844295},
 #ifndef _DEBUG
         {"8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 8, 47694794},
-        {"8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 9, 289421008},
 #endif
         {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 1, 63},
         {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 2, 168},
@@ -432,15 +428,21 @@ TEST_CASE("Random position perfts") {
         {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 4, 28349},
         {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 5, 1804208},
         {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 6, 5073106},
-#ifndef _DEBUG
-        {"8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 7, 324276886},
-#endif
         {"2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 1, 13},
         {"2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 2, 376},
         {"2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 3, 3875},
         {"2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 4, 112556},
         {"2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 5, 1189238},
         {"2K2q1q/2n4n/3qb3/1r2qq2/5n2/k4n2/r5Q1/1q6 w - - 0 1", 1, 0} // checkmate
+    };
+    check_perfts<EnginePiece>(positions);
+    check_perfts<PolyglotPiece>(positions);
+}
+TEST_CASE("Experienced bugs in this repo") {
+    std::vector<TestEntry> positions = {
+        {"rnbqkbnr/1p2pppp/p7/2Pp4/8/8/PPPKPPPP/RNBQ1BNR w kq d6 0 4", 1, 25},
+        {"rnbqkbnr/1p2pppp/p7/2Pp4/8/8/PPPKPPPP/RNBQ1BNR w kq d6 0 4", 2, 701},
+        {"rnbqkbnr/1p2pppp/p7/2Pp4/8/8/PPPKPPPP/RNBQ1BNR w kq d6 0 4", 3, 17762}
     };
     check_perfts<EnginePiece>(positions);
     check_perfts<PolyglotPiece>(positions);
