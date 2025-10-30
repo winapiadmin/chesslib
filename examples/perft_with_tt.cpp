@@ -24,10 +24,10 @@ uint64_t perft(Position& p) {
         return moves.size();
     }
     else {
-        /*const uint64_t hash = p.hash();
+        const uint64_t hash = p.hash();
         TTEntry& entry = tt[hash & (tt.size() - 1)];
         if (entry.hash == hash && entry.depth == Depth)
-            return entry.nodes;*/
+            return entry.nodes;
 
         ValueList<Move, 256> moves;
         p.legals<MGen>(moves);
@@ -43,16 +43,16 @@ uint64_t perft(Position& p) {
                 std::cout << m << ": " << nodes << '\n';
         }
 
-        /*entry.hash = hash;
+        entry.hash = hash;
         entry.depth = Depth;
-        entry.nodes = total;*/
+        entry.nodes = total;
         return total;
     }
 }
 
 int main() {
     Position pos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    //tt.resize(1 << 28);
+    tt.resize(1 << 28);
     //pos.doMove(Move(SQ_D2, SQ_D4));
     //pos.doMove(Move(SQ_A7, SQ_A6));
     //pos.doMove(Move(SQ_E1, SQ_D2));

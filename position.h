@@ -29,6 +29,7 @@ namespace chess {
         Square   enPassant = SQ_NONE; // En passant target square
         uint8_t  halfMoveClock;   // Half-move clock for 50/75-move rule
         int      fullMoveNumber;  // Full-move number (starts at 1)
+        bool     epIncluded;
         Move     mv;
         uint64_t hash;
         Bitboard _pin_mask;
@@ -75,6 +76,10 @@ namespace chess {
     class _Position
     {
         private:
+        static constexpr const std::array<uint64_t, 64> (*RandomPiece) = std::is_same_v<PieceC, PolyglotPiece>
+                                                                 ? zobrist::RandomPiece
+                                                                 : zobrist::RandomPiece_EnginePiece;
+
         HistoryEntry<PieceC> current_state;
         // Move history stack
         HeapAllocatedValueList<HistoryEntry<PieceC>, 8192>
@@ -166,11 +171,6 @@ namespace chess {
          * \return nothing
          *
          */
-        // Constructor
-        inline _Position() {
-            current_state = HistoryEntry<PieceC>();
-            refresh_attacks();
-        }
         inline _Position(HistoryEntry<PieceC> state)
         {
             // compatible!
@@ -253,37 +253,44 @@ namespace chess {
                 }
             }
             {
-                // Determine if the move was a two-square pawn push from `from_sq` to `to_sq`.
-                // This is used to set the potential en-passant target square.
-                bool isDoublePush = (from_sq + 2 * pawn_push(us)) == to_sq && moving_piecetype == PAWN;
+                // Detect a two-square pawn push.
+                bool isDoublePush = (moving_piecetype == PAWN) && (abs(to_sq - from_sq) == 16);
 
-                // If an en-passant target was present in the previous state, remove its Zobrist contribution.
-                // We XOR the corresponding random value to undo the previous EP hash entry.
-                current_state.hash ^= zobrist::RandomEP[current_state.enPassant==SQ_NONE?8:file_of(current_state.enPassant)];
+                // Remove old EP key if it was actually included.
+                if (current_state.enPassant != SQ_NONE && current_state.epIncluded)
+                    current_state.hash ^= zobrist::RandomEP[file_of(current_state.enPassant)];
 
-                // Set the new en-passant square only for a double pawn push, otherwise clear it.
-                current_state.enPassant = isDoublePush ? (from_sq + pawn_push(us)) : SQ_NONE;
+                // Default: no EP square and not included.
+                current_state.enPassant = SQ_NONE;
+                current_state.epIncluded = false;
 
-                // If a new en-passant square exists, verify that it is actually capturable by an opposing pawn.
-                // Only when an opposing pawn can capture the en-passant square do we add the Zobrist EP value.
+                // If the move creates a potential EP target:
+                if (isDoublePush)
+                    current_state.enPassant = from_sq + pawn_push(us);
+
+                // Now side to move is the *opponent*.
+                Color stm = ~us;
+
+                // Validate and include EP hash only if side-to-move pawns can capture.
                 if (current_state.enPassant != SQ_NONE) {
                     File f = file_of(current_state.enPassant);
                     Bitboard ep_mask = (1ULL << current_state.enPassant);
 
-                    // Shift the EP bit to the rank where an opposing pawn would be located to perform the capture.
-                    // For example, if black just moved two squares, white pawns that could capture sit one rank below.
-                    ep_mask = (them == WHITE) ? (ep_mask >> 8) : (ep_mask << 8);
+                    // Shift toward the side-to-move’s capturing rank.
+                    ep_mask = (stm == WHITE) ? (ep_mask >> 8) : (ep_mask << 8);
 
-                    // Accept only pawns on adjacent files: compute pawns that are one file left or right,
-                    // while avoiding wrap-around using file masks `MASK_FILE[0]` and `MASK_FILE[7]`.
-                    ep_mask = ((ep_mask << 1) & ~attacks::MASK_FILE[0]) | ((ep_mask >> 1) & ~attacks::MASK_FILE[7]);
+                    // Keep adjacent files only.
+                    ep_mask = ((ep_mask << 1) & ~attacks::MASK_FILE[0]) |
+                              ((ep_mask >> 1) & ~attacks::MASK_FILE[7]);
 
-                    // If any opposing pawn occupies one of these squares, the en-passant target is valid;
-                    // include its Zobrist contribution.
-                    uint64_t include = (ep_mask & pieces<PAWN>(them)) ? zobrist::RandomEP[f] : 0;
-                    current_state.hash ^= include;
+                    // Include key if their pawns can attack it.
+                    if (ep_mask & pieces<PAWN>(stm)) {
+                        current_state.hash ^= zobrist::RandomEP[f];
+                        current_state.epIncluded = true;
+                    }
                 }
             }
+
             {
                 constexpr Square white_king_start = SQ_E1,
                                  black_king_start = SQ_E8,
@@ -450,7 +457,7 @@ namespace chess {
                 current_state.pieces[pt] |= 1ULL << s;
                 current_state.occ[c] |= 1ULL << s;
                 current_state.pieces_list[s] = make_piece<PieceC>(pt, c);
-                current_state.hash ^= zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s];
+                current_state.hash ^= RandomPiece[static_cast<int>(current_state.pieces_list[s])][s];
                 if constexpr (pt == KING) current_state.kings[c] = s;
             }
         }
@@ -461,7 +468,7 @@ namespace chess {
                 current_state.pieces[pt] &= ~(1ULL << s);
                 current_state.occ[c] &= ~(1ULL << s);
                 current_state.pieces_list[s] = PieceC::NO_PIECE;
-                current_state.hash ^= zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s];
+                current_state.hash ^= RandomPiece[static_cast<int>(make_piece<PieceC>(pt, c))][s];
                 if constexpr (pt == KING) current_state.kings[c] = SQ_NONE;
             }
         }
@@ -471,7 +478,7 @@ namespace chess {
                 current_state.pieces[pt] |= 1ULL << s;
                 current_state.occ[c] |= 1ULL << s;
                 current_state.pieces_list[s] = make_piece<PieceC>(pt, c);
-                current_state.hash ^= zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s];
+                current_state.hash ^= RandomPiece[static_cast<int>(current_state.pieces_list[s])][s];
                 if (pt == KING) current_state.kings[c] = s;
             }
         }
@@ -481,7 +488,7 @@ namespace chess {
                 current_state.pieces[pt] &= ~(1ULL << s);
                 current_state.occ[c] &= ~(1ULL << s);
                 current_state.pieces_list[s] = PieceC::NO_PIECE;
-                current_state.hash ^= zobrist::RandomPiece[static_cast<int>(make_piece<PolyglotPiece>(pt, c))][s];
+                current_state.hash ^= RandomPiece[static_cast<int>(make_piece<PieceC>(pt, c))][s];
                 if (pt == KING) current_state.kings[c] = SQ_NONE;
             }
         }
@@ -547,11 +554,12 @@ namespace chess {
         }
         inline void refresh_attacks()
         {
-            current_state._bishop_pin = pinMask<BISHOP>(sideToMove(), square<KING>(sideToMove()));
-            current_state._rook_pin   = pinMask<ROOK>(sideToMove(), square<KING>(sideToMove()));
+            Color    c                = sideToMove();
+
+            current_state._bishop_pin = pinMask<BISHOP>(c, square<KING>(c));
+            current_state._rook_pin   = pinMask<ROOK>(c, square<KING>(c));
             current_state._pin_mask   = current_state._bishop_pin | current_state._rook_pin;
 
-            Color    c                = sideToMove();
             Square   king_sq          = square<KING>(c);
             Bitboard checkers         = attackers(~c, king_sq);
             current_state.checkers    = checkers;
@@ -581,29 +589,15 @@ namespace chess {
             current_state.seen[BLACK] = 0;
             // --- Pawns ---
             Bitboard wp = pieces<PAWN, WHITE>();
-            while (wp) {
-                Square sq = static_cast<Square>(pop_lsb(wp));
-                current_state.seen[WHITE] |= attacks::pawn(WHITE, sq);
-            }
+            current_state.seen[WHITE] |= attacks::pawn<WHITE>(wp);
             Bitboard bp = pieces<PAWN, BLACK>();
-            while (bp) {
-                Square sq = static_cast<Square>(pop_lsb(bp));
-                current_state.seen[BLACK] |= attacks::pawn(BLACK, sq);
-            }
+            current_state.seen[BLACK] |= attacks::pawn<BLACK>(bp);
 
             // --- Knights ---
             Bitboard wn = pieces<KNIGHT, WHITE>();
-            //current_state.seen[WHITE] |= attacks::knight(wn);
-            while (wn) {
-                Square sq = static_cast<Square>(pop_lsb(wn));
-                current_state.seen[WHITE] |= attacks::knight(sq);
-            }
+            current_state.seen[WHITE] |= attacks::knight(wn);
             Bitboard bn = pieces<KNIGHT, BLACK>();
-            //current_state.seen[BLACK] |= attacks::knight(bn);
-            while (bn) {
-                Square sq = static_cast<Square>(pop_lsb(bn));
-                current_state.seen[BLACK] |= attacks::knight(sq);
-            }
+            current_state.seen[BLACK] |= attacks::knight(bn);
             // --- Bishops & Queens (diagonals) ---
             Bitboard wb = pieces<BISHOP, WHITE>() | pieces<QUEEN, WHITE>();
             while (wb) {
@@ -634,9 +628,38 @@ namespace chess {
             current_state.seen[WHITE] |= attacks::king(wk);
             current_state.seen[BLACK] |= attacks::king(bk);
         }
-
     public:
-        HistoryEntry<PieceC> state() const { return current_state; }
+      HistoryEntry<PieceC> state() const { return current_state; }
+      uint64_t zobrist() const {
+          uint64_t hash = 0;
+          const auto &pl = current_state.pieces_list;
+#pragma unroll(64)
+          for (int sq = 0; sq < 64; ++sq)
+              hash ^= (pl[sq] == PieceC::NO_PIECE) ? 0 : RandomPiece[(int)pl[sq]][sq];
+
+          hash ^= (current_state.turn == WHITE) ? zobrist::RandomTurn : 0;
+          hash ^= zobrist::RandomCastle[current_state.castlingRights];
+          auto ep_sq = current_state.enPassant;
+          if (ep_sq == SQ_NONE)
+              return hash;
+          if (ep_sq != SQ_NONE) {
+              File f = file_of(ep_sq);
+              Bitboard ep_mask = (1ULL << ep_sq);
+
+              // Shift to the rank where the opposing pawn sits
+              Color stm = sideToMove();
+              Color them = ~stm;
+              ep_mask = (stm == WHITE) ? (ep_mask >> 8) : (ep_mask << 8);
+
+              // Pawns on adjacent files only
+              ep_mask = ((ep_mask << 1) & ~attacks::MASK_FILE[0]) |
+                        ((ep_mask >> 1) & ~attacks::MASK_FILE[7]);
+
+              if (ep_mask & pieces<PAWN>(stm))
+                  hash ^= zobrist::RandomEP[f];
+          }
+          return hash;
+      }
     };
     template<typename PieceC = EnginePiece>
     std::ostream& operator<<(std::ostream& os, const _Position<PieceC>& pos);

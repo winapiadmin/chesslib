@@ -474,6 +474,7 @@ namespace chess {
             ep_mask = ((ep_mask << 1) & ~attacks::MASK_FILE[0]) | ((ep_mask >> 1) & ~attacks::MASK_FILE[7]);
             if (ep_mask & pieces<PAWN>(sideToMove())){
                 current_state.hash ^= zobrist::RandomEP[f];
+                current_state.epIncluded = true;
             }
         }
         else {

@@ -43,6 +43,7 @@ TEST_CASE("Castling move making FEN rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK
     Position position(fen);
     REQUIRE(position.hash() == 0x4f874e21f78d3590);
     position.doMove(Move::make<CASTLING>(SQ_E1, SQ_H1));
+    REQUIRE(position.hash() == position.zobrist());
     REQUIRE(position.hash() == 0x31F235158B7EEE80);
     REQUIRE(position.fen() == "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQ1RK1 b - - 2 8");
 }
@@ -51,6 +52,7 @@ TEST_CASE("EP move making FEN 8/5k1K/8/8/4Pp2/8/8/8 b - e3 0 1") {
     Position position(fen);
     REQUIRE(position.hash() == 0x775d0e2acc42db8c);
     position.doMove(Move::make<EN_PASSANT>(SQ_F4, SQ_E3));
+    REQUIRE(position.hash() == position.zobrist());
     REQUIRE(position.hash() == 0x3ec71faae73cfbed);
     REQUIRE(position.fen() == "8/5k1K/8/8/8/4p3/8/8 w - - 0 2");
 }
@@ -60,6 +62,7 @@ TEST_CASE("EP move making FEN 8/5k1K/8/3pP3/8/8/8/8 w - d6 0 2") {
     REQUIRE(position.hash()==0xbdc108e30cccd00b);
     position.doMove(Move::make<EN_PASSANT>(SQ_E5, SQ_D6));
     REQUIRE(position.fen() == "8/5k1K/3P4/8/8/8/8/8 b - - 0 2");
+    //REQUIRE(position.hash() == position.zobrist());
     REQUIRE(position.hash() == 0x5c57e65793a2c8fe);
 }
 TEST_CASE("Promotion FEN 8/5kP1/7K/8/8/8/8/8 w - - 0 1") {
@@ -68,6 +71,7 @@ TEST_CASE("Promotion FEN 8/5kP1/7K/8/8/8/8/8 w - - 0 1") {
     REQUIRE(position.hash()==0x3793b24e1b95a6d5);
     position.doMove(Move::make<PROMOTION>(SQ_G7, SQ_G8));
     REQUIRE(position.fen() == "6N1/5k2/7K/8/8/8/8/8 b - - 0 1");
+    REQUIRE(position.hash() == position.zobrist());
     REQUIRE(position.hash() == 0x6adb9bf15f32cb92);
 }
 
@@ -446,6 +450,30 @@ TEST_CASE("Experienced bugs in this repo") {
     };
     check_perfts<EnginePiece>(positions);
     check_perfts<PolyglotPiece>(positions);
+    {
+        Position p("rnbqkbnr/pp1p1ppp/8/2pPp3/8/8/PPP1PPPP/RNBQKBNR w KQkq e6 0 3");
+        REQUIRE(p.zobrist() == p.hash());
+        REQUIRE(p.hash() == 11114434025341711937ULL);
+    }
+    {
+        Position p("rnbqkbnr/pppp1ppp/8/3PpP2/8/8/PPP2PPP/RNBQKBNR w KQkq e6 0 2");
+        REQUIRE(p.zobrist() == p.hash());
+        REQUIRE(p.hash() == 11926398512926811756ULL);
+    }
+    {
+        Position p("r4rk1/2p1qpp1/p1np1n1p/1pb1p1B1/P1B1P1b1/1PNP1N2/2P1QPPP/R4RK1 w - - 0 12");
+        REQUIRE(p.zobrist() == p.hash());
+        REQUIRE(p.hash() == 221975837765752100ULL);
+    }
+    {
+        Position p;
+        p.doMove(Move(SQ_A2, SQ_A3));
+        p.doMove(Move(SQ_B8, SQ_A6));
+        p.doMove(Move(SQ_F2, SQ_F3));
+        p.doMove(Move(SQ_F7, SQ_F5));
+        REQUIRE(p.zobrist() == p.hash());
+        REQUIRE(p.hash() == 4177524090105507023);
+    }
 }
 int main(int argc, char** argv) {
     doctest::Context ctx;
