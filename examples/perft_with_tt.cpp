@@ -14,7 +14,7 @@ uint64_t perft(Position& p) {
     if constexpr (Depth == 0)
         return 1;   
     else if constexpr (Depth == 1) {
-        ValueList<Move, 256> moves;
+        Movelist moves;
         p.legals<MGen>(moves);
         if constexpr (EnableDiv)
             for (const Move& m : moves)
@@ -24,12 +24,12 @@ uint64_t perft(Position& p) {
         return moves.size();
     }
     else {
-        const uint64_t hash = p.hash();
-        TTEntry& entry = tt[hash & (tt.size() - 1)];
-        if (entry.hash == hash && entry.depth == Depth)
-            return entry.nodes;
+        //const uint64_t hash = p.hash();
+        //TTEntry& entry = tt[hash & (tt.size() - 1)];
+        //if (entry.hash == hash && entry.depth == Depth)
+        //    return entry.nodes;
 
-        ValueList<Move, 256> moves;
+        Movelist moves;
         p.legals<MGen>(moves);
 
         uint64_t total = 0;
@@ -43,16 +43,16 @@ uint64_t perft(Position& p) {
                 std::cout << m << ": " << nodes << '\n';
         }
 
-        entry.hash = hash;
-        entry.depth = Depth;
-        entry.nodes = total;
+        //entry.hash = hash;
+        //entry.depth = Depth;
+        //entry.nodes = total;
         return total;
     }
 }
 
 int main() {
     Position pos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    tt.resize(1 << 28);
+    //tt.resize(1 << 24);
     //pos.doMove(Move(SQ_D2, SQ_D4));
     //pos.doMove(Move(SQ_A7, SQ_A6));
     //pos.doMove(Move(SQ_E1, SQ_D2));
@@ -61,7 +61,7 @@ int main() {
     //pos.doMove(Move(SQ_D7, SQ_D5));
     using namespace std::chrono;
     auto start_time = high_resolution_clock::now();
-    uint64_t nodes = perft<7, true>(pos);
+    uint64_t nodes = perft<6, false>(pos);
     auto end_time = high_resolution_clock::now();
 
     double elapsed = duration<double>(end_time - start_time).count(); // seconds
