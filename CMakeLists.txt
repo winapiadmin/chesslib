@@ -31,6 +31,9 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 add_compile_definitions(GENERATE_AT_RUNTIME)
+if(CMAKE_BUILD_TYPE MATCHES "Debug")
+  add_compile_definitions(_DEBUG)
+endif()
 # --- Core Library ---
 set(SOURCES
     position.cpp
