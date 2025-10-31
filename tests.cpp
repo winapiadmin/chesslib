@@ -100,7 +100,7 @@ TEST_CASE("King walk empty board wking e4 bking f8 depth 6") {
 TEST_CASE("Pin detection double push movegen") {
     std::string fen = "rnbqkbnr/1ppppppp/8/p7/Q1P5/8/PP1PPPPP/RNB1KBNR b KQkq - 1 2";
     Position position(fen);
-    ValueList<Move, 256> out;
+    Movelist out;
     position.legals<MoveGenType::PAWN>(out);
     auto pin_mask = position.state()._pin_mask;
     REQUIRE(out.size() == 12);
@@ -168,7 +168,9 @@ TEST_CASE("Massive legal counts") {
             { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 2, 95 },
             { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 3, 18138 },
             { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 4, 80766},
+#if !defined(_DEBUG) || defined(NDEBUG)
             { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 5, 11649711}
+#endif
         };
         check_perfts<EnginePiece>(tests);
         check_perfts<PolyglotPiece>(tests);
@@ -187,11 +189,11 @@ TEST_CASE("kiwipete") {
         {  "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 1,        48 },
         {  "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 2,      2039 },
         {  "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 3,     97862 },
-        {  "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 4,   4085603 },
 #if !defined(_DEBUG) || defined(NDEBUG)
+        {  "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 4,   4085603 },
         {  "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, 193690690 },
-#endif
         { "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/P1N2Q1p/1PPBBPPP/R3K2R b KQkq - 0 1", 4,   4627439 },
+#endif
         {   "r3k2r/p1ppqpb1/bn2pnp1/3PN3/4P3/PpN2Q1p/1PPBBPPP/R3K2R w KQkq - 0 2", 3,    103849 },
         {   "r3k2r/p1ppqpb1/bn2pnp1/3PN3/4P3/PPN2Q1p/1P1BBPPP/R3K2R b KQkq - 0 2", 2,      2098 },
         {  "r3k2r/p1ppqpb1/1n2pnp1/3PN3/4P3/PPNb1Q1p/1P1BBPPP/R3K2R w KQkq - 1 3", 1,        46 },
@@ -221,15 +223,15 @@ TEST_CASE("P[4] (normal) (chessprogramming)") {
         { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 2,       264 },
         { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 3,      9467 },
         { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 4,    422333 },
+#if !defined(_DEBUG) || defined(NDEBUG)
         { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 5,  15833292 },
-//#if !defined(_DEBUG) || defined(NDEBUG)
-//        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 6, 706045033 }, // deleted due to bad perf on 2 checks
-//#endif
-        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P1RPP/R2Q2K1 b kq - 1 1", 4, 2703427 },
-        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/5q2/Pp1P1RPP/R2Q2K1 w kq - 0 2", 3, 58801 },
-        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/5q2/Pp1P1RPP/R2Q1K2 b kq - 1 2", 2, 1732 },
-        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/5q2/P2P1RPP/Rq1Q1K2 w kq - 0 3", 1, 30 },
-        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/8/Pp1P1RPP/R2q1K2 w kq - 0 3", 1, 2}
+        //{ "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 6, 706045033 },
+        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P1RPP/R2Q2K1 b kq - 1 1", 4,   2703427 },
+#endif
+        {  "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/5q2/Pp1P1RPP/R2Q2K1 w kq - 0 2", 3,     58801 },
+        {  "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/5q2/Pp1P1RPP/R2Q1K2 b kq - 1 2", 2,      1732 },
+        {  "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/5q2/P2P1RPP/Rq1Q1K2 w kq - 0 3", 1,        30 },
+        {    "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/8/Pp1P1RPP/R2q1K2 w kq - 0 3", 1,         2 }
     };
     check_perfts<EnginePiece>(tests);
     check_perfts<PolyglotPiece>(tests);
@@ -240,10 +242,10 @@ TEST_CASE("P[4] (mirrored) (chessprogramming)") {
         { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 2,       264 },
         { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 3,      9467 },
         { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 4,    422333 },
+#if !defined(_DEBUG) || defined(NDEBUG)
         { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 5,  15833292 },
-//#if !defined(_DEBUG) || defined(NDEBUG)
-//        { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 6, 706045033 } // deleted due to bad perf on 2 checks
-//#endif
+        //{ "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 6, 706045033 }
+#endif
     };
     check_perfts<EnginePiece>(tests);
     check_perfts<PolyglotPiece>(tests);
@@ -253,8 +255,10 @@ TEST_CASE("P[5] (chessprogramming)") {
         { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 1,        44 },
         { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 2,      1486 },
         { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 3,     62379 },
+#if !defined(_DEBUG) || defined(NDEBUG)
         { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 4,   2103487 },
         { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 5,  89941194 }
+#endif
     };
     check_perfts<EnginePiece>(tests);
     check_perfts<PolyglotPiece>(tests);
@@ -264,8 +268,8 @@ TEST_CASE("P[6] (chessprogramming)") {
         { "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", 1,        46 },
         { "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", 2,      2079 },
         { "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", 3,     89890 },
-        { "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", 4,   3894594 },
 #if !defined(_DEBUG) || defined(NDEBUG)
+        { "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", 4,   3894594 },
         { "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", 5, 164075551 }
 #endif
     };
@@ -314,7 +318,9 @@ TEST_CASE("Random position perfts") {
         {       "6k1/2nNrq2/bb1P2NR/P2bqqN1/qpKQ3n/2Rn2B1/B1r1N3/1Q1Nb3 w - - 0 1", 5,        0 }, // checkmate
         {                                    "K7/3n3R/1r4k1/8/8/8/2p5/8 w - - 0 1", 5,  1056215 },
         { "1Qn2n1k/P1K2P2/1pr2nrP/1p2Q1b1/bPP2B2/p2B1q1N/2Rpp1pn/Q3Q1N1 w - - 0 1", 1,        2 },
+#if !defined(_DEBUG) || defined(NDEBUG)
         { "1Qn2n1k/P1K2P2/1pr2nrP/1p2Q1b1/bPP2B2/p2B1q1N/2Rpp1pn/Q3Q1N1 w - - 0 1", 5, 11921325 },
+#endif
         {                                          "8/7K/8/8/8/5R2/8/k7 b - - 0 1", 1,        3 },
         {                                          "8/7K/8/8/8/5R2/8/k7 b - - 0 1", 2,       57 },
         {                                          "8/7K/8/8/8/5R2/8/k7 b - - 0 1", 3,      261 },
@@ -343,7 +349,9 @@ TEST_CASE("Random position perfts") {
         {                                      "4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 5,    71831 },
         {                                      "4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 6,  1376826 },
         {                    "3q3B/3Q4/1k1N4/5Q2/6Q1/1B2N2Q/K4bB1/2q2N2 b - - 0 1", 1,       35 },
+#if !defined(_DEBUG) || defined(NDEBUG)
         {                    "3q3B/3Q4/1k1N4/5Q2/6Q1/1B2N2Q/K4bB1/2q2N2 b - - 0 1", 4,  5855605 },
+#endif
         {                                        "8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 1,        8 },
         {                                        "8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 5,    50950 },
         {                                        "8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 7,  3844295 },
