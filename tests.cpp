@@ -2,11 +2,10 @@
 #include "position.h"
 #include <doctest/doctest.h>
 using namespace chess;
-#if !defined(_DEBUG) || defined(NDEBUG)
+#if defined(NDEBUG) || !defined(_DEBUG)
 #define IS_RELEASE 1
 #else
-#ifndef NDEBUG
-#define IS_RELASE 1
+#define IS_RELEASE 0
 #endif
 
 struct TestEntry {
