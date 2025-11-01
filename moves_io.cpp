@@ -1,7 +1,6 @@
 #include "moves_io.h"
 #include "types.h"
 #include <iostream>
-#include <string>
 namespace chess {
 namespace uci {
 std::string squareToString(Square sq) {

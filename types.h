@@ -2,7 +2,7 @@
 
 #include <cassert>
 // #include <cstddef>
-#include <stdint.h>
+#include <cstdint>
 // #include <cstring>
 // #include <ostream>
 // #include <string_view>
