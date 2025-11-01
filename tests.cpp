@@ -631,9 +631,9 @@ TEST_CASE("chess::Move") {
     std::string uci_t2 = chess::uci::moveToUci(t2);
     REQUIRE(uci_t2 == "a2a1n");
     REQUIRE(t2.promotion_type() == KNIGHT);
-    Move t2 = Move::make<CASTLING>(SQ_E1, SQ_A1);
-    std::string uci_t2 = chess::uci::moveToUci(t2);
-    REQUIRE(uci_t2 == "e1c1");
+    Move t3 = Move::make<CASTLING>(SQ_E1, SQ_A1);
+    std::string uci_t3 = chess::uci::moveToUci(t3);
+    REQUIRE(uci_t3 == "e1c1");
 }
 int main(int argc, char **argv) {
     doctest::Context ctx;
