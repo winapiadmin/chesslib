@@ -55,3 +55,30 @@ _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, 0x1900
 _POSSIBLY_CONSTEXPR std::array<Magic, 64> RookTable = rookData.first;
 _POSSIBLY_CONSTEXPR std::array<Bitboard, 0x19000> RookAttacks = rookData.second;
 } // namespace chess::attacks
+
+namespace chess::movegen {
+inline _POSSIBLY_CONSTEXPR Bitboard att(PieceType pt, Square sq, Bitboard occ) {
+    return (pt == BISHOP) ? _chess::_HyperbolaBishopAttacks(sq, occ)
+                          : _chess ::_HyperbolaRookAttacks(sq, occ);
+}
+
+inline _POSSIBLY_CONSTEXPR std::array<std::array<Bitboard, 64>, 64> generate_between() {
+    std::array<std::array<Bitboard, 64>, 64> squares_between_bb{};
+
+    for (int sq1 = 0; sq1 < 64; ++sq1) {
+        for (PieceType pt : { BISHOP, ROOK }) {
+            for (int sq2 = 0; sq2 < 64; ++sq2) {
+                if (att(pt, Square(sq1), 0) & (1ULL << sq2)) {
+                    squares_between_bb[sq1][sq2] =
+                        att(pt, Square(sq1), 1ULL << (sq2)) & att(pt, Square(sq2), 1ULL << (sq1));
+                }
+                squares_between_bb[sq1][sq2] |= 1ULL << (sq2);
+            }
+        }
+    }
+
+    return squares_between_bb;
+}
+_POSSIBLY_CONSTEXPR std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB =
+    generate_between();
+} // namespace chess::movegen

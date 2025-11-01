@@ -1,5 +1,5 @@
 #include "position.h"
-#include "position.h"
+#include "moves_io.h"
 #include <functional>
 #include <iomanip>
 #include <sstream>
@@ -38,6 +38,7 @@ static _POSSIBLY_CONSTEXPR auto make_castle_masks() {
 
     return tbl;
 }
+static _POSSIBLY_CONSTEXPR auto clearCastleMask = make_castle_masks();
 
 template <typename PieceC>
 std::ostream &operator<<(std::ostream &os, const _Position<PieceC> &pos) {
@@ -80,7 +81,7 @@ std::ostream &operator<<(std::ostream &os, const _Position<PieceC> &pos) {
 template <typename PieceC, typename T>
 template <Color c>
 void _Position<PieceC, T>::genEP(Movelist &ep_moves) const {
-    const Square king_sq = square<KING>(c);
+    const Square king_sq = kingSq(c);
     const Square ep_sq = ep_square();
     if (ep_sq == SQ_NONE)
         return;
@@ -91,7 +92,8 @@ void _Position<PieceC, T>::genEP(Movelist &ep_moves) const {
 
     const Square ep_pawn_sq = static_cast<Square>(ep_sq - pawn_push(c));
     const Bitboard ep_mask = (1ULL << ep_pawn_sq) | (1ULL << ep_sq);
-    //Bitboard _ir_1 = occ() & ~ep_mask;
+    // Bitboard _ir_1 = occ() & ~ep_mask;
+    // ASSUME(popcount(candidates) <= 32);
     while (candidates) {
         Square from = static_cast<Square>(pop_lsb(candidates));
 
@@ -116,7 +118,7 @@ template <typename PieceC, typename T>
 template <Color c, bool capturesOnly>
 void _Position<PieceC, T>::genPawnSingleMoves(Movelist &moves) const {
     constexpr Direction UP = pawn_push(c);
-    //constexpr Bitboard PROMO_RANK = (c == WHITE) ? attacks::MASK_RANK[6] : attacks::MASK_RANK[1];
+    // constexpr Bitboard PROMO_RANK = (c == WHITE) ? attacks::MASK_RANK[6] : attacks::MASK_RANK[1];
     constexpr Bitboard PROMO_NEXT = (c == WHITE) ? attacks::MASK_RANK[7] : attacks::MASK_RANK[0];
     constexpr Bitboard NOT_FILE_A = 0xfefefefefefefefeULL;
     constexpr Bitboard NOT_FILE_H = 0x7f7f7f7f7f7f7f7fULL;
@@ -220,7 +222,7 @@ void _Position<PieceC, T>::genPawnSingleMoves(Movelist &moves) const {
         Bitboard move_bb = from_bb | (1ULL << to);
 
         if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb ||
-                                    (move_bb & current_state._rook_pin) == move_bb)))
+                                      (move_bb & current_state._rook_pin) == move_bb)))
             moves.push_back(Move(from, to));
     }
 }
@@ -236,7 +238,7 @@ void _Position<PieceC, T>::genPawnDoubleMoves(Movelist &moves) const {
 
     // Split pin types
     Bitboard pin_mask = current_state._pin_mask;
-    Bitboard pin_file = pin_mask & attacks::MASK_FILE[file_of(square<KING>(c))];
+    Bitboard pin_file = pin_mask & attacks::MASK_FILE[file_of(kingSq(c))];
 
     Bitboard unpinned = pawns & ~pin_mask;
     Bitboard file_pinned = pawns & pin_file;
@@ -264,7 +266,7 @@ template <typename PieceC, typename T>
 template <Color c, bool capturesOnly>
 void _Position<PieceC, T>::genKingMoves(Movelist &out) const {
     constexpr Color them = ~c;
-    const Square kingSq = square<KING>(c);
+    const Square kingSq = this->kingSq(c);
     const Bitboard occAll = occ();
     const Bitboard myOcc = occ(c);
 
@@ -288,7 +290,7 @@ void _Position<PieceC, T>::genKingMoves(Movelist &out) const {
     enemyAttacks |= attacks::pawn<them>(pieces<PAWN, them>());
 
     // Enemy king (adjacent control squares)
-    enemyAttacks |= attacks::king(square<KING>(them));
+    enemyAttacks |= attacks::king(this->kingSq(them));
 
     // Candidate king moves = legal squares not attacked by enemy
     Bitboard moves = attacks::king(kingSq) & ~myOcc & ~enemyAttacks;
@@ -339,8 +341,6 @@ void _Position<PieceC, T>::genKingMoves(Movelist &out) const {
         }
     }
 }
-_POSSIBLY_CONSTEXPR auto clearCastleMask = make_castle_masks();
-
 template <typename PieceC, typename T> void _Position<PieceC, T>::doMove(const Move &move) {
 
     Square from_sq = move.from_sq(), to_sq = move.to_sq();
@@ -354,17 +354,21 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::doMove(const M
     bool is_capture = isCapture(move);
     history.push_back(current_state);
     current_state.mv = move; // Update the move in the current state
-    // if (target_piecetype == KING) throw std::invalid_argument("NO WAY");
+#if defined(_DEBUG) || !defined(NDEBUG)
+    if (target_piecetype == KING)
+        throw std::invalid_argument("NO WAY");
+#endif
     removePiece(moving_piecetype, from_sq, us);
-    removePiece(target_piecetype, to_sq, target_color);
     {
         ASSUME(move_type == NORMAL || move_type == PROMOTION || move_type == EN_PASSANT ||
                move_type == CASTLING);
         switch (move_type) {
         case NORMAL:
+            removePiece(target_piecetype, to_sq, target_color);
             placePiece(moving_piecetype, to_sq, us);
             break;
         case PROMOTION:
+            removePiece(target_piecetype, to_sq, target_color);
             placePiece(move.promotion_type(), to_sq, us);
             break;
         case EN_PASSANT: {
@@ -374,6 +378,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::doMove(const M
             break;
         }
         case CASTLING: {
+            removePiece(target_piecetype, to_sq, target_color);
             bool is_king_side = from_sq < to_sq;
             Square rook_dest = relative_square(us, is_king_side ? SQ_F1 : Square::SQ_D1),
                    king_dest = relative_square(us, is_king_side ? SQ_G1 : Square::SQ_C1);
@@ -392,13 +397,13 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::doMove(const M
 
         // Remove old EP key if it was actually included.
         bool _ir_1 = current_state.enPassant != SQ_NONE && current_state.epIncluded;
-        current_state.hash ^= _ir_1?zobrist::RandomEP[file_of(current_state.enPassant)]:0;
+        current_state.hash ^= _ir_1 ? zobrist::RandomEP[file_of(current_state.enPassant)] : 0;
 
         // Default: no EP square and not included.
         current_state.epIncluded = false;
 
         // If the move creates a potential EP target:
-        current_state.enPassant = isDoublePush?(from_sq + pawn_push(us)):SQ_NONE;
+        current_state.enPassant = isDoublePush ? (from_sq + pawn_push(us)) : SQ_NONE;
 
         // Now side to move is the *opponent*.
         Color stm = ~us;
@@ -416,8 +421,8 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::doMove(const M
                       ((ep_mask >> 1) & ~attacks::MASK_FILE[7]);
 
             // Include key if their pawns can attack it.
-            current_state.epIncluded = (ep_mask & pieces<PAWN>(stm))!=0;
-            current_state.hash ^= current_state.epIncluded?zobrist::RandomEP[f]:0;
+            current_state.epIncluded = (ep_mask & pieces<PAWN>(stm)) != 0;
+            current_state.hash ^= current_state.epIncluded ? zobrist::RandomEP[f] : 0;
         }
     }
     {
@@ -437,9 +442,10 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::doMove(const M
     refresh_attacks();
 }
 
-template <typename PieceC, typename T> _Position<PieceC, T>::_Position(std::string fen) {
+template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const std::string &str) {
     current_state = HistoryEntry<PieceC>();
-    std::istringstream ss(fen);
+    history.size_ = 0;
+    std::istringstream ss(str);
     std::string board_fen, active_color, castling, enpassant;
     int halfmove = 0, fullmove = 1;
     ss >> board_fen;
@@ -655,7 +661,7 @@ template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen() c
     // 4) En passant target square or '-'
     fen += ' ';
     Square ep = ep_square();
-    fen += (ep == SQ_NONE) ? "-" : squareToString(ep);
+    fen += (ep == SQ_NONE) ? "-" : uci::squareToString(ep);
 
     // 5) Halfmove clock
     fen += ' ';
@@ -670,11 +676,11 @@ template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen() c
 template <typename PieceC, typename T> void _Position<PieceC, T>::refresh_attacks() {
     Color c = sideToMove();
 
-    current_state._bishop_pin = pinMask<BISHOP>(c, square<KING>(c));
-    current_state._rook_pin = pinMask<ROOK>(c, square<KING>(c));
+    Square king_sq = kingSq(c);
+    current_state._bishop_pin = pinMask<BISHOP>(c, king_sq);
+    current_state._rook_pin = pinMask<ROOK>(c, king_sq);
     current_state._pin_mask = current_state._bishop_pin | current_state._rook_pin;
 
-    Square king_sq = square<KING>(c);
     Bitboard checkers = attackers(~c, king_sq);
     current_state.checkers = checkers;
 
@@ -697,8 +703,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::refresh_attack
         break;
     }
 }
-template <typename PieceC, typename T> uint64_t _Position<PieceC, T>::zobrist() const
-{
+template <typename PieceC, typename T> uint64_t _Position<PieceC, T>::zobrist() const {
     uint64_t hash = 0;
     const auto &pl = current_state.pieces_list;
 #pragma unroll(64)
@@ -716,12 +721,12 @@ template <typename PieceC, typename T> uint64_t _Position<PieceC, T>::zobrist() 
 
         // Shift to the rank where the opposing pawn sits
         Color stm = sideToMove();
-        //Color them = ~stm;
+        // Color them = ~stm;
         ep_mask = (stm == WHITE) ? (ep_mask >> 8) : (ep_mask << 8);
 
         // Pawns on adjacent files only
-        ep_mask = ((ep_mask << 1) & ~attacks::MASK_FILE[0]) |
-                    ((ep_mask >> 1) & ~attacks::MASK_FILE[7]);
+        ep_mask =
+            ((ep_mask << 1) & ~attacks::MASK_FILE[0]) | ((ep_mask >> 1) & ~attacks::MASK_FILE[7]);
 
         if (ep_mask & pieces<PAWN>(stm))
             hash ^= zobrist::RandomEP[f];
@@ -735,7 +740,7 @@ void _Position<PieceC, T>::genSlidingMoves(Movelist &list) const {
                   "Isn't bishop, rooks and queens sliding pieces? What else can?");
     Bitboard sliders = pieces<pt, c>();
     Bitboard occ_all = occ();
-    //Square king_sq = current_state.kings[c];
+    // Square king_sq = current_state.kings[c];
     Bitboard rook_pinners = current_state._rook_pin; // bitboard of enemy rooks/queens pinning
     Bitboard bishop_pinners = current_state._bishop_pin;
     if constexpr (pt == BISHOP)
@@ -749,9 +754,9 @@ void _Position<PieceC, T>::genSlidingMoves(Movelist &list) const {
 
         Bitboard rook_hit = rook_pinners & from_bb;
         Bitboard bishop_hit = bishop_pinners & from_bb;
-        Bitboard pin_mask = rook_hit ? rook_pinners : bishop_hit ? bishop_pinners :  ~0ULL;
+        Bitboard pin_mask = rook_hit ? rook_pinners : bishop_hit ? bishop_pinners : ~0ULL;
 
-        //Bitboard blockers = occ() ^ from_bb; // remove piece temporarily
+        // Bitboard blockers = occ() ^ from_bb; // remove piece temporarily
         auto func = attacks::queen;
         if constexpr (pt == PieceType::BISHOP)
             func = attacks::bishop;
@@ -768,6 +773,10 @@ void _Position<PieceC, T>::genSlidingMoves(Movelist &list) const {
         }
     }
 }
+
+template <typename PieceC, typename T> _Position<PieceC, T>::_Position(std::string fen) {
+    setFEN(fen);
+}
 template void _Position<EnginePiece, void>::genEP<Color::WHITE>(Movelist &) const;
 template void _Position<EnginePiece, void>::genEP<Color::BLACK>(Movelist &) const;
 template void _Position<PolyglotPiece, void>::genEP<Color::WHITE>(Movelist &) const;
@@ -778,15 +787,23 @@ template void _Position<EnginePiece, void>::genPawnDoubleMoves<Color::BLACK>(Mov
 template void _Position<PolyglotPiece, void>::genPawnDoubleMoves<Color::WHITE>(Movelist &) const;
 template void _Position<PolyglotPiece, void>::genPawnDoubleMoves<Color::BLACK>(Movelist &) const;
 
-template void _Position<EnginePiece, void>::genPawnSingleMoves<Color::WHITE, true>(Movelist &) const;
-template void _Position<EnginePiece, void>::genPawnSingleMoves<Color::BLACK, true>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genPawnSingleMoves<Color::WHITE, true>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genPawnSingleMoves<Color::BLACK, true>(Movelist &) const;
+template void
+_Position<EnginePiece, void>::genPawnSingleMoves<Color::WHITE, true>(Movelist &) const;
+template void
+_Position<EnginePiece, void>::genPawnSingleMoves<Color::BLACK, true>(Movelist &) const;
+template void
+_Position<PolyglotPiece, void>::genPawnSingleMoves<Color::WHITE, true>(Movelist &) const;
+template void
+_Position<PolyglotPiece, void>::genPawnSingleMoves<Color::BLACK, true>(Movelist &) const;
 
-template void _Position<EnginePiece, void>::genPawnSingleMoves<Color::WHITE, false>(Movelist &) const;
-template void _Position<EnginePiece, void>::genPawnSingleMoves<Color::BLACK, false>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genPawnSingleMoves<Color::WHITE, false>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genPawnSingleMoves<Color::BLACK, false>(Movelist &) const;
+template void
+_Position<EnginePiece, void>::genPawnSingleMoves<Color::WHITE, false>(Movelist &) const;
+template void
+_Position<EnginePiece, void>::genPawnSingleMoves<Color::BLACK, false>(Movelist &) const;
+template void
+_Position<PolyglotPiece, void>::genPawnSingleMoves<Color::WHITE, false>(Movelist &) const;
+template void
+_Position<PolyglotPiece, void>::genPawnSingleMoves<Color::BLACK, false>(Movelist &) const;
 
 template void _Position<EnginePiece, void>::genKingMoves<Color::WHITE, true>(Movelist &) const;
 template void _Position<EnginePiece, void>::genKingMoves<Color::BLACK, true>(Movelist &) const;
@@ -800,26 +817,35 @@ template void _Position<PolyglotPiece, void>::genKingMoves<Color::BLACK, true>(M
 template void _Position<PolyglotPiece, void>::genKingMoves<Color::WHITE, false>(Movelist &) const;
 template void _Position<PolyglotPiece, void>::genKingMoves<Color::BLACK, false>(Movelist &) const;
 
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, BISHOP, false>(Movelist &) const;
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, BISHOP, false>(Movelist &) const;
+template void
+_Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, BISHOP, false>(Movelist &) const;
+template void
+_Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, BISHOP, false>(Movelist &) const;
 template void
 _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, BISHOP, false>(Movelist &) const;
 template void
 _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, BISHOP, false>(Movelist &) const;
 
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, ROOK, false>(Movelist &) const;
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, ROOK, false>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, ROOK, false>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, ROOK, false>(Movelist &) const;
+template void
+_Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, ROOK, false>(Movelist &) const;
+template void
+_Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, ROOK, false>(Movelist &) const;
+template void
+_Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, ROOK, false>(Movelist &) const;
+template void
+_Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, ROOK, false>(Movelist &) const;
 
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, QUEEN, false>(Movelist &) const;
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, QUEEN, false>(Movelist &) const;
+template void
+_Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, QUEEN, false>(Movelist &) const;
+template void
+_Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, QUEEN, false>(Movelist &) const;
 template void
 _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, QUEEN, false>(Movelist &) const;
 template void
 _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, QUEEN, false>(Movelist &) const;
 
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, BISHOP, true>(Movelist &) const;
+template void
+_Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, BISHOP, true>(Movelist &) const;
 template void
 _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, BISHOP, true>(Movelist &) const;
 template void
@@ -850,10 +876,12 @@ template std::ostream &operator<<(std::ostream &, const _Position<PolyglotPiece>
 
 template _Position<EnginePiece, void>::_Position(std::string);
 template _Position<PolyglotPiece, void>::_Position(std::string);
+template void _Position<EnginePiece, void>::setFEN(const std::string &);
+template void _Position<PolyglotPiece, void>::setFEN(const std::string &);
 template std::string _Position<EnginePiece, void>::fen() const;
 template std::string _Position<PolyglotPiece, void>::fen() const;
-template void _Position<EnginePiece, void>::doMove(const Move& move);
-template void _Position<PolyglotPiece, void>::doMove(const Move& move);
+template void _Position<EnginePiece, void>::doMove(const Move &move);
+template void _Position<PolyglotPiece, void>::doMove(const Move &move);
 template void _Position<EnginePiece, void>::refresh_attacks();
 template void _Position<PolyglotPiece, void>::refresh_attacks();
 template uint64_t _Position<EnginePiece, void>::zobrist() const;

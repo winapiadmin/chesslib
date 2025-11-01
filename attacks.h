@@ -4,7 +4,7 @@
 #include <array>
 #include <immintrin.h>
 namespace chess::attacks {
-    // clang-format off
+// clang-format off
     // pre-calculated lookup table for pawn attacks
     static constexpr Bitboard PawnAttacks[2][64] = {
         // white pawn attacks
@@ -420,35 +420,8 @@ namespace chess::attacks{
 } // namespace chess::attacks
 
 namespace chess::movegen{
-    inline constexpr Bitboard att(PieceType pt, Square sq, Bitboard occ) {
-        return (pt == BISHOP) ? attacks::bishop(sq, occ)
-                                : attacks::rook(sq, occ);
-    }
-
-    inline constexpr std::array<std::array<Bitboard, 64>, 64> generate_between()
-    {
-        std::array<std::array<Bitboard, 64>, 64> squares_between_bb{};
-
-        for (int sq1 = 0; sq1 < 64; ++sq1)
-        {
-            for (PieceType pt : {BISHOP, ROOK})
-            {
-                for (int sq2 = 0; sq2 < 64; ++sq2)
-                {
-                    if (att(pt, Square(sq1), 0)&(1ULL<<sq2))
-                    {
-                        squares_between_bb[sq1][sq2] = att(pt, Square(sq1), 1ULL<<(sq2))
-                                                        & att(pt, Square(sq2), 1ULL<<(sq1));
-                    }
-                    squares_between_bb[sq1][sq2]|=1ULL<<(sq2);
-                }
-            }
-        }
-
-        return squares_between_bb;
-    }
-    constexpr std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB = generate_between();
-    [[nodiscard]] inline constexpr Bitboard between(Square sq1, Square sq2) {
+    extern const std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB;
+    [[nodiscard]] inline Bitboard between(Square sq1, Square sq2) noexcept {
         return SQUARES_BETWEEN_BB[sq1][sq2];
     }
 }

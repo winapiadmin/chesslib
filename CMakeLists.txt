@@ -39,7 +39,7 @@ set(SOURCES
     position.cpp
     attacks.cpp
     zobrist.h
-)
+ "moves_io.cpp")
 add_library(chesslib STATIC ${SOURCES})
 target_include_directories(chesslib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_executable(perft_tt examples/perft_with_tt.cpp)

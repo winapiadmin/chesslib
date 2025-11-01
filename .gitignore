@@ -9,3 +9,4 @@ build/
 !.gitignore
 CMakePresets.json
 CMakeSettings.json
+*.s

@@ -1,7 +1,185 @@
 #define DOCTEST_CONFIG_IMPLEMENT
+#include "moves_io.h"
 #include "position.h"
+#include <chrono>
 #include <doctest/doctest.h>
 using namespace chess;
+// --------- Color assertions ----------
+static_assert(color_of(PolyglotPiece::BPAWN) == BLACK, "BPAWN should be BLACK");
+static_assert(color_of(PolyglotPiece::BKNIGHT) == BLACK, "BKNIGHT should be BLACK");
+static_assert(color_of(PolyglotPiece::BBISHOP) == BLACK, "BBISHOP should be BLACK");
+static_assert(color_of(PolyglotPiece::BROOK) == BLACK, "BROOK should be BLACK");
+static_assert(color_of(PolyglotPiece::BQUEEN) == BLACK, "BQUEEN should be BLACK");
+static_assert(color_of(PolyglotPiece::BKING) == BLACK, "BKING should be BLACK");
+
+static_assert(color_of(PolyglotPiece::WPAWN) == WHITE, "WPAWN should be WHITE");
+static_assert(color_of(PolyglotPiece::WKNIGHT) == WHITE, "WKNIGHT should be WHITE");
+static_assert(color_of(PolyglotPiece::WBISHOP) == WHITE, "WBISHOP should be WHITE");
+static_assert(color_of(PolyglotPiece::WROOK) == WHITE, "WROOK should be WHITE");
+static_assert(color_of(PolyglotPiece::WQUEEN) == WHITE, "WQUEEN should be WHITE");
+static_assert(color_of(PolyglotPiece::WKING) == WHITE, "WKING should be WHITE");
+
+// --------- PieceType assertions ----------
+static_assert(piece_of(PolyglotPiece::BPAWN) == PAWN, "BPAWN -> PAWN");
+static_assert(piece_of(PolyglotPiece::BKNIGHT) == KNIGHT, "BKNIGHT -> KNIGHT");
+static_assert(piece_of(PolyglotPiece::BBISHOP) == BISHOP, "BBISHOP -> BISHOP");
+static_assert(piece_of(PolyglotPiece::BROOK) == ROOK, "BROOK -> ROOK");
+static_assert(piece_of(PolyglotPiece::BQUEEN) == QUEEN, "BQUEEN -> QUEEN");
+static_assert(piece_of(PolyglotPiece::BKING) == KING, "BKING -> KING");
+
+static_assert(piece_of(PolyglotPiece::WPAWN) == PAWN, "WPAWN -> PAWN");
+static_assert(piece_of(PolyglotPiece::WKNIGHT) == KNIGHT, "WKNIGHT -> KNIGHT");
+static_assert(piece_of(PolyglotPiece::WBISHOP) == BISHOP, "WBISHOP -> BISHOP");
+static_assert(piece_of(PolyglotPiece::WROOK) == ROOK, "WROOK -> ROOK");
+static_assert(piece_of(PolyglotPiece::WQUEEN) == QUEEN, "WQUEEN -> QUEEN");
+static_assert(piece_of(PolyglotPiece::WKING) == KING, "WKING -> KING");
+
+static_assert(piece_of(PolyglotPiece::NO_PIECE) == NO_PIECE_TYPE, "NO_PIECE -> NO_PIECE_TYPE");
+
+// --------- Round-trip make_piece assertions ----------
+static_assert(make_piece<PolyglotPiece>(PAWN, BLACK) == PolyglotPiece::BPAWN,
+              "make_piece PAWN,BLACK -> BPAWN");
+static_assert(make_piece<PolyglotPiece>(KNIGHT, BLACK) == PolyglotPiece::BKNIGHT,
+              "make_piece KNIGHT,BLACK -> BKNIGHT");
+static_assert(make_piece<PolyglotPiece>(BISHOP, BLACK) == PolyglotPiece::BBISHOP,
+              "make_piece BISHOP,BLACK -> BBISHOP");
+static_assert(make_piece<PolyglotPiece>(ROOK, BLACK) == PolyglotPiece::BROOK,
+              "make_piece ROOK,BLACK -> BROOK");
+static_assert(make_piece<PolyglotPiece>(QUEEN, BLACK) == PolyglotPiece::BQUEEN,
+              "make_piece QUEEN,BLACK -> BQUEEN");
+static_assert(make_piece<PolyglotPiece>(KING, BLACK) == PolyglotPiece::BKING,
+              "make_piece KING,BLACK -> BKING");
+
+static_assert(make_piece<PolyglotPiece>(PAWN, WHITE) == PolyglotPiece::WPAWN,
+              "make_piece PAWN,WHITE -> WPAWN");
+static_assert(make_piece<PolyglotPiece>(KNIGHT, WHITE) == PolyglotPiece::WKNIGHT,
+              "make_piece KNIGHT,WHITE -> WKNIGHT");
+static_assert(make_piece<PolyglotPiece>(BISHOP, WHITE) == PolyglotPiece::WBISHOP,
+              "make_piece BISHOP,WHITE -> WBISHOP");
+static_assert(make_piece<PolyglotPiece>(ROOK, WHITE) == PolyglotPiece::WROOK,
+              "make_piece ROOK,WHITE -> WROOK");
+static_assert(make_piece<PolyglotPiece>(QUEEN, WHITE) == PolyglotPiece::WQUEEN,
+              "make_piece QUEEN,WHITE -> WQUEEN");
+static_assert(make_piece<PolyglotPiece>(KING, WHITE) == PolyglotPiece::WKING,
+              "make_piece KING,WHITE -> WKING");
+
+// --------- Round-trip consistency ----------
+static_assert(piece_of(make_piece<PolyglotPiece>(PAWN, WHITE)) == PAWN,
+              "Round-trip piece PAWN,WHITE");
+static_assert(piece_of(make_piece<PolyglotPiece>(KNIGHT, WHITE)) == KNIGHT,
+              "Round-trip piece KNIGHT,WHITE");
+static_assert(piece_of(make_piece<PolyglotPiece>(BISHOP, WHITE)) == BISHOP,
+              "Round-trip piece BISHOP,WHITE");
+static_assert(piece_of(make_piece<PolyglotPiece>(ROOK, WHITE)) == ROOK,
+              "Round-trip piece ROOK,WHITE");
+static_assert(piece_of(make_piece<PolyglotPiece>(QUEEN, WHITE)) == QUEEN,
+              "Round-trip piece ROOK,WHITE");
+static_assert(piece_of(make_piece<PolyglotPiece>(KING, WHITE)) == KING,
+              "Round-trip piece ROOK,WHITE");
+
+static_assert(piece_of(make_piece<PolyglotPiece>(PAWN, BLACK)) == PAWN,
+              "Round-trip piece PAWN,BLACK");
+static_assert(piece_of(make_piece<PolyglotPiece>(KNIGHT, BLACK)) == KNIGHT,
+              "Round-trip piece KNIGHT,BLACK");
+static_assert(piece_of(make_piece<PolyglotPiece>(BISHOP, BLACK)) == BISHOP,
+              "Round-trip piece BISHOP,BLACK");
+static_assert(piece_of(make_piece<PolyglotPiece>(ROOK, BLACK)) == ROOK,
+              "Round-trip piece ROOK,BLACK");
+static_assert(piece_of(make_piece<PolyglotPiece>(QUEEN, BLACK)) == QUEEN,
+              "Round-trip piece ROOK,BLACK");
+static_assert(piece_of(make_piece<PolyglotPiece>(KING, BLACK)) == KING,
+              "Round-trip piece ROOK,BLACK");
+
+// --------- Color assertions ----------
+static_assert(color_of(PolyglotPiece::BPAWN) == BLACK, "BPAWN should be BLACK");
+static_assert(color_of(PolyglotPiece::BKNIGHT) == BLACK, "BKNIGHT should be BLACK");
+static_assert(color_of(PolyglotPiece::BBISHOP) == BLACK, "BBISHOP should be BLACK");
+static_assert(color_of(PolyglotPiece::BROOK) == BLACK, "BROOK should be BLACK");
+static_assert(color_of(PolyglotPiece::BQUEEN) == BLACK, "BQUEEN should be BLACK");
+static_assert(color_of(PolyglotPiece::BKING) == BLACK, "BKING should be BLACK");
+
+static_assert(color_of(PolyglotPiece::WPAWN) == WHITE, "WPAWN should be WHITE");
+static_assert(color_of(PolyglotPiece::WKNIGHT) == WHITE, "WKNIGHT should be WHITE");
+static_assert(color_of(PolyglotPiece::WBISHOP) == WHITE, "WBISHOP should be WHITE");
+static_assert(color_of(PolyglotPiece::WROOK) == WHITE, "WROOK should be WHITE");
+static_assert(color_of(PolyglotPiece::WQUEEN) == WHITE, "WQUEEN should be WHITE");
+static_assert(color_of(PolyglotPiece::WKING) == WHITE, "WKING should be WHITE");
+
+// --------- PieceType assertions ----------
+static_assert(piece_of(EnginePiece::BPAWN) == PAWN, "BPAWN -> PAWN");
+static_assert(piece_of(EnginePiece::BKNIGHT) == KNIGHT, "BKNIGHT -> KNIGHT");
+static_assert(piece_of(EnginePiece::BBISHOP) == BISHOP, "BBISHOP -> BISHOP");
+static_assert(piece_of(EnginePiece::BROOK) == ROOK, "BROOK -> ROOK");
+static_assert(piece_of(EnginePiece::BQUEEN) == QUEEN, "BQUEEN -> QUEEN");
+static_assert(piece_of(EnginePiece::BKING) == KING, "BKING -> KING");
+
+static_assert(piece_of(EnginePiece::WPAWN) == PAWN, "WPAWN -> PAWN");
+static_assert(piece_of(EnginePiece::WKNIGHT) == KNIGHT, "WKNIGHT -> KNIGHT");
+static_assert(piece_of(EnginePiece::WBISHOP) == BISHOP, "WBISHOP -> BISHOP");
+static_assert(piece_of(EnginePiece::WROOK) == ROOK, "WROOK -> ROOK");
+static_assert(piece_of(EnginePiece::WQUEEN) == QUEEN, "WQUEEN -> QUEEN");
+static_assert(piece_of(EnginePiece::WKING) == KING, "WKING -> KING");
+
+static_assert(piece_of(EnginePiece::NO_PIECE) == NO_PIECE_TYPE, "NO_PIECE -> NO_PIECE_TYPE");
+
+// --------- Round-trip make_piece assertions ----------
+static_assert(make_piece<EnginePiece>(PAWN, BLACK) == EnginePiece::BPAWN,
+              "make_piece PAWN,BLACK -> BPAWN");
+static_assert(make_piece<EnginePiece>(KNIGHT, BLACK) == EnginePiece::BKNIGHT,
+              "make_piece KNIGHT,BLACK -> BKNIGHT");
+static_assert(make_piece<EnginePiece>(BISHOP, BLACK) == EnginePiece::BBISHOP,
+              "make_piece BISHOP,BLACK -> BBISHOP");
+static_assert(make_piece<EnginePiece>(ROOK, BLACK) == EnginePiece::BROOK,
+              "make_piece ROOK,BLACK -> BROOK");
+static_assert(make_piece<EnginePiece>(QUEEN, BLACK) == EnginePiece::BQUEEN,
+              "make_piece QUEEN,BLACK -> BQUEEN");
+static_assert(make_piece<EnginePiece>(KING, BLACK) == EnginePiece::BKING,
+              "make_piece KING,BLACK -> BKING");
+
+static_assert(make_piece<EnginePiece>(PAWN, WHITE) == EnginePiece::WPAWN,
+              "make_piece PAWN,WHITE -> WPAWN");
+static_assert(make_piece<EnginePiece>(KNIGHT, WHITE) == EnginePiece::WKNIGHT,
+              "make_piece KNIGHT,WHITE -> WKNIGHT");
+static_assert(make_piece<EnginePiece>(BISHOP, WHITE) == EnginePiece::WBISHOP,
+              "make_piece BISHOP,WHITE -> WBISHOP");
+static_assert(make_piece<EnginePiece>(ROOK, WHITE) == EnginePiece::WROOK,
+              "make_piece ROOK,WHITE -> WROOK");
+static_assert(make_piece<EnginePiece>(QUEEN, WHITE) == EnginePiece::WQUEEN,
+              "make_piece QUEEN,WHITE -> WQUEEN");
+static_assert(make_piece<EnginePiece>(KING, WHITE) == EnginePiece::WKING,
+              "make_piece KING,WHITE -> WKING");
+
+// --------- Round-trip consistency ----------
+static_assert(piece_of(make_piece<EnginePiece>(PAWN, WHITE)) == PAWN,
+              "Round-trip piece PAWN,WHITE");
+static_assert(piece_of(make_piece<EnginePiece>(KNIGHT, WHITE)) == KNIGHT,
+              "Round-trip piece KNIGHT,WHITE");
+static_assert(piece_of(make_piece<EnginePiece>(BISHOP, WHITE)) == BISHOP,
+              "Round-trip piece BISHOP,WHITE");
+static_assert(piece_of(make_piece<EnginePiece>(ROOK, WHITE)) == ROOK,
+              "Round-trip piece ROOK,WHITE");
+static_assert(piece_of(make_piece<EnginePiece>(QUEEN, WHITE)) == QUEEN,
+              "Round-trip piece ROOK,WHITE");
+static_assert(piece_of(make_piece<EnginePiece>(KING, WHITE)) == KING,
+              "Round-trip piece ROOK,WHITE");
+
+static_assert(piece_of(make_piece<EnginePiece>(PAWN, BLACK)) == PAWN,
+              "Round-trip piece PAWN,BLACK");
+static_assert(piece_of(make_piece<EnginePiece>(KNIGHT, BLACK)) == KNIGHT,
+              "Round-trip piece KNIGHT,BLACK");
+static_assert(piece_of(make_piece<EnginePiece>(BISHOP, BLACK)) == BISHOP,
+              "Round-trip piece BISHOP,BLACK");
+static_assert(piece_of(make_piece<EnginePiece>(ROOK, BLACK)) == ROOK,
+              "Round-trip piece ROOK,BLACK");
+static_assert(piece_of(make_piece<EnginePiece>(QUEEN, BLACK)) == QUEEN,
+              "Round-trip piece ROOK,BLACK");
+static_assert(piece_of(make_piece<EnginePiece>(KING, BLACK)) == KING,
+              "Round-trip piece ROOK,BLACK");
+static_assert(make_sq(RANK_1, FILE_A) == SQ_A1);
+static_assert(make_sq(RANK_8, FILE_A) == SQ_A8);
+static_assert(make_sq(RANK_1, FILE_H) == SQ_H1);
+static_assert(file_of(SQ_H7) == FILE_H);
+static_assert(rank_of(SQ_C3) == RANK_3);
 #if defined(NDEBUG) || !defined(_DEBUG)
 #define IS_RELEASE 1
 #else
@@ -17,6 +195,14 @@ template <typename T, MoveGenType mt, bool EnableDiv = false>
 uint64_t perft(_Position<T> &pos, int depth) {
     if (depth == 0) {
         return 1;
+    } else if (depth == 1) {
+        Movelist moves;
+        pos.template legals<mt>(moves);
+        if constexpr (EnableDiv)
+            for (const Move &m : moves) {
+                std::cout << m << ": 1\n";
+            }
+        return moves.size();
     } else {
         Movelist moves;
         pos.template legals<mt>(moves);
@@ -39,12 +225,30 @@ uint64_t perft(_Position<T> &pos, int depth) {
         return total;
     }
 }
-template <typename T, MoveGenType mt = MoveGenType::ALL, bool EnableDiv=false>
+template <MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false>
 void check_perfts(const std::vector<TestEntry> &entries) {
+    uint64_t nodes = 0;
+    double elapsed = 0;
+    using namespace std::chrono;
     for (auto &entry : entries) {
-        _Position<T> pos(entry.FEN);
-        REQUIRE(perft<T, mt, EnableDiv>(pos, entry.depth) == entry.nodes);
+        _Position<PolyglotPiece> pos(entry.FEN);
+        auto start_time = high_resolution_clock::now();
+        REQUIRE(perft<PolyglotPiece, mt, EnableDiv>(pos, entry.depth) == entry.nodes);
+        auto end_time = high_resolution_clock::now();
+        elapsed += duration<double>(end_time - start_time).count();
+        nodes += entry.nodes;
     }
+    for (auto &entry : entries) {
+        _Position<EnginePiece> pos(entry.FEN);
+        auto start_time = high_resolution_clock::now();
+        REQUIRE(perft<EnginePiece, mt, EnableDiv>(pos, entry.depth) == entry.nodes);
+        auto end_time = high_resolution_clock::now();
+        elapsed += duration<double>(end_time - start_time).count();
+        nodes += entry.nodes;
+    }
+
+    double mnps = (nodes / elapsed) / 1'000'000.0;
+    std::cout << "Speed: " << mnps << "Mnps\n";
 }
 TEST_CASE("Castling move making FEN rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8") {
     std::string fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
@@ -147,48 +351,44 @@ TEST_CASE("Perft startpos") {
         {   "rnbqkbnr/pp1ppppp/2p5/8/8/3P4/PPPKPPPP/RNBQ1BNR b kq - 1 2", 2,       463 },
         {  "rnb1kbnr/pp1ppppp/2p5/q7/8/3P4/PPPKPPPP/RNBQ1BNR w kq - 2 3", 1,         4 }
     };
-    check_perfts<EnginePiece>(tests);
-    check_perfts<PolyglotPiece>(tests);
+    check_perfts(tests);
 }
 TEST_CASE("Perft 7k/8/8/8/1p6/8/PP6/6K1 w - - 0 1") {
     std::vector<TestEntry> tests = {
-        { "7k/8/8/8/1p6/8/PP6/6K1 w - - 0 1", 1, 8 },
-        { "7k/8/8/8/1p6/8/PP6/6K1 w - - 0 1", 2, 33 },
-        { "7k/8/8/8/1p6/8/PP6/6K1 w - - 0 1", 3, 270 },
-        { "7k/8/8/8/1p6/P7/1P6/6K1 b - - 0 1", 2, 38},
-        { "7k/8/8/8/8/p7/1P6/6K1 w - - 0 2", 1, 8 },
-        { "7k/8/8/8/8/p7/1P6/6K1 w - - 0 2", 2, 36 },
-        { "7k/8/8/8/1p6/P7/1P6/6K1 b - - 0 1" , 3, 234},
-        { "7k/8/8/8/8/pP6/8/6K1 b - - 0 2", 1, 4 },
-        { "7k/8/8/8/1p6/8/PP6/6K1 w - - 0 1", 4, 1664 },
-        { "7k/8/8/8/1p6/8/PP6/6K1 w - - 0 1", 5, 13931 },
-        { "7k/8/8/8/1p6/8/PP6/6K1 w - - 0 1", 6, 94162 }
+        {  "7k/8/8/8/1p6/8/PP6/6K1 w - - 0 1", 1,     8 },
+        {  "7k/8/8/8/1p6/8/PP6/6K1 w - - 0 1", 2,    33 },
+        {  "7k/8/8/8/1p6/8/PP6/6K1 w - - 0 1", 3,   270 },
+        { "7k/8/8/8/1p6/P7/1P6/6K1 b - - 0 1", 2,    38 },
+        {   "7k/8/8/8/8/p7/1P6/6K1 w - - 0 2", 1,     8 },
+        {   "7k/8/8/8/8/p7/1P6/6K1 w - - 0 2", 2,    36 },
+        { "7k/8/8/8/1p6/P7/1P6/6K1 b - - 0 1", 3,   234 },
+        {    "7k/8/8/8/8/pP6/8/6K1 b - - 0 2", 1,     4 },
+        {  "7k/8/8/8/1p6/8/PP6/6K1 w - - 0 1", 4,  1664 },
+        {  "7k/8/8/8/1p6/8/PP6/6K1 w - - 0 1", 5, 13931 },
+        {  "7k/8/8/8/1p6/8/PP6/6K1 w - - 0 1", 6, 94162 }
     };
-    check_perfts<EnginePiece>(tests);
-    check_perfts<PolyglotPiece>(tests);
+    check_perfts(tests);
 }
 TEST_CASE("Massive legal counts") {
     {
         std::vector<TestEntry> tests = {
-            { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 1, 216 },
-            { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 2, 95 },
-            { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 3, 18138 },
-            { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 4, 80766},
+            { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 1,      216 },
+            { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 2,       95 },
+            { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 3,    18138 },
+            { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 4,    80766 },
 #if IS_RELEASE
-            { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 5, 11649711}
+            { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 5, 11649711 }
 #endif
         };
-        check_perfts<EnginePiece>(tests);
-        check_perfts<PolyglotPiece>(tests);
+        check_perfts(tests);
     }
 }
 TEST_CASE("EP 8/2p5/3p4/KP3k1r/2R1Pp2/6P1/8/8 b - e3 0 1") {
     std::vector<TestEntry> tests = {
-        { "8/2p5/3p4/KP3k1r/2R1Pp2/6P1/8/8 b - e3 0 1", 1, 7},
-        { "8/2p5/3p4/KP3k1r/2R1Pp2/6P1/8/8 b - e3 0 1", 2, 108}
+        { "8/2p5/3p4/KP3k1r/2R1Pp2/6P1/8/8 b - e3 0 1", 1,   7 },
+        { "8/2p5/3p4/KP3k1r/2R1Pp2/6P1/8/8 b - e3 0 1", 2, 108 }
     };
-    check_perfts<EnginePiece>(tests);
-    check_perfts<PolyglotPiece>(tests);
+    check_perfts(tests);
 }
 TEST_CASE("kiwipete") {
     std::vector<TestEntry> tests = {
@@ -208,66 +408,61 @@ TEST_CASE("kiwipete") {
         {       "r3k2r/p1ppqpb1/bn2pnp1/3PN3/4P3/P4Q1p/RPPpBPPP/4K2R w Kkq - 0 3", 1,         3 }
     };
 
-    check_perfts<EnginePiece>(tests);
-    check_perfts<PolyglotPiece>(tests);
+    check_perfts(tests);
 }
 TEST_CASE("P[3] (chessprogramming)") {
     std::vector<TestEntry> tests = {
-        {  "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 1, 14 },
-        {  "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 2, 191 },
-        {  "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 3, 2812 },
-        {  "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 4, 43238 },
-        {  "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 5, 674624 },
-        {  "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 6, 11030083 }
+        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 1,       14 },
+        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 2,      191 },
+        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 3,     2812 },
+        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 4,    43238 },
+        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 5,   674624 },
+        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 6, 11030083 }
     };
-    check_perfts<EnginePiece>(tests);
-    check_perfts<PolyglotPiece>(tests);
+    check_perfts(tests);
 }
 TEST_CASE("P[4] (normal) (chessprogramming)") {
     std::vector<TestEntry> tests = {
-        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 1,         6 },
-        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 2,       264 },
-        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 3,      9467 },
-        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 4,    422333 },
+        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 1,        6 },
+        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 2,      264 },
+        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 3,     9467 },
+        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 4,   422333 },
 #if IS_RELEASE
-        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 5,  15833292 },
+        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 5, 15833292 },
         //{ "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 6, 706045033 },
-        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P1RPP/R2Q2K1 b kq - 1 1", 4,   2703427 },
+        { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P1RPP/R2Q2K1 b kq - 1 1", 4,  2703427 },
 #endif
-        {  "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/5q2/Pp1P1RPP/R2Q2K1 w kq - 0 2", 3,     58801 },
-        {  "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/5q2/Pp1P1RPP/R2Q1K2 b kq - 1 2", 2,      1732 },
-        {  "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/5q2/P2P1RPP/Rq1Q1K2 w kq - 0 3", 1,        30 },
-        {    "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/8/Pp1P1RPP/R2q1K2 w kq - 0 3", 1,         2 }
+        {  "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/5q2/Pp1P1RPP/R2Q2K1 w kq - 0 2", 3,    58801 },
+        {  "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/5q2/Pp1P1RPP/R2Q1K2 b kq - 1 2", 2,     1732 },
+        {  "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/5q2/P2P1RPP/Rq1Q1K2 w kq - 0 3", 1,       30 },
+        {    "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/8/Pp1P1RPP/R2q1K2 w kq - 0 3", 1,        2 }
     };
-    check_perfts<EnginePiece>(tests);
-    check_perfts<PolyglotPiece>(tests);
+    check_perfts(tests);
 }
 TEST_CASE("P[4] (mirrored) (chessprogramming)") {
     std::vector<TestEntry> tests = {
-        { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 1,         6 },
-        { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 2,       264 },
-        { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 3,      9467 },
-        { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 4,    422333 },
+        { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 1,        6 },
+        { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 2,      264 },
+        { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 3,     9467 },
+        { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 4,   422333 },
 #if IS_RELEASE
-        { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 5,  15833292 },
-        //{ "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 6, 706045033 }
+        { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 5, 15833292 },
+    //{ "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 6, 706045033 }
 #endif
     };
-    check_perfts<EnginePiece>(tests);
-    check_perfts<PolyglotPiece>(tests);
+    check_perfts(tests);
 }
 TEST_CASE("P[5] (chessprogramming)") {
     std::vector<TestEntry> tests = {
-        { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 1,        44 },
-        { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 2,      1486 },
-        { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 3,     62379 },
+        { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 1,       44 },
+        { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 2,     1486 },
+        { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 3,    62379 },
 #if IS_RELEASE
-        { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 4,   2103487 },
-        { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 5,  89941194 }
+        { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 4,  2103487 },
+        { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 5, 89941194 }
 #endif
     };
-    check_perfts<EnginePiece>(tests);
-    check_perfts<PolyglotPiece>(tests);
+    check_perfts(tests);
 }
 TEST_CASE("P[6] (chessprogramming)") {
     std::vector<TestEntry> tests = {
@@ -279,8 +474,7 @@ TEST_CASE("P[6] (chessprogramming)") {
         { "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", 5, 164075551 }
 #endif
     };
-    check_perfts<EnginePiece>(tests);
-    check_perfts<PolyglotPiece>(tests);
+    check_perfts(tests);
 }
 TEST_CASE("Promotion") {
     std::vector<TestEntry> tests = {
@@ -292,12 +486,11 @@ TEST_CASE("Promotion") {
         { "7K/5kP1/8/8/8/8/8/8 w - - 0 1", 6,     63994 },
         { "7K/5kP1/8/8/8/8/8/8 w - - 0 1", 7,   1109712 },
         { "7K/5kP1/8/8/8/8/8/8 w - - 0 1", 8,   5763773 },
-        #if IS_RELEASE
+#if IS_RELEASE
         { "7K/5kP1/8/8/8/8/8/8 w - - 0 1", 9, 109424670 }
-        #endif
+#endif
     };
-    check_perfts<EnginePiece>(tests);
-    check_perfts<PolyglotPiece>(tests);
+    check_perfts(tests);
 }
 TEST_CASE("Minor position test perft") {
     // https://www.chessprogramming.net/perfect-perft/
@@ -316,8 +509,7 @@ TEST_CASE("Minor position test perft") {
         {            "8/k1P5/8/1K6/8/8/8/8 w - - 0 1", 7,  567584 },
         {         "8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1", 4,   23527 }
     };
-    check_perfts<EnginePiece>(tests);
-    check_perfts<PolyglotPiece>(tests);
+    check_perfts(tests);
 }
 TEST_CASE("Random position perfts") {
     std::vector<TestEntry> positions = {
@@ -389,8 +581,7 @@ TEST_CASE("Random position perfts") {
         {                                    "2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 5,  1189238 },
         {                    "2K2q1q/2n4n/3qb3/1r2qq2/5n2/k4n2/r5Q1/1q6 w - - 0 1", 1,        0 }  // checkmate
     };
-    check_perfts<EnginePiece>(positions);
-    check_perfts<PolyglotPiece>(positions);
+    check_perfts(positions);
 }
 TEST_CASE("Experienced bugs in this repo") {
     std::vector<TestEntry> positions = {
@@ -398,8 +589,7 @@ TEST_CASE("Experienced bugs in this repo") {
         { "rnbqkbnr/1p2pppp/p7/2Pp4/8/8/PPPKPPPP/RNBQ1BNR w kq d6 0 4", 2,   701 },
         { "rnbqkbnr/1p2pppp/p7/2Pp4/8/8/PPPKPPPP/RNBQ1BNR w kq d6 0 4", 3, 17762 }
     };
-    check_perfts<EnginePiece>(positions);
-    check_perfts<PolyglotPiece>(positions);
+    check_perfts(positions);
     {
         Position p("rnbqkbnr/pp1p1ppp/8/2pPp3/8/8/PPP1PPPP/RNBQKBNR w KQkq e6 0 3");
         REQUIRE(p.zobrist() == p.hash());
@@ -428,15 +618,23 @@ TEST_CASE("Experienced bugs in this repo") {
 TEST_CASE("Captures only?") {
     std::vector<TestEntry> tests = {
         { "rn1qkbnr/ppp1pppp/3p4/6B1/6b1/3P4/PPP1PPPP/RN1QKBNR w KQkq - 2 3", 17, 6732 },
-        { "rn1qkbnr/ppp1pppp/3p4/6B1/6b1/3P4/PPP1PPPP/RN1QKBNR w KQkq - 2 3", 30, 360 },
-        { "2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 1, 1 }
+        { "rn1qkbnr/ppp1pppp/3p4/6B1/6b1/3P4/PPP1PPPP/RN1QKBNR w KQkq - 2 3", 30,  360 },
+        {                              "2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1",  1,    1 }
     };
-    check_perfts<EnginePiece, MoveGenType::CAPTURE>(tests);
+    check_perfts<MoveGenType::CAPTURE>(tests);
+}
+TEST_CASE("chess::Move") {
+    Move t1(SQ_A2, SQ_A4);
+    std::string uci_t1 = chess::uci::moveToUci(t1);
+    REQUIRE(uci_t1 == "a2a4");
+    Move t2 = Move::make<PROMOTION>(SQ_A2, SQ_A1);
+    std::string uci_t2 = chess::uci::moveToUci(t2);
+    REQUIRE(uci_t2 == "a2a1n");
+    REQUIRE(t2.promotion_type() == KNIGHT);
 }
 int main(int argc, char **argv) {
     doctest::Context ctx;
     ctx.setOption("success", true);
-    ctx.setOption("duration", true);
     ctx.setOption("no-breaks", true);
     return ctx.run();
 }
