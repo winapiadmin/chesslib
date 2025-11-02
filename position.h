@@ -46,6 +46,83 @@ template <typename Piece> struct HistoryEntry {
     // implementation-specific implementations goes here
 };
 #pragma pack(pop)
+template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
+  public:
+    using size_type = std::size_t;
+    inline HeapAllocatedValueList() {
+        values_ = reinterpret_cast<T *>(calloc(MaxSize, sizeof(T)));
+        assert(values_);
+    }
+    inline ~HeapAllocatedValueList() { free(values_); }
+
+    HeapAllocatedValueList(const HeapAllocatedValueList &other) : size_(other.size_) {
+        values_ = reinterpret_cast<T *>(calloc(MaxSize, sizeof(T)));
+        assert(values_);
+        std::copy(other.values_, other.values_ + size_, values_);
+    }
+
+    HeapAllocatedValueList &operator=(const HeapAllocatedValueList &other) {
+        if (this != &other) {
+            // Allocate new memory and copy
+            T *new_values = reinterpret_cast<T *>(calloc(MaxSize, sizeof(T)));
+            assert(new_values);
+            std::copy(other.values_, other.values_ + other.size_, new_values);
+
+            // Free old memory
+            free(values_);
+
+            // Assign new data
+            values_ = new_values;
+            size_ = other.size_;
+        }
+        return *this;
+    }
+
+    HeapAllocatedValueList(HeapAllocatedValueList &&other) noexcept : size_(other.size_) {
+        values_ = reinterpret_cast<T *>(calloc(MaxSize, sizeof(T)));
+        assert(values_);
+        std::copy(other.values_, other.values_ + size_, values_);
+    }
+
+    HeapAllocatedValueList &operator=(HeapAllocatedValueList &&other) noexcept {
+        if (this != &other) {
+            free(values_);
+            values_ = reinterpret_cast<T *>(calloc(MaxSize, sizeof(T)));
+            assert(values_);
+            std::copy(other.values_, other.values_ + size_, values_);
+        }
+        return *this;
+    }
+    inline size_type size() const { return size_; }
+
+    inline void push_back(const T &value) {
+        assert(size_ < MaxSize);
+
+        values_[size_++] = value;
+    }
+    inline void clear() { size_ = 0; }
+    inline T pop() {
+        assert(size_ > 0);
+        return values_[--size_]; // always safe due to mask
+    }
+
+    inline void pop_back() { size_ -= (size_ > 0) ? 1 : 0; }
+
+    inline T front() const { return (size_ > 0) ? values_[0] : T{}; }
+
+    inline T &operator[](int index) {
+        assert(index < MaxSize); // relax the conditions, it's BRANCHLESS so forgive
+        size_type i = static_cast<size_type>(index);
+        return values_[i];
+    }
+
+    inline const T *begin() const { return values_; }
+    inline const T *end() const { return values_ + size_; }
+    size_type size_ = 0;
+
+  private:
+    T *values_;
+};
 enum class MoveGenType : uint8_t { ALL, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, CAPTURE };
 template <typename PieceC = EnginePiece,
           typename = std::enable_if_t<std::is_same_v<PieceC, EnginePiece> ||
@@ -314,7 +391,9 @@ class _Position {
     CastlingRights castlingRights() const { return current_state.castlingRights; }
     inline const HistoryEntry<PieceC> &state() const { return current_state; }
     uint64_t zobrist() const;
-
+    inline PieceC piece_at(Square sq) const { return piece_on(sq); }
+    inline PieceC at(Square sq) const { return piece_at(sq); }
+    inline Square enpassantSq() const { return ep_square(); }
   private:
     template <PieceType pt> [[nodiscard]] inline Bitboard pinMask(Color c, Square sq) const {
         static_assert(pt == BISHOP || pt == ROOK, "Only bishop or rook allowed!");
@@ -380,10 +459,8 @@ class _Position {
         }
         refresh_attacks();
     }
-    Move parse_uci(const std::string &) const;
-    Move push_uci(const std::string &) const;
+    Move parse_uci(std::string) const;
+    Move push_uci(std::string);
 };
-template <typename PieceC = EnginePiece>
-std::ostream &operator<<(std::ostream &os, const _Position<PieceC> &pos);
 using Position = _Position<EnginePiece>; // for some fun because I HATE HARDCODING
 }; // namespace chess

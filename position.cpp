@@ -1,7 +1,5 @@
 #include "position.h"
 #include "moves_io.h"
-#include <functional>
-#include <iomanip>
 #include <sstream>
 #ifndef GENERATE_AT_RUNTIME
 #define _POSSIBLY_CONSTEXPR constexpr
@@ -9,6 +7,7 @@
 #define _POSSIBLY_CONSTEXPR const
 #endif
 namespace chess {
+
 static _POSSIBLY_CONSTEXPR CastlingRights make_clear_mask(Color c, PieceType pt, Square sq) {
     if (pt == KING) {
         if (c == WHITE && sq == SQ_E1)
@@ -40,44 +39,6 @@ static _POSSIBLY_CONSTEXPR auto make_castle_masks() {
 }
 static _POSSIBLY_CONSTEXPR auto clearCastleMask = make_castle_masks();
 
-template <typename PieceC>
-std::ostream &operator<<(std::ostream &os, const _Position<PieceC> &pos) {
-    // RAII guard to save/restore stream state
-    struct ios_guard {
-        std::ostream &strm;
-        std::ios::fmtflags flags;
-        std::streamsize prec;
-        std::ostream::char_type fill;
-        ios_guard(std::ostream &s)
-            : strm(s), flags(s.flags()), prec(s.precision()), fill(s.fill()) {}
-        ~ios_guard() {
-            strm.flags(flags);
-            strm.precision(prec);
-            strm.fill(fill);
-        }
-    } guard(os);
-
-    constexpr std::string_view EnginePieceToChar(" PNBRQK  pnbrqk ");
-    constexpr std::string_view PolyglotPieceToChar("PNBRQKpnbrqk ");
-    constexpr std::string_view PieceToChar =
-        std::is_same_v<PieceC, EnginePiece> ? EnginePieceToChar : PolyglotPieceToChar;
-
-    os << "\n +---+---+---+---+---+---+---+---+\n";
-
-    for (Rank r = RANK_8; r >= RANK_1; --r) {
-        for (File f = FILE_A; f <= FILE_H; ++f)
-            os << " | " << PieceToChar[static_cast<size_t>(pos.piece_on(make_sq(r, f)))];
-
-        os << " | " << (1 + r) << "\n +---+---+---+---+---+---+---+---+\n";
-    }
-    os << "   a   b   c   d   e   f   g   h\n";
-
-    // Ensure key is printed in hex, but restores after this function
-    os << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase << std::setfill('0')
-       << std::setw(16) << pos.key() << '\n';
-
-    return os;
-}
 template <typename PieceC, typename T>
 template <Color c>
 void _Position<PieceC, T>::genEP(Movelist &ep_moves) const {
@@ -145,10 +106,10 @@ void _Position<PieceC, T>::genPawnSingleMoves(Movelist &moves) const {
             Square to = Square(pop_lsb(promo_targets));
             Square from = Square(to - UP);
 
-            moves.push_back(Move::make<PROMOTION, KNIGHT>(from, to));
-            moves.push_back(Move::make<PROMOTION, BISHOP>(from, to));
-            moves.push_back(Move::make<PROMOTION, ROOK>(from, to));
-            moves.push_back(Move::make<PROMOTION, QUEEN>(from, to));
+            moves.push_back(Move::make<PROMOTION>(from, to, KNIGHT));
+            moves.push_back(Move::make<PROMOTION>(from, to, BISHOP));
+            moves.push_back(Move::make<PROMOTION>(from, to, ROOK));
+            moves.push_back(Move::make<PROMOTION>(from, to, QUEEN));
         }
 
         while (non_promo_targets) {
@@ -174,10 +135,10 @@ void _Position<PieceC, T>::genPawnSingleMoves(Movelist &moves) const {
         // skip if pinned but capture not along pin ray
         if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb ||
                                       (move_bb & current_state._rook_pin) == move_bb))) {
-            moves.push_back(Move::make<PROMOTION, KNIGHT>(from, to));
-            moves.push_back(Move::make<PROMOTION, BISHOP>(from, to));
-            moves.push_back(Move::make<PROMOTION, ROOK>(from, to));
-            moves.push_back(Move::make<PROMOTION, QUEEN>(from, to));
+            moves.push_back(Move::make<PROMOTION>(from, to, KNIGHT));
+            moves.push_back(Move::make<PROMOTION>(from, to, BISHOP));
+            moves.push_back(Move::make<PROMOTION>(from, to, ROOK));
+            moves.push_back(Move::make<PROMOTION>(from, to, QUEEN));
         }
     }
 
@@ -208,10 +169,10 @@ void _Position<PieceC, T>::genPawnSingleMoves(Movelist &moves) const {
 
         if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb ||
                                       (move_bb & current_state._rook_pin) == move_bb))) {
-            moves.push_back(Move::make<PROMOTION, KNIGHT>(from, to));
-            moves.push_back(Move::make<PROMOTION, BISHOP>(from, to));
-            moves.push_back(Move::make<PROMOTION, ROOK>(from, to));
-            moves.push_back(Move::make<PROMOTION, QUEEN>(from, to));
+            moves.push_back(Move::make<PROMOTION>(from, to, KNIGHT));
+            moves.push_back(Move::make<PROMOTION>(from, to, BISHOP));
+            moves.push_back(Move::make<PROMOTION>(from, to, ROOK));
+            moves.push_back(Move::make<PROMOTION>(from, to, QUEEN));
         }
     }
 
@@ -355,8 +316,14 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::doMove(const M
     history.push_back(current_state);
     current_state.mv = move; // Update the move in the current state
 #if defined(_DEBUG) || !defined(NDEBUG)
+    assert(target_piecetype != KING && "NO WAY");
+    assert(moving_piecetype != NO_PIECE_TYPE && "Expected a piece to move?");
+#endif
+#if defined(__EXCEPTIONS) && (defined(_DEBUG) || !defined(NDEBUG))
     if (target_piecetype == KING)
         throw std::invalid_argument("NO WAY");
+    if (moving_piecetype == NO_PIECE_TYPE)
+        throw std::invalid_argument("Expected a piece to move?");
 #endif
     removePiece(moving_piecetype, from_sq, us);
     {
@@ -444,7 +411,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::doMove(const M
 
 template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const std::string &str) {
     current_state = HistoryEntry<PieceC>();
-    history.size_ = 0;
+    history.clear();
     std::istringstream ss(str);
     std::string board_fen, active_color, castling, enpassant;
     int halfmove = 0, fullmove = 1;
@@ -459,7 +426,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
     {
         File f = FILE_A;
         Rank r = RANK_8;
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG) || defined(__EXCEPTIONS)
         int file_count = 0;
         int rank_count = 0;
 #endif
@@ -468,11 +435,14 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
             if (c == '/') {
 #if defined(_DEBUG) || !defined(NDEBUG)
                 assert(file_count == 8 && "Each rank must contain exactly 8 squares");
-                file_count = 0;
+#elif defined(__EXCEPTIONS)
+                if (file_count != 8)
+                    throw std::invalid_argument("Each rank must contain exactly 8 squares");
 #endif
                 f = FILE_A;
                 --r;
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG) || defined(__EXCEPTIONS)
+                file_count = 0;
                 ++rank_count;
 #endif
                 continue;
@@ -480,13 +450,20 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
 
             if (c >= '1' && c <= '8') {
                 int empty_squares = c - '0';
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG) || defined(__EXCEPTIONS)
                 file_count += empty_squares;
 #endif
                 f = static_cast<File>(static_cast<uint8_t>(f) + empty_squares);
             } else {
+#if defined(_DEBUG) || !defined(NDEBUG)
                 assert(file_count < 8 && "Too many pieces in one rank");
                 assert(is_valid(r, f) && "Invalid file/rank position");
+#elif defined(__EXCEPTIONS)
+                if (file_count >= 8)
+                    throw std::invalid_argument("Too many pieces in one rank");
+                if (!is_valid(r, f))
+                    throw std::invalid_argument("Invalid file/rank position");
+#endif
                 switch (c) {
                 case 'p':
                     placePiece<PAWN>(make_sq(r, f), BLACK);
@@ -525,10 +502,14 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                     placePiece<KING>(make_sq(r, f), WHITE);
                     break;
                 default:
+#if defined(_DEBUG) || !defined(NDEBUG)
                     assert(false && "Invalid FEN character");
+#else
+                    throw std::invalid_argument("Invalid FEN character");
+#endif
                 }
 
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG) || defined(__EXCEPTIONS)
                 ++file_count;
 #endif
                 f = static_cast<File>(static_cast<uint8_t>(f) + 1);
@@ -540,6 +521,12 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
         assert(file_count == 8 && "Last rank must have 8 squares");
         ++rank_count;
         assert(rank_count == 8 && "FEN must contain exactly 8 ranks");
+#elif defined(__EXCEPTIONS)
+        if (file_count != 8)
+            throw std::invalid_argument("Last rank must have 8 squares");
+        rank_count++;
+        if (rank_count != 8)
+            throw std::invalid_argument("FEN must contain exactly 8 ranks");
 #endif
     }
 
@@ -550,7 +537,11 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
     } else if (active_color == "b") {
         current_state.turn = BLACK;
     } else {
-        assert(false && "Well... Not white, not black, what color are you choosing");
+#if defined(_DEBUG) || !defined(NDEBUG)
+        assert(false && "Expected white or black, got something else.");
+#elif defined(__EXCEPTIONS)
+        throw std::invalid_argument("Expected white or black, got something else.");
+#endif
     }
 
     // 3. Castling rights
@@ -577,7 +568,12 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
         case '-':
             break;
         default:
-            assert(false && "You want Chess960? I didn't implement it, say goodbye!");
+#if defined(_DEBUG) || !defined(NDEBUG)
+            assert(false && "Invalid castling rights, this library doesn't support Chess960");
+#elif defined(__EXCEPTIONS)
+            throw std::invalid_argument(
+                "Invalid castling rights, this library doesn't support Chess960");
+#endif
             break;
         }
     }
@@ -599,7 +595,12 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
             current_state.epIncluded = true;
         }
     } else {
+#if defined(_DEBUG) || !defined(NDEBUG)
         assert(enpassant == "-" && "Invalid en passant FEN field");
+#else
+        if (enpassant != "-")
+            throw std::invalid_argument("Invalid en passant FEN field");
+#endif
         current_state.enPassant = SQ_NONE;
     }
 
@@ -777,6 +778,16 @@ void _Position<PieceC, T>::genSlidingMoves(Movelist &list) const {
 template <typename PieceC, typename T> _Position<PieceC, T>::_Position(std::string fen) {
     setFEN(fen);
 }
+
+template <typename PieceC, typename T> Move _Position<PieceC, T>::parse_uci(std::string uci) const {
+    return chess::uci::uciToMove(*this, uci);
+}
+
+template <typename PieceC, typename T> Move _Position<PieceC, T>::push_uci(std::string uci) {
+    auto mv=chess::uci::uciToMove(*this, uci);
+    doMove(mv);
+    return mv;
+}
 template void _Position<EnginePiece, void>::genEP<Color::WHITE>(Movelist &) const;
 template void _Position<EnginePiece, void>::genEP<Color::BLACK>(Movelist &) const;
 template void _Position<PolyglotPiece, void>::genEP<Color::WHITE>(Movelist &) const;
@@ -871,9 +882,6 @@ _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, QUEEN, true>(Movel
 template void
 _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, QUEEN, true>(Movelist &) const;
 
-template std::ostream &operator<<(std::ostream &, const _Position<EnginePiece> &);
-template std::ostream &operator<<(std::ostream &, const _Position<PolyglotPiece> &);
-
 template _Position<EnginePiece, void>::_Position(std::string);
 template _Position<PolyglotPiece, void>::_Position(std::string);
 template void _Position<EnginePiece, void>::setFEN(const std::string &);
@@ -886,4 +894,8 @@ template void _Position<EnginePiece, void>::refresh_attacks();
 template void _Position<PolyglotPiece, void>::refresh_attacks();
 template uint64_t _Position<EnginePiece, void>::zobrist() const;
 template uint64_t _Position<PolyglotPiece, void>::zobrist() const;
+template Move _Position<EnginePiece, void>::parse_uci(std::string) const;
+template Move _Position<PolyglotPiece, void>::parse_uci(std::string) const;
+template Move _Position<EnginePiece, void>::push_uci(std::string);
+template Move _Position<PolyglotPiece, void>::push_uci(std::string);
 } // namespace chess

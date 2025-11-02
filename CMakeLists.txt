@@ -27,7 +27,8 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options(-fconstexpr-ops-limit=2000000000 -fconstexpr-depth=1024 -march=native -mtune=native -ftemplate-backtrace-limit=0)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  add_compile_options(/constexpr:steps2000000000 /constexpr:depth1024 /arch:AVX) # I'll assume everybody has this since this is 2025.
+  set(ARCH_FLAG "/arch:AVX2" CACHE STRING "MSVC architecture flag (/arch:SSE2, /arch:AVX, /arch:AVX2, /arch:AVX512)")
+  add_compile_options(/constexpr:steps2000000000 /constexpr:depth1024 ${ARCH_FLAG}) # I'll assume everybody has this since this is 2025.
 endif()
 
 add_compile_definitions(GENERATE_AT_RUNTIME)
@@ -39,7 +40,7 @@ set(SOURCES
     position.cpp
     attacks.cpp
     zobrist.h
- "moves_io.cpp")
+ "moves_io.cpp" "printers.cpp" "printers.h")
 add_library(chesslib STATIC ${SOURCES})
 target_include_directories(chesslib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_executable(perft_tt examples/perft_with_tt.cpp)

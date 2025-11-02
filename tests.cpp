@@ -1,6 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT
 #include "moves_io.h"
 #include "position.h"
+#include "printers.h"
 #include <chrono>
 #include <doctest/doctest.h>
 using namespace chess;
@@ -175,11 +176,11 @@ static_assert(piece_of(make_piece<EnginePiece>(QUEEN, BLACK)) == QUEEN,
               "Round-trip piece ROOK,BLACK");
 static_assert(piece_of(make_piece<EnginePiece>(KING, BLACK)) == KING,
               "Round-trip piece ROOK,BLACK");
-static_assert(make_sq(RANK_1, FILE_A) == SQ_A1);
-static_assert(make_sq(RANK_8, FILE_A) == SQ_A8);
-static_assert(make_sq(RANK_1, FILE_H) == SQ_H1);
-static_assert(file_of(SQ_H7) == FILE_H);
-static_assert(rank_of(SQ_C3) == RANK_3);
+static_assert(make_sq(RANK_1, FILE_A) == SQ_A1, "incorrect indexing");
+static_assert(make_sq(RANK_8, FILE_A) == SQ_A8, "incorrect indexing");
+static_assert(make_sq(RANK_1, FILE_H) == SQ_H1, "incorrect indexing");
+static_assert(file_of(SQ_H7) == FILE_H, "incorrect indexing");
+static_assert(rank_of(SQ_C3) == RANK_3, "incorrect indexing");
 #if defined(NDEBUG) || !defined(_DEBUG)
 #define IS_RELEASE 1
 #else
@@ -623,7 +624,7 @@ TEST_CASE("Captures only?") {
     };
     check_perfts<MoveGenType::CAPTURE>(tests);
 }
-TEST_CASE("chess::Move") {
+TEST_CASE("moveToUci") {
     Move t1(SQ_A2, SQ_A4);
     std::string uci_t1 = chess::uci::moveToUci(t1);
     REQUIRE(uci_t1 == "a2a4");
@@ -634,6 +635,11 @@ TEST_CASE("chess::Move") {
     Move t3 = Move::make<CASTLING>(SQ_E1, SQ_A1);
     std::string uci_t3 = chess::uci::moveToUci(t3);
     REQUIRE(uci_t3 == "e1c1");
+}
+TEST_CASE("push_uci/parse_uci") { Position p;
+    REQUIRE(p.parse_uci("e2e4")==Move(SQ_E2, SQ_E4));
+    p.setFEN("rn1qkbnr/pP1ppppp/8/1b6/8/8/PPP1PPPP/RNBQKBNR w KQkq - 1 5");
+    REQUIRE(p.parse_uci("b7a8q") == Move::make<PROMOTION>(SQ_B7, SQ_A8, QUEEN));
 }
 int main(int argc, char **argv) {
     doctest::Context ctx;

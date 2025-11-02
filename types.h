@@ -152,12 +152,10 @@ constexpr Rank rank_of(Square s) {
     return Rank(s >> 3);
 }
 constexpr Square make_sq(Rank r, File f) {
-    // compile error if the user passes File,Rank instead of Rank,File (hehehehe)
     ASSUME(0 <= r && r <= 7 && 0 <= f && f <= 7);
     return static_cast<Square>(static_cast<uint8_t>(r * 8 + f));
 }
 constexpr Square make_sq(File f, Rank r) {
-    // compile error if the user passes File,Rank instead of Rank,File (hehehehe)
     ASSUME(0 <= r && r <= 7 && 0 <= f && f <= 7);
     return static_cast<Square>(static_cast<uint8_t>(r * 8 + f));
 }
@@ -326,7 +324,6 @@ inline CastlingRights operator~(CastlingRights a) {
 }
 
 enum MoveType { NORMAL, PROMOTION = 1 << 14, EN_PASSANT = 2 << 14, CASTLING = 3 << 14 };
-
 // A move needs 16 bits to be stored
 //
 // bit  0- 5: destination square (from 0 to 63)
@@ -341,13 +338,13 @@ enum MoveType { NORMAL, PROMOTION = 1 << 14, EN_PASSANT = 2 << 14, CASTLING = 3 
 class Move {
   public:
     Move() = default;
-    constexpr explicit Move(std::uint16_t d) : data(d) {}
+    constexpr Move(std::uint16_t d) : data(d) {}
 
     constexpr Move(Square from, Square to)
         : data((static_cast<uint16_t>(from) << 6) | static_cast<int>(to)) {}
 
-    template <MoveType T, PieceType pt = PieceType::KNIGHT>
-    static constexpr Move make(Square from, Square to) {
+    template <MoveType T=NORMAL>
+    static constexpr Move make(Square from, Square to, PieceType pt = PieceType::KNIGHT) {
         return Move(
             static_cast<int>(T) |
             static_cast<int>((static_cast<int>(pt) - static_cast<int>(PieceType::KNIGHT)) << 12) |
@@ -364,14 +361,17 @@ class Move {
         return Square(data & 0x3F);
     }
 
+    constexpr Square from() const { return from_sq(); }
+    constexpr Square to() const { return to_sq(); }
     constexpr int from_to() const { return data & 0xFFF; }
 
     constexpr MoveType type_of() const { return MoveType(data & (3 << 14)); }
+    constexpr MoveType typeOf() const { return type_of(); }
 
     constexpr PieceType promotion_type() const {
         return static_cast<PieceType>(((data >> 12) & 3) + static_cast<int>(PieceType::KNIGHT));
     }
-
+    constexpr PieceType promotionType() const { return promotion_type() ;}
     constexpr bool is_ok() const { return none().data != data && null().data != data; }
 
     static constexpr Move null() { return Move(65); }
@@ -388,12 +388,16 @@ class Move {
         std::size_t operator()(const Move &m) const { return m.data; }
     };
     std::string uci() const;
-
+    static constexpr std::uint16_t NO_MOVE = 0;
+    static constexpr std::uint16_t NULL_MOVE = 65;
+    static constexpr MoveType NORMAL=MoveType::NORMAL;
+    static constexpr MoveType PROMOTION = MoveType::PROMOTION;
+    static constexpr MoveType ENPASSANT = MoveType::EN_PASSANT;
+    static constexpr MoveType CASTLING = MoveType::CASTLING;
   protected:
     std::uint16_t data;
 };
 
-std::ostream &operator<<(std::ostream &os, Move mv);
 template <typename T, typename... Ts> struct is_all_same {
     static constexpr bool value = (std::is_same_v<T, Ts> && ...);
 };
@@ -440,82 +444,22 @@ template <typename T, std::size_t MaxSize> class ValueList {
   private:
     T values_[MaxSize]{};
 };
-template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
-  public:
-    using size_type = std::size_t;
-    inline HeapAllocatedValueList() {
-        values_ = reinterpret_cast<T *>(calloc(MaxSize, sizeof(T)));
-        assert(values_);
-    }
-    inline ~HeapAllocatedValueList() { free(values_); }
 
-    HeapAllocatedValueList(const HeapAllocatedValueList &other) : size_(other.size_) {
-        values_ = reinterpret_cast<T *>(calloc(MaxSize, sizeof(T)));
-        assert(values_);
-        std::copy(other.values_, other.values_ + size_, values_);
-    }
-
-    HeapAllocatedValueList &operator=(const HeapAllocatedValueList &other) {
-        if (this != &other) {
-            // Allocate new memory and copy
-            T *new_values = reinterpret_cast<T *>(calloc(MaxSize, sizeof(T)));
-            assert(new_values);
-            std::copy(other.values_, other.values_ + other.size_, new_values);
-
-            // Free old memory
-            free(values_);
-
-            // Assign new data
-            values_ = new_values;
-            size_ = other.size_;
-        }
-        return *this;
-    }
-
-    HeapAllocatedValueList(HeapAllocatedValueList &&other) noexcept : size_(other.size_) {
-        values_ = reinterpret_cast<T *>(calloc(MaxSize, sizeof(T)));
-        assert(values_);
-        std::copy(other.values_, other.values_ + size_, values_);
-    }
-
-    HeapAllocatedValueList &operator=(HeapAllocatedValueList &&other) noexcept {
-        if (this != &other) {
-            free(values_);
-            values_ = reinterpret_cast<T *>(calloc(MaxSize, sizeof(T)));
-            assert(values_);
-            std::copy(other.values_, other.values_ + size_, values_);
-        }
-        return *this;
-    }
-    inline size_type size() const { return size_; }
-
-    inline void push_back(const T &value) {
-        assert(size_ < MaxSize);
-
-        values_[size_++] = value;
-    }
-
-    inline T pop() {
-        assert(size_ > 0);
-        return values_[--size_]; // always safe due to mask
-    }
-
-    inline void pop_back() { size_ -= (size_ > 0) ? 1 : 0; }
-
-    inline T front() const { return (size_ > 0) ? values_[0] : T{}; }
-
-    inline T &operator[](int index) {
-        assert(index < MaxSize); // relax the conditions, it's BRANCHLESS so forgive
-        size_type i = static_cast<size_type>(index);
-        return values_[i];
-    }
-
-    inline const T *begin() const { return values_; }
-    inline const T *end() const { return values_ + size_; }
-    size_type size_ = 0;
-
-  private:
-    T *values_;
-};
 using Movelist = ValueList<Move, 256>;
+constexpr int square_distance(Square a, Square b) {
+    return std::max(std::abs(file_of(a) - file_of(b)), std::abs(rank_of(a) - rank_of(b)));
+}
+constexpr Square parse_square(std::string_view sv) {
+    return make_sq(File(sv[0] - 'a'), Rank(sv[1] - '1'));
+}
+constexpr PieceType parse_pt(std::string_view sv) {
+    const char a[] = "pnbrqk";
+    int p = 0;
+    for (int i = 0; i < sizeof(a); i++) {
+        if (sv[0] == a[i])
+            p = i;
+    }
+    return static_cast<PieceType>(p + 1);
+}
+
 } // namespace chess
