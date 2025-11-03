@@ -407,7 +407,7 @@ class _Position {
 #ifndef __EXCEPTIONS
             assert(b && "Inconsistient piece map");
 #else
-            if (b) throw std::invalid_argument("Inconsistient piece map");
+            if (!b) throw std::invalid_argument("Inconsistient piece map");
 #endif
         }
         return p;
