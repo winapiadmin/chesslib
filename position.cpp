@@ -1,4 +1,5 @@
 #include "position.h"
+#include "position.h"
 #include "moves_io.h"
 #include <sstream>
 #ifndef GENERATE_AT_RUNTIME
@@ -687,6 +688,14 @@ template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen() c
 
     return fen;
 }
+template <typename PieceC, typename T> template <bool Strict> bool _Position<PieceC, T>::is_valid() const {
+    if (popcount(pieces<KING, WHITE>()) != 1)
+        return false;
+    if (popcount(pieces<KING, WHITE>()) != 1)
+        return false;
+    // not implemented
+    return false;
+}
 template <typename PieceC, typename T> void _Position<PieceC, T>::refresh_attacks() {
     Color c = sideToMove();
 
@@ -967,4 +976,8 @@ template Move _Position<EnginePiece, void>::parse_uci(std::string) const;
 template Move _Position<PolyglotPiece, void>::parse_uci(std::string) const;
 template Move _Position<EnginePiece, void>::push_uci(std::string);
 template Move _Position<PolyglotPiece, void>::push_uci(std::string);
+template bool _Position<EnginePiece, void>::is_valid<false>() const;
+template bool _Position<PolyglotPiece, void>::is_valid<false>() const;
+template bool _Position<EnginePiece, void>::is_valid<true>() const;
+template bool _Position<PolyglotPiece, void>::is_valid<true>() const;
 } // namespace chess

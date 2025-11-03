@@ -480,6 +480,8 @@ class _Position {
         }
         return !!b;
     }
+    template <bool Strict=false>
+    bool is_valid() const;
   private:
     template <PieceType pt> [[nodiscard]] inline Bitboard pinMask(Color c, Square sq) const {
         static_assert(pt == BISHOP || pt == ROOK, "Only bishop or rook allowed!");

@@ -3,6 +3,7 @@
 #include "types.h"
 #include <iostream>
 #include <string_view>
+#include <algorithm>
 namespace chess {
 namespace uci {
 std::string squareToString(Square sq) {
