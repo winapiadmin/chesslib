@@ -109,7 +109,17 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
 
         return Move::make<PROMOTION>(source, target, parse_pt(uci.substr(4, 1)));
     }
-    return (uci.length() == 4) ? Move::make(source, target) : Move::NO_MOVE;
+    auto move= (uci.length() == 4) ? Move::make(source, target) : Move::NO_MOVE;
+    Movelist moves;
+    pos.legals(moves);
+    auto it = std::find(moves.begin(), moves.end(), move);
+#if defined(_DEBUG) || !defined(NDEBUG)
+    assert(it != moves.end() && "Move is illegal");
+#elif defined(__EXCEPTIONS)
+    if (it == moves.end())
+        throw std::invalid_argument("Move is illegal");
+#endif
+    return move;
 }
 template Move uciToMove<EnginePiece, void>(const _Position<EnginePiece, void> &, std::string_view);
 template Move uciToMove<PolyglotPiece, void>(const _Position<PolyglotPiece, void> &, std::string_view);

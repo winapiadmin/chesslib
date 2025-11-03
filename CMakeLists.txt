@@ -28,7 +28,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options(-fconstexpr-ops-limit=2000000000 -fconstexpr-depth=1024 -march=native -mtune=native -ftemplate-backtrace-limit=0)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   set(ARCH_FLAG "/arch:AVX2" CACHE STRING "MSVC architecture flag (/arch:SSE2, /arch:AVX, /arch:AVX2, /arch:AVX512)")
-  add_compile_options(/constexpr:steps2000000000 /constexpr:depth1024 ${ARCH_FLAG}) # I'll assume everybody has this since this is 2025.
+  add_compile_options(/constexpr:steps2000000000 /constexpr:depth1024 ${ARCH_FLAG})
 endif()
 
 add_compile_definitions(GENERATE_AT_RUNTIME)

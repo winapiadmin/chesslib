@@ -256,7 +256,11 @@ class _Position {
             return current_state.pieces[pt] & current_state.occ[c];
         }
     }
-
+    inline Bitboard pieces(PieceType pt) const {
+        if (pt == PIECE_TYPE_NB || pt == ALL_PIECES)
+            return occ();
+        return current_state.pieces[pt];
+    }
     template <typename... PTypes, typename = std::enable_if_t<(std::is_integral_v<PTypes> && ...)>>
     [[nodiscard]] inline Bitboard pieces(PTypes... ptypes) const {
         return (pieces(ptypes) | ...);
@@ -269,17 +273,18 @@ class _Position {
 
     /**
      * @brief Returns the origin squares of pieces of a given color attacking a target square
-     * @param board
-     * @param color Attacker Color
-     * @param square Attacked Square
-     * @return
-     */
-    /** Sample code to not make myself (and others) confused:
+     * 
+     * Sample code to not make myself (and others) confused:
     ```c++
     if (attackers(BLACK, E4)) {
         std::cout << "E4 is under attack by black!";
     }
     ```
+     *
+     * @param color Attacker Color
+     * @param square Attacked Square
+     * @param occupied Board occupation
+     * @return Attackers to the bitboard
      */
     [[nodiscard]] inline Bitboard attackers(Color color, Square square, Bitboard occupied) const {
         auto queens = pieces<QUEEN>(color);
@@ -293,6 +298,45 @@ class _Position {
 
         return atks & occupied;
     }
+
+    /**
+     * @brief Checks if a square is attacked by the given color.
+     * @param square
+     * @param color
+     * @return
+     */
+    [[nodiscard]] inline bool isAttacked(Square sq, Color by) const noexcept {
+        const Bitboard occ_bb = occ();
+        const Bitboard us_bb = occ(by);
+
+        Bitboard diag_attackers = pieces(PieceType::BISHOP, by) | pieces(PieceType::QUEEN, by);
+        Bitboard ortho_attackers = pieces(PieceType::ROOK, by) | pieces(PieceType::QUEEN, by);
+
+        return (attacks::pawn(~by, sq) & pieces(PieceType::PAWN, by)) ||
+               (attacks::knight(sq) & pieces(PieceType::KNIGHT, by)) ||
+               (attacks::king(sq) & pieces(PieceType::KING, by)) ||
+               (attacks::bishop(sq, occ_bb) & diag_attackers & us_bb) ||
+               (attacks::rook(sq, occ_bb) & ortho_attackers & us_bb);
+    }
+    /**
+     * @brief Checks if a square is attacked by the given color.
+     * @param square
+     * @param color
+     * @param occupied
+     * @return
+     */
+    [[nodiscard]] inline bool isAttacked(Square sq, Color by, Bitboard occupied) const noexcept {
+        const Bitboard diag_attackers =
+            pieces(PieceType::BISHOP, by) | pieces(PieceType::QUEEN, by);
+        const Bitboard ortho_attackers = pieces(PieceType::ROOK, by) | pieces(PieceType::QUEEN, by);
+
+        return (attacks::pawn(~by, sq) & pieces(PieceType::PAWN, by)) ||
+               (attacks::knight(sq) & pieces(PieceType::KNIGHT, by)) ||
+               (attacks::king(sq) & pieces(PieceType::KING, by)) ||
+               (attacks::bishop(sq, occupied) & diag_attackers) ||
+               (attacks::rook(sq, occupied) & ortho_attackers);
+    }
+
     [[nodiscard]] inline Bitboard attackers(Color color, Square square) const {
         return attackers(color, square, occ());
     }
@@ -360,7 +404,11 @@ class _Position {
             Bitboard bb = 1ULL << s;
             Bitboard _ = pieces(p2, color_of(p));
             Bitboard b = _ & bb;
-            assert(b);
+#ifndef __EXCEPTIONS
+            assert(b && "Inconsistient piece map");
+#else
+            if (b) throw std::invalid_argument("Inconsistient piece map");
+#endif
         }
         return p;
 #endif
@@ -394,6 +442,44 @@ class _Position {
     inline PieceC piece_at(Square sq) const { return piece_on(sq); }
     inline PieceC at(Square sq) const { return piece_at(sq); }
     inline Square enpassantSq() const { return ep_square(); }
+    CastlingRights clean_castling_rights() const;
+    void setFEN(const std::string &str);
+    inline void set_fen(const std::string &str) { setFEN(str); }
+    Move parse_uci(std::string) const;
+    Move push_uci(std::string);
+    Square _valid_ep_square() const;
+    inline bool is_attacked_by(Color color, Square sq, Bitboard occupied = 0) const {
+        Bitboard occ_bb = occupied ? occupied : this->occ();
+        return attackers_mask(color, sq, occ_bb) != 0;
+    }
+
+    inline bool was_into_check() const {
+        bool atk=false;
+        Bitboard bb = pieces<KING>(~sideToMove());
+        while (!atk && bb) {
+            atk |= isAttacked((Square)pop_lsb(bb), sideToMove());
+        }
+        return atk;
+    }
+    inline Bitboard attackers_mask(Color color, Square square, Bitboard occupied) const {
+        auto queens = pieces<QUEEN>(color);
+
+        // using the fact that if we can attack PieceType from square, they can attack us back
+        auto atks = (attacks::pawn(~color, square) & pieces<PAWN>(color));
+        atks |= (attacks::knight(square) & pieces<KNIGHT>(color));
+        atks |= (attacks::bishop(square, occupied) & (pieces<BISHOP>(color) | queens));
+        atks |= (attacks::rook(square, occupied) & (pieces<ROOK>(color) | queens));
+        atks |= (attacks::king(square) & pieces<KING>(color));
+
+        return atks & occ(color);
+    }
+    inline bool _attacked_for_king(Bitboard path, Bitboard occupied) const {
+        Bitboard b = 0;
+        while (!b&&path) {
+            b |= attackers_mask(~sideToMove(), static_cast<Square>(pop_lsb(path)), occupied);
+        }
+        return !!b;
+    }
   private:
     template <PieceType pt> [[nodiscard]] inline Bitboard pinMask(Color c, Square sq) const {
         static_assert(pt == BISHOP || pt == ROOK, "Only bishop or rook allowed!");
@@ -418,8 +504,6 @@ class _Position {
     void refresh_attacks();
 
   public:
-    void setFEN(const std::string &str);
-    inline void set_fen(const std::string &str) { setFEN(str); }
     /** \brief Initializes the board as empty.
      *
      * \param nothing
@@ -459,8 +543,6 @@ class _Position {
         }
         refresh_attacks();
     }
-    Move parse_uci(std::string) const;
-    Move push_uci(std::string);
 };
 using Position = _Position<EnginePiece>; // for some fun because I HATE HARDCODING
 }; // namespace chess

@@ -316,14 +316,14 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::doMove(const M
     history.push_back(current_state);
     current_state.mv = move; // Update the move in the current state
 #if defined(_DEBUG) || !defined(NDEBUG)
-    assert(target_piecetype != KING && "NO WAY");
-    assert(moving_piecetype != NO_PIECE_TYPE && "Expected a piece to move?");
+    assert(target_piecetype != KING && "No captures");
+    assert(moving_piecetype != NO_PIECE_TYPE && "Expected a piece to move.");
 #endif
 #if defined(__EXCEPTIONS) && (defined(_DEBUG) || !defined(NDEBUG))
     if (target_piecetype == KING)
-        throw std::invalid_argument("NO WAY");
+        throw std::invalid_argument("No captures to king exists.");
     if (moving_piecetype == NO_PIECE_TYPE)
-        throw std::invalid_argument("Expected a piece to move?");
+        throw std::invalid_argument("Expected a piece to move.");
 #endif
     removePiece(moving_piecetype, from_sq, us);
     {
@@ -457,11 +457,11 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
             } else {
 #if defined(_DEBUG) || !defined(NDEBUG)
                 assert(file_count < 8 && "Too many pieces in one rank");
-                assert(is_valid(r, f) && "Invalid file/rank position");
+                assert(chess::is_valid(r, f) && "Invalid file/rank position");
 #elif defined(__EXCEPTIONS)
                 if (file_count >= 8)
                     throw std::invalid_argument("Too many pieces in one rank");
-                if (!is_valid(r, f))
+                if (!chess::is_valid(r, f))
                     throw std::invalid_argument("Invalid file/rank position");
 #endif
                 switch (c) {
@@ -548,19 +548,31 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
     current_state.castlingRights = NO_CASTLING;
     for (char c : castling) {
         switch (c) {
-        case 'K':
+        case 'K': 
+            // possibly legality checks?
+            if (piece_on(SQ_E1) != PieceC::WKING || piece_on(SQ_H1) != PieceC::WROOK)
+                break;
             current_state.castlingRights |= WHITE_OO;
             current_state.hash ^= zobrist::RandomCastle[WHITE_OO];
             break;
         case 'Q':
+            // possibly legality checks?
+            if (piece_on(SQ_E1) != PieceC::WKING || piece_on(SQ_A1) != PieceC::WROOK)
+                break;
             current_state.castlingRights |= WHITE_OOO;
             current_state.hash ^= zobrist::RandomCastle[WHITE_OOO];
             break;
         case 'k':
+            // possibly legality checks?
+            if (piece_on(SQ_E8) != PieceC::BKING || piece_on(SQ_H8) != PieceC::BROOK)
+                break;
             current_state.castlingRights |= BLACK_OO;
             current_state.hash ^= zobrist::RandomCastle[BLACK_OO];
             break;
         case 'q':
+            // possibly legality checks?
+            if (piece_on(SQ_E8) != PieceC::BKING || piece_on(SQ_H8) != PieceC::BROOK)
+                break;
             current_state.castlingRights |= BLACK_OOO;
             current_state.hash ^= zobrist::RandomCastle[BLACK_OOO];
             break;
@@ -577,6 +589,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
             break;
         }
     }
+
     if (enpassant != "-" && enpassant.length() == 2 && enpassant[0] >= 'a' && enpassant[0] <= 'h' &&
         enpassant[1] >= '1' && enpassant[1] <= '8') {
         File f = static_cast<File>(enpassant[0] - 'a');
@@ -738,7 +751,7 @@ template <typename PieceC, typename T>
 template <Color c, PieceType pt, bool capturesOnly>
 void _Position<PieceC, T>::genSlidingMoves(Movelist &list) const {
     static_assert(pt == BISHOP || pt == ROOK || pt == QUEEN,
-                  "Isn't bishop, rooks and queens sliding pieces? What else can?");
+                  "Sliding pieces only.");
     Bitboard sliders = pieces<pt, c>();
     Bitboard occ_all = occ();
     // Square king_sq = current_state.kings[c];
@@ -784,9 +797,65 @@ template <typename PieceC, typename T> Move _Position<PieceC, T>::parse_uci(std:
 }
 
 template <typename PieceC, typename T> Move _Position<PieceC, T>::push_uci(std::string uci) {
-    auto mv=chess::uci::uciToMove(*this, uci);
+    auto mv=parse_uci(uci);
     doMove(mv);
     return mv;
+}
+template <typename PieceC, typename T> Square _Position<PieceC, T>::_valid_ep_square() const {
+    if (ep_square() == SQ_NONE)
+        return SQ_NONE;
+    Rank ep_rank = sideToMove() == WHITE ? RANK_3 : RANK_6;
+    Bitboard mask = 1ULL << ep_square();
+    Bitboard pawn_mask = mask << 8;
+    Bitboard org_pawn_mask = mask >> 8;
+    // rank 3 or rank 6, depending on color
+    if (rank_of(ep_square()) != ep_rank)
+        return SQ_NONE;
+    // a pawn in 2 ranks behind
+    if (!(pieces(PAWN) & occ(~sideToMove()) & pawn_mask))
+        return SQ_NONE;
+    // ep_sq must be empty
+    if (occ() & mask)
+        return SQ_NONE;
+    // emptied second rank
+    if (occ() & org_pawn_mask)
+        return SQ_NONE;
+    return ep_square();
+}
+template <typename PieceC, typename T>
+CastlingRights _Position<PieceC, T>::clean_castling_rights() const {
+    constexpr Bitboard cr_WOO = 1ULL << SQ_H1;
+    constexpr Bitboard cr_WOOO = 1ULL << SQ_A1;
+    constexpr Bitboard cr_BOO = 1ULL << SQ_H8;
+    constexpr Bitboard cr_BOOO = 1ULL << SQ_A8;
+    if (history.size())
+        return castlingRights();
+    Bitboard castling = 0;
+    // mappings
+    castling |= (castlingRights()&WHITE_OO)?cr_WOO:0;
+    castling |= (castlingRights()&WHITE_OOO)?cr_WOOO:0;
+    
+    castling |= (castlingRights()&BLACK_OO)?cr_BOO:0;
+    castling |= (castlingRights()&BLACK_OOO)?cr_BOOO:0;
+    castling &= pieces(ROOK);
+    Bitboard white_castling = castling & attacks::MASK_RANK[RANK_1] & occ(WHITE);
+    Bitboard black_castling = castling & attacks::MASK_RANK[RANK_8] & occ(BLACK);
+    // rook exists in corresponding square
+    white_castling &= (cr_WOO | cr_WOOO);
+    black_castling &= (cr_BOO | cr_BOOO);
+    // king exists in e1/e8 depending on color
+    if (!(occ(WHITE) & pieces(KING) & (1ULL << SQ_E1)))
+        white_castling = 0;
+    if (!(occ(WHITE) & pieces(KING) & (1ULL << SQ_E8)))
+        black_castling = 0;
+    castling = white_castling | black_castling;
+    // Re-map
+    CastlingRights cr = NO_CASTLING;
+    cr |= (castling & cr_WOO) ? WHITE_OO : NO_CASTLING;
+    cr |= (castling & cr_WOOO) ? WHITE_OOO : NO_CASTLING;
+    cr |= (castling & cr_BOO) ? BLACK_OO : NO_CASTLING;
+    cr |= (castling & cr_BOOO) ? BLACK_OOO : NO_CASTLING;
+    return cr;
 }
 template void _Position<EnginePiece, void>::genEP<Color::WHITE>(Movelist &) const;
 template void _Position<EnginePiece, void>::genEP<Color::BLACK>(Movelist &) const;
