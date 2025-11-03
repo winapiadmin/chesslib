@@ -1,24 +1,21 @@
-#include "position.h"
 #include "printers.h"
 #include "moves_io.h"
-#include <iostream>
-#include <iomanip>
-#include <unordered_map>
+#include "position.h"
 #include <algorithm>
+#include <iomanip>
+#include <iostream>
+#include <unordered_map>
 namespace chess {
-    template <typename T>
-using DescriptiveNameNotation=std::unordered_map<T, std::string>;
+template <typename T> using DescriptiveNameNotation = std::unordered_map<T, std::string>;
 
-template <typename PieceC>
-std::ostream &operator<<(std::ostream &os, const _Position<PieceC, void> &pos) {
+template <typename PieceC> std::ostream &operator<<(std::ostream &os, const _Position<PieceC, void> &pos) {
     // RAII guard to save/restore stream state
     struct ios_guard {
         std::ostream &strm;
         std::ios::fmtflags flags;
         std::streamsize prec;
         std::ostream::char_type fill;
-        ios_guard(std::ostream &s)
-            : strm(s), flags(s.flags()), prec(s.precision()), fill(s.fill()) {}
+        ios_guard(std::ostream &s) : strm(s), flags(s.flags()), prec(s.precision()), fill(s.fill()) {}
         ~ios_guard() {
             strm.flags(flags);
             strm.precision(prec);
@@ -28,8 +25,7 @@ std::ostream &operator<<(std::ostream &os, const _Position<PieceC, void> &pos) {
 
     constexpr std::string_view EnginePieceToChar(" PNBRQK  pnbrqk ");
     constexpr std::string_view PolyglotPieceToChar("PNBRQKpnbrqk ");
-    constexpr std::string_view PieceToChar =
-        std::is_same_v<PieceC, EnginePiece> ? EnginePieceToChar : PolyglotPieceToChar;
+    constexpr std::string_view PieceToChar = std::is_same_v<PieceC, EnginePiece> ? EnginePieceToChar : PolyglotPieceToChar;
 
     os << "\n +---+---+---+---+---+---+---+---+\n";
 
@@ -42,8 +38,7 @@ std::ostream &operator<<(std::ostream &os, const _Position<PieceC, void> &pos) {
     os << "   a   b   c   d   e   f   g   h\n";
 
     // Ensure key is printed in hex, but restores after this function
-    os << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase << std::setfill('0')
-       << std::setw(16) << pos.key() << '\n';
+    os << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase << std::setfill('0') << std::setw(16) << pos.key() << '\n';
 
     return os;
 }
@@ -57,7 +52,7 @@ std::ostream &operator<<(std::ostream &os, const Color &c) {
         {    BLACK,    "BLACK" },
         { COLOR_NB, "COLOR_NB" }
     };
-    return os<<colors[c];
+    return os << colors[c];
 }
 std::ostream &operator<<(std::ostream &os, const CastlingRights &cr) {
     DescriptiveNameNotation<CastlingRights> castlingFlags = {
@@ -79,7 +74,7 @@ std::ostream &operator<<(std::ostream &os, const CastlingRights &cr) {
         { WHITE_OOO | BLACK_OO | BLACK_OOO, "WHITE_OOO | BLACK_OO | BLACK_OOO" },
     };
 
-    return os<<castlingFlags[cr];
+    return os << castlingFlags[cr];
 }
 static std::string str_toupper(std::string s) {
     std::transform(s.begin(),
@@ -96,18 +91,16 @@ std::ostream &operator<<(std::ostream &os, const Square &sq) {
     os << "SQ_" << str_toupper(chess::uci::squareToString(sq));
     return os;
 }
-std::ostream& operator<<(std::ostream& os, const PolyglotPiece& p) {
+std::ostream &operator<<(std::ostream &os, const PolyglotPiece &p) {
     constexpr std::string_view EnginePieceToChar(" PNBRQK  pnbrqk ");
     constexpr std::string_view PolyglotPieceToChar("PNBRQKpnbrqk ");
-    constexpr std::string_view PieceToChar =
-        std::is_same_v<decltype(p), EnginePiece> ? EnginePieceToChar : PolyglotPieceToChar;
+    constexpr std::string_view PieceToChar = std::is_same_v<decltype(p), EnginePiece> ? EnginePieceToChar : PolyglotPieceToChar;
     return os << PieceToChar[(int)p];
 }
-std::ostream& operator<<(std::ostream& os, const EnginePiece& p) {
+std::ostream &operator<<(std::ostream &os, const EnginePiece &p) {
     constexpr std::string_view EnginePieceToChar(" PNBRQK  pnbrqk ");
     constexpr std::string_view PolyglotPieceToChar("PNBRQKpnbrqk ");
-    constexpr std::string_view PieceToChar =
-        std::is_same_v<decltype(p), EnginePiece> ? EnginePieceToChar : PolyglotPieceToChar;
+    constexpr std::string_view PieceToChar = std::is_same_v<decltype(p), EnginePiece> ? EnginePieceToChar : PolyglotPieceToChar;
     return os << PieceToChar[(int)p];
 }
 template std::ostream &operator<<(std::ostream &, const _Position<EnginePiece> &);

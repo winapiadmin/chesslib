@@ -1,6 +1,7 @@
 #include "position.h"
-#include "position.h"
 #include "moves_io.h"
+#include "position.h"
+#include "zobrist.h"
 #include <sstream>
 #ifndef GENERATE_AT_RUNTIME
 #define _POSSIBLY_CONSTEXPR constexpr
@@ -40,9 +41,7 @@ static _POSSIBLY_CONSTEXPR auto make_castle_masks() {
 }
 static _POSSIBLY_CONSTEXPR auto clearCastleMask = make_castle_masks();
 
-template <typename PieceC, typename T>
-template <Color c>
-void _Position<PieceC, T>::genEP(Movelist &ep_moves) const {
+template <typename PieceC, typename T> template <Color c> void _Position<PieceC, T>::genEP(Movelist &ep_moves) const {
     const Square king_sq = kingSq(c);
     const Square ep_sq = ep_square();
     if (ep_sq == SQ_NONE)
@@ -76,9 +75,7 @@ void _Position<PieceC, T>::genEP(Movelist &ep_moves) const {
         }
     }
 }
-template <typename PieceC, typename T>
-template <Color c, bool capturesOnly>
-void _Position<PieceC, T>::genPawnSingleMoves(Movelist &moves) const {
+template <typename PieceC, typename T> template <Color c, bool capturesOnly> void _Position<PieceC, T>::genPawnSingleMoves(Movelist &moves) const {
     constexpr Direction UP = pawn_push(c);
     // constexpr Bitboard PROMO_RANK = (c == WHITE) ? attacks::MASK_RANK[6] : attacks::MASK_RANK[1];
     constexpr Bitboard PROMO_NEXT = (c == WHITE) ? attacks::MASK_RANK[7] : attacks::MASK_RANK[0];
@@ -122,8 +119,7 @@ void _Position<PieceC, T>::genPawnSingleMoves(Movelist &moves) const {
     }
     // ---------- 2. Left captures ----------
     Bitboard left = (pawns & NOT_FILE_A);
-    Bitboard left_tgt =
-        (c == WHITE ? (left << 7) : (left >> 9)) & enemy_occ & current_state.check_mask;
+    Bitboard left_tgt = (c == WHITE ? (left << 7) : (left >> 9)) & enemy_occ & current_state.check_mask;
     Bitboard promo_left_targets = left_tgt & PROMO_NEXT;
     Bitboard non_promo_left_targets = left_tgt & ~promo_left_targets; // NAND
 
@@ -134,8 +130,7 @@ void _Position<PieceC, T>::genPawnSingleMoves(Movelist &moves) const {
         Bitboard move_bb = from_bb | (1ULL << to);
 
         // skip if pinned but capture not along pin ray
-        if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb ||
-                                      (move_bb & current_state._rook_pin) == move_bb))) {
+        if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb || (move_bb & current_state._rook_pin) == move_bb))) {
             moves.push_back(Move::make<PROMOTION>(from, to, KNIGHT));
             moves.push_back(Move::make<PROMOTION>(from, to, BISHOP));
             moves.push_back(Move::make<PROMOTION>(from, to, ROOK));
@@ -150,15 +145,13 @@ void _Position<PieceC, T>::genPawnSingleMoves(Movelist &moves) const {
         Bitboard move_bb = from_bb | (1ULL << to);
 
         // skip if pinned but capture not along pin ray
-        if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb ||
-                                      (move_bb & current_state._rook_pin) == move_bb)))
+        if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb || (move_bb & current_state._rook_pin) == move_bb)))
             moves.push_back(Move(from, to));
     }
 
     // ---------- 3. Right captures ----------
     Bitboard right = (pawns & NOT_FILE_H);
-    Bitboard right_tgt =
-        (c == WHITE ? (right << 9) : (right >> 7)) & enemy_occ & current_state.check_mask;
+    Bitboard right_tgt = (c == WHITE ? (right << 9) : (right >> 7)) & enemy_occ & current_state.check_mask;
     Bitboard promo_right_targets = right_tgt & PROMO_NEXT;
     Bitboard non_promo_right_targets = right_tgt & ~promo_right_targets; // NAND
 
@@ -168,8 +161,7 @@ void _Position<PieceC, T>::genPawnSingleMoves(Movelist &moves) const {
         Bitboard from_bb = 1ULL << from;
         Bitboard move_bb = from_bb | (1ULL << to);
 
-        if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb ||
-                                      (move_bb & current_state._rook_pin) == move_bb))) {
+        if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb || (move_bb & current_state._rook_pin) == move_bb))) {
             moves.push_back(Move::make<PROMOTION>(from, to, KNIGHT));
             moves.push_back(Move::make<PROMOTION>(from, to, BISHOP));
             moves.push_back(Move::make<PROMOTION>(from, to, ROOK));
@@ -183,15 +175,12 @@ void _Position<PieceC, T>::genPawnSingleMoves(Movelist &moves) const {
         Bitboard from_bb = 1ULL << from;
         Bitboard move_bb = from_bb | (1ULL << to);
 
-        if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb ||
-                                      (move_bb & current_state._rook_pin) == move_bb)))
+        if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb || (move_bb & current_state._rook_pin) == move_bb)))
             moves.push_back(Move(from, to));
     }
 }
 
-template <typename PieceC, typename T>
-template <Color c>
-void _Position<PieceC, T>::genPawnDoubleMoves(Movelist &moves) const {
+template <typename PieceC, typename T> template <Color c> void _Position<PieceC, T>::genPawnDoubleMoves(Movelist &moves) const {
     constexpr Bitboard RANK_2 = (c == WHITE) ? attacks::MASK_RANK[1] : attacks::MASK_RANK[6];
     constexpr Direction UP = pawn_push(c);
 
@@ -224,9 +213,7 @@ void _Position<PieceC, T>::genPawnDoubleMoves(Movelist &moves) const {
         moves.push_back(Move(from, to));
     }
 }
-template <typename PieceC, typename T>
-template <Color c, bool capturesOnly>
-void _Position<PieceC, T>::genKingMoves(Movelist &out) const {
+template <typename PieceC, typename T> template <Color c, bool capturesOnly> void _Position<PieceC, T>::genKingMoves(Movelist &out) const {
     constexpr Color them = ~c;
     const Square kingSq = this->kingSq(c);
     const Bitboard occAll = occ();
@@ -269,34 +256,22 @@ void _Position<PieceC, T>::genKingMoves(Movelist &out) const {
         if (st.checkers)
             return;
         if constexpr (c == WHITE) {
-            const bool canCastleKingside = (st.castlingRights & WHITE_OO) &&
-                                           piece_on(SQ_F1) == PieceC::NO_PIECE &&
-                                           piece_on(SQ_G1) == PieceC::NO_PIECE &&
-                                           !(enemyAttacks & ((1ULL << SQ_F1) | (1ULL << SQ_G1)));
+            const bool canCastleKingside = (st.castlingRights & WHITE_OO) && piece_on(SQ_F1) == PieceC::NO_PIECE && piece_on(SQ_G1) == PieceC::NO_PIECE && !(enemyAttacks & ((1ULL << SQ_F1) | (1ULL << SQ_G1)));
 
             if (canCastleKingside)
                 out.push_back(Move::make<CASTLING>(SQ_E1, SQ_H1));
 
-            const bool canCastleQueenside =
-                (st.castlingRights & WHITE_OOO) && piece_on(SQ_D1) == PieceC::NO_PIECE &&
-                piece_on(SQ_C1) == PieceC::NO_PIECE && piece_on(SQ_B1) == PieceC::NO_PIECE &&
-                !(enemyAttacks & ((1ULL << SQ_D1) | (1ULL << SQ_C1)));
+            const bool canCastleQueenside = (st.castlingRights & WHITE_OOO) && piece_on(SQ_D1) == PieceC::NO_PIECE && piece_on(SQ_C1) == PieceC::NO_PIECE && piece_on(SQ_B1) == PieceC::NO_PIECE && !(enemyAttacks & ((1ULL << SQ_D1) | (1ULL << SQ_C1)));
 
             if (canCastleQueenside)
                 out.push_back(Move::make<CASTLING>(SQ_E1, SQ_A1));
         } else {
-            const bool canCastleKingside = (st.castlingRights & BLACK_OO) &&
-                                           piece_on(SQ_F8) == PieceC::NO_PIECE &&
-                                           piece_on(SQ_G8) == PieceC::NO_PIECE &&
-                                           !(enemyAttacks & ((1ULL << SQ_F8) | (1ULL << SQ_G8)));
+            const bool canCastleKingside = (st.castlingRights & BLACK_OO) && piece_on(SQ_F8) == PieceC::NO_PIECE && piece_on(SQ_G8) == PieceC::NO_PIECE && !(enemyAttacks & ((1ULL << SQ_F8) | (1ULL << SQ_G8)));
 
             if (canCastleKingside)
                 out.push_back(Move::make<CASTLING>(SQ_E8, SQ_H8));
 
-            const bool canCastleQueenside =
-                (st.castlingRights & BLACK_OOO) && piece_on(SQ_D8) == PieceC::NO_PIECE &&
-                piece_on(SQ_C8) == PieceC::NO_PIECE && piece_on(SQ_B8) == PieceC::NO_PIECE &&
-                !(enemyAttacks & ((1ULL << SQ_D8) | (1ULL << SQ_C8)));
+            const bool canCastleQueenside = (st.castlingRights & BLACK_OOO) && piece_on(SQ_D8) == PieceC::NO_PIECE && piece_on(SQ_C8) == PieceC::NO_PIECE && piece_on(SQ_B8) == PieceC::NO_PIECE && !(enemyAttacks & ((1ULL << SQ_D8) | (1ULL << SQ_C8)));
 
             if (canCastleQueenside)
                 out.push_back(Move::make<CASTLING>(SQ_E8, SQ_A8));
@@ -328,8 +303,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::doMove(const M
 #endif
     removePiece(moving_piecetype, from_sq, us);
     {
-        ASSUME(move_type == NORMAL || move_type == PROMOTION || move_type == EN_PASSANT ||
-               move_type == CASTLING);
+        ASSUME(move_type == NORMAL || move_type == PROMOTION || move_type == EN_PASSANT || move_type == CASTLING);
         switch (move_type) {
         case NORMAL:
             removePiece(target_piecetype, to_sq, target_color);
@@ -348,8 +322,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::doMove(const M
         case CASTLING: {
             removePiece(target_piecetype, to_sq, target_color);
             bool is_king_side = from_sq < to_sq;
-            Square rook_dest = relative_square(us, is_king_side ? SQ_F1 : Square::SQ_D1),
-                   king_dest = relative_square(us, is_king_side ? SQ_G1 : Square::SQ_C1);
+            Square rook_dest = relative_square(us, is_king_side ? SQ_F1 : Square::SQ_D1), king_dest = relative_square(us, is_king_side ? SQ_G1 : Square::SQ_C1);
             placePiece<ROOK>(rook_dest, us);
             placePiece<KING>(king_dest, us);
             break;
@@ -381,12 +354,11 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::doMove(const M
             File f = file_of(current_state.enPassant);
             Bitboard ep_mask = (1ULL << current_state.enPassant);
 
-            // Shift toward the side-to-move’s capturing rank.
+            // Shift toward the side-to-moveï¿½s capturing rank.
             ep_mask = (stm == WHITE) ? (ep_mask >> 8) : (ep_mask << 8);
 
             // Keep adjacent files only.
-            ep_mask = ((ep_mask << 1) & ~attacks::MASK_FILE[0]) |
-                      ((ep_mask >> 1) & ~attacks::MASK_FILE[7]);
+            ep_mask = ((ep_mask << 1) & ~attacks::MASK_FILE[0]) | ((ep_mask >> 1) & ~attacks::MASK_FILE[7]);
 
             // Include key if their pawns can attack it.
             current_state.epIncluded = (ep_mask & pieces<PAWN>(stm)) != 0;
@@ -394,18 +366,15 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::doMove(const M
         }
     }
     {
-        CastlingRights clear_mask = clearCastleMask[us][moving_piecetype][from_sq] |
-                                    clearCastleMask[target_color][target_piecetype][to_sq];
+        CastlingRights clear_mask = clearCastleMask[us][moving_piecetype][from_sq] | clearCastleMask[target_color][target_piecetype][to_sq];
         CastlingRights prev = current_state.castlingRights;
         current_state.castlingRights &= ~clear_mask;
-        current_state.hash ^=
-            zobrist::RandomCastle[prev] ^ zobrist::RandomCastle[current_state.castlingRights];
+        current_state.hash ^= zobrist::RandomCastle[prev] ^ zobrist::RandomCastle[current_state.castlingRights];
     }
     current_state.turn = ~current_state.turn;
     // Update halfmoves, fullmoves and stm
     current_state.fullMoveNumber += (current_state.turn == WHITE);
-    current_state.halfMoveClock =
-        (is_capture || moving_piecetype == PAWN) ? 0 : (current_state.halfMoveClock + 1);
+    current_state.halfMoveClock = (is_capture || moving_piecetype == PAWN) ? 0 : (current_state.halfMoveClock + 1);
     current_state.hash ^= zobrist::RandomTurn;
     refresh_attacks();
 }
@@ -550,7 +519,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
     current_state.castlingRights = NO_CASTLING;
     for (char c : castling) {
         switch (c) {
-        case 'K': 
+        case 'K':
             // possibly legality checks?
             if (piece_on(SQ_E1) != PieceC::WKING || piece_on(SQ_H1) != PieceC::WROOK)
                 break;
@@ -585,15 +554,13 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
 #if defined(_DEBUG) || !defined(NDEBUG)
             assert(false && "Invalid castling rights, this library doesn't support Chess960");
 #elif defined(__EXCEPTIONS)
-            throw std::invalid_argument(
-                "Invalid castling rights, this library doesn't support Chess960");
+            throw std::invalid_argument("Invalid castling rights, this library doesn't support Chess960");
 #endif
             break;
         }
     }
 
-    if (enpassant != "-" && enpassant.length() == 2 && enpassant[0] >= 'a' && enpassant[0] <= 'h' &&
-        enpassant[1] >= '1' && enpassant[1] <= '8') {
+    if (enpassant != "-" && enpassant.length() == 2 && enpassant[0] >= 'a' && enpassant[0] <= 'h' && enpassant[1] >= '1' && enpassant[1] <= '8') {
         File f = static_cast<File>(enpassant[0] - 'a');
         Rank r = static_cast<Rank>(enpassant[1] - '1');
         Square ep_sq = make_sq(r, f);
@@ -603,8 +570,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
             ep_mask >>= 8;
         } else
             ep_mask <<= 8;
-        ep_mask =
-            ((ep_mask << 1) & ~attacks::MASK_FILE[0]) | ((ep_mask >> 1) & ~attacks::MASK_FILE[7]);
+        ep_mask = ((ep_mask << 1) & ~attacks::MASK_FILE[0]) | ((ep_mask >> 1) & ~attacks::MASK_FILE[7]);
         if (ep_mask & pieces<PAWN>(sideToMove())) {
             current_state.hash ^= zobrist::RandomEP[f];
             current_state.epIncluded = true;
@@ -630,8 +596,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
 template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen() const {
     constexpr std::string_view EnginePieceToChar(" PNBRQK  pnbrqk ");
     constexpr std::string_view PolyglotPieceToChar("PNBRQKpnbrqk ");
-    constexpr std::string_view PieceToChar =
-        std::is_same_v<PieceC, EnginePiece> ? EnginePieceToChar : PolyglotPieceToChar;
+    constexpr std::string_view PieceToChar = std::is_same_v<PieceC, EnginePiece> ? EnginePieceToChar : PolyglotPieceToChar;
     std::string fen;
 
     // 1) Piece placement
@@ -749,19 +714,15 @@ template <typename PieceC, typename T> uint64_t _Position<PieceC, T>::zobrist() 
         ep_mask = (stm == WHITE) ? (ep_mask >> 8) : (ep_mask << 8);
 
         // Pawns on adjacent files only
-        ep_mask =
-            ((ep_mask << 1) & ~attacks::MASK_FILE[0]) | ((ep_mask >> 1) & ~attacks::MASK_FILE[7]);
+        ep_mask = ((ep_mask << 1) & ~attacks::MASK_FILE[0]) | ((ep_mask >> 1) & ~attacks::MASK_FILE[7]);
 
         if (ep_mask & pieces<PAWN>(stm))
             hash ^= zobrist::RandomEP[f];
     }
     return hash;
 }
-template <typename PieceC, typename T>
-template <Color c, PieceType pt, bool capturesOnly>
-void _Position<PieceC, T>::genSlidingMoves(Movelist &list) const {
-    static_assert(pt == BISHOP || pt == ROOK || pt == QUEEN,
-                  "Sliding pieces only.");
+template <typename PieceC, typename T> template <Color c, PieceType pt, bool capturesOnly> void _Position<PieceC, T>::genSlidingMoves(Movelist &list) const {
+    static_assert(pt == BISHOP || pt == ROOK || pt == QUEEN, "Sliding pieces only.");
     Bitboard sliders = pieces<pt, c>();
     Bitboard occ_all = occ();
     // Square king_sq = current_state.kings[c];
@@ -798,16 +759,12 @@ void _Position<PieceC, T>::genSlidingMoves(Movelist &list) const {
     }
 }
 
-template <typename PieceC, typename T> _Position<PieceC, T>::_Position(std::string fen) {
-    setFEN(fen);
-}
+template <typename PieceC, typename T> _Position<PieceC, T>::_Position(std::string fen) { setFEN(fen); }
 
-template <typename PieceC, typename T> Move _Position<PieceC, T>::parse_uci(std::string uci) const {
-    return chess::uci::uciToMove(*this, uci);
-}
+template <typename PieceC, typename T> Move _Position<PieceC, T>::parse_uci(std::string uci) const { return chess::uci::uciToMove(*this, uci); }
 
 template <typename PieceC, typename T> Move _Position<PieceC, T>::push_uci(std::string uci) {
-    auto mv=parse_uci(uci);
+    auto mv = parse_uci(uci);
     doMove(mv);
     return mv;
 }
@@ -832,8 +789,7 @@ template <typename PieceC, typename T> Square _Position<PieceC, T>::_valid_ep_sq
         return SQ_NONE;
     return ep_square();
 }
-template <typename PieceC, typename T>
-CastlingRights _Position<PieceC, T>::clean_castling_rights() const {
+template <typename PieceC, typename T> CastlingRights _Position<PieceC, T>::clean_castling_rights() const {
     constexpr Bitboard cr_WOO = 1ULL << SQ_H1;
     constexpr Bitboard cr_WOOO = 1ULL << SQ_A1;
     constexpr Bitboard cr_BOO = 1ULL << SQ_H8;
@@ -842,11 +798,11 @@ CastlingRights _Position<PieceC, T>::clean_castling_rights() const {
         return castlingRights();
     Bitboard castling = 0;
     // mappings
-    castling |= (castlingRights()&WHITE_OO)?cr_WOO:0;
-    castling |= (castlingRights()&WHITE_OOO)?cr_WOOO:0;
-    
-    castling |= (castlingRights()&BLACK_OO)?cr_BOO:0;
-    castling |= (castlingRights()&BLACK_OOO)?cr_BOOO:0;
+    castling |= (castlingRights() & WHITE_OO) ? cr_WOO : 0;
+    castling |= (castlingRights() & WHITE_OOO) ? cr_WOOO : 0;
+
+    castling |= (castlingRights() & BLACK_OO) ? cr_BOO : 0;
+    castling |= (castlingRights() & BLACK_OOO) ? cr_BOOO : 0;
     castling &= pieces(ROOK);
     Bitboard white_castling = castling & attacks::MASK_RANK[RANK_1] & occ(WHITE);
     Bitboard black_castling = castling & attacks::MASK_RANK[RANK_8] & occ(BLACK);
@@ -877,23 +833,15 @@ template void _Position<EnginePiece, void>::genPawnDoubleMoves<Color::BLACK>(Mov
 template void _Position<PolyglotPiece, void>::genPawnDoubleMoves<Color::WHITE>(Movelist &) const;
 template void _Position<PolyglotPiece, void>::genPawnDoubleMoves<Color::BLACK>(Movelist &) const;
 
-template void
-_Position<EnginePiece, void>::genPawnSingleMoves<Color::WHITE, true>(Movelist &) const;
-template void
-_Position<EnginePiece, void>::genPawnSingleMoves<Color::BLACK, true>(Movelist &) const;
-template void
-_Position<PolyglotPiece, void>::genPawnSingleMoves<Color::WHITE, true>(Movelist &) const;
-template void
-_Position<PolyglotPiece, void>::genPawnSingleMoves<Color::BLACK, true>(Movelist &) const;
+template void _Position<EnginePiece, void>::genPawnSingleMoves<Color::WHITE, true>(Movelist &) const;
+template void _Position<EnginePiece, void>::genPawnSingleMoves<Color::BLACK, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genPawnSingleMoves<Color::WHITE, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genPawnSingleMoves<Color::BLACK, true>(Movelist &) const;
 
-template void
-_Position<EnginePiece, void>::genPawnSingleMoves<Color::WHITE, false>(Movelist &) const;
-template void
-_Position<EnginePiece, void>::genPawnSingleMoves<Color::BLACK, false>(Movelist &) const;
-template void
-_Position<PolyglotPiece, void>::genPawnSingleMoves<Color::WHITE, false>(Movelist &) const;
-template void
-_Position<PolyglotPiece, void>::genPawnSingleMoves<Color::BLACK, false>(Movelist &) const;
+template void _Position<EnginePiece, void>::genPawnSingleMoves<Color::WHITE, false>(Movelist &) const;
+template void _Position<EnginePiece, void>::genPawnSingleMoves<Color::BLACK, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genPawnSingleMoves<Color::WHITE, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genPawnSingleMoves<Color::BLACK, false>(Movelist &) const;
 
 template void _Position<EnginePiece, void>::genKingMoves<Color::WHITE, true>(Movelist &) const;
 template void _Position<EnginePiece, void>::genKingMoves<Color::BLACK, true>(Movelist &) const;
@@ -907,59 +855,35 @@ template void _Position<PolyglotPiece, void>::genKingMoves<Color::BLACK, true>(M
 template void _Position<PolyglotPiece, void>::genKingMoves<Color::WHITE, false>(Movelist &) const;
 template void _Position<PolyglotPiece, void>::genKingMoves<Color::BLACK, false>(Movelist &) const;
 
-template void
-_Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, BISHOP, false>(Movelist &) const;
-template void
-_Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, BISHOP, false>(Movelist &) const;
-template void
-_Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, BISHOP, false>(Movelist &) const;
-template void
-_Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, BISHOP, false>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, BISHOP, false>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, BISHOP, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, BISHOP, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, BISHOP, false>(Movelist &) const;
 
-template void
-_Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, ROOK, false>(Movelist &) const;
-template void
-_Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, ROOK, false>(Movelist &) const;
-template void
-_Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, ROOK, false>(Movelist &) const;
-template void
-_Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, ROOK, false>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, ROOK, false>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, ROOK, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, ROOK, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, ROOK, false>(Movelist &) const;
 
-template void
-_Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, QUEEN, false>(Movelist &) const;
-template void
-_Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, QUEEN, false>(Movelist &) const;
-template void
-_Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, QUEEN, false>(Movelist &) const;
-template void
-_Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, QUEEN, false>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, QUEEN, false>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, QUEEN, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, QUEEN, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, QUEEN, false>(Movelist &) const;
 
-template void
-_Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, BISHOP, true>(Movelist &) const;
-template void
-_Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, BISHOP, true>(Movelist &) const;
-template void
-_Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, BISHOP, true>(Movelist &) const;
-template void
-_Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, BISHOP, true>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, BISHOP, true>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, BISHOP, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, BISHOP, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, BISHOP, true>(Movelist &) const;
 
-template void
-_Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, ROOK, true>(Movelist &) const;
-template void
-_Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, ROOK, true>(Movelist &) const;
-template void
-_Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, ROOK, true>(Movelist &) const;
-template void
-_Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, ROOK, true>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, ROOK, true>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, ROOK, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, ROOK, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, ROOK, true>(Movelist &) const;
 
-template void
-_Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, QUEEN, true>(Movelist &) const;
-template void
-_Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, QUEEN, true>(Movelist &) const;
-template void
-_Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, QUEEN, true>(Movelist &) const;
-template void
-_Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, QUEEN, true>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, QUEEN, true>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, QUEEN, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, QUEEN, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, QUEEN, true>(Movelist &) const;
 
 template _Position<EnginePiece, void>::_Position(std::string);
 template _Position<PolyglotPiece, void>::_Position(std::string);
@@ -981,4 +905,11 @@ template bool _Position<EnginePiece, void>::is_valid<false>() const;
 template bool _Position<PolyglotPiece, void>::is_valid<false>() const;
 template bool _Position<EnginePiece, void>::is_valid<true>() const;
 template bool _Position<PolyglotPiece, void>::is_valid<true>() const;
+template<>
+const std::array<uint64_t, 64>* _Position<PolyglotPiece>::RandomPiece =
+    zobrist::RandomPiece;
+
+template<>
+const std::array<uint64_t, 64>* _Position<EnginePiece>::RandomPiece =
+    zobrist::RandomPiece_EnginePiece;
 } // namespace chess

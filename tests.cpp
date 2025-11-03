@@ -42,58 +42,34 @@ static_assert(piece_of(PolyglotPiece::WKING) == KING, "WKING -> KING");
 static_assert(piece_of(PolyglotPiece::NO_PIECE) == NO_PIECE_TYPE, "NO_PIECE -> NO_PIECE_TYPE");
 
 // --------- Round-trip make_piece assertions ----------
-static_assert(make_piece<PolyglotPiece>(PAWN, BLACK) == PolyglotPiece::BPAWN,
-              "make_piece PAWN,BLACK -> BPAWN");
-static_assert(make_piece<PolyglotPiece>(KNIGHT, BLACK) == PolyglotPiece::BKNIGHT,
-              "make_piece KNIGHT,BLACK -> BKNIGHT");
-static_assert(make_piece<PolyglotPiece>(BISHOP, BLACK) == PolyglotPiece::BBISHOP,
-              "make_piece BISHOP,BLACK -> BBISHOP");
-static_assert(make_piece<PolyglotPiece>(ROOK, BLACK) == PolyglotPiece::BROOK,
-              "make_piece ROOK,BLACK -> BROOK");
-static_assert(make_piece<PolyglotPiece>(QUEEN, BLACK) == PolyglotPiece::BQUEEN,
-              "make_piece QUEEN,BLACK -> BQUEEN");
-static_assert(make_piece<PolyglotPiece>(KING, BLACK) == PolyglotPiece::BKING,
-              "make_piece KING,BLACK -> BKING");
+static_assert(make_piece<PolyglotPiece>(PAWN, BLACK) == PolyglotPiece::BPAWN, "make_piece PAWN,BLACK -> BPAWN");
+static_assert(make_piece<PolyglotPiece>(KNIGHT, BLACK) == PolyglotPiece::BKNIGHT, "make_piece KNIGHT,BLACK -> BKNIGHT");
+static_assert(make_piece<PolyglotPiece>(BISHOP, BLACK) == PolyglotPiece::BBISHOP, "make_piece BISHOP,BLACK -> BBISHOP");
+static_assert(make_piece<PolyglotPiece>(ROOK, BLACK) == PolyglotPiece::BROOK, "make_piece ROOK,BLACK -> BROOK");
+static_assert(make_piece<PolyglotPiece>(QUEEN, BLACK) == PolyglotPiece::BQUEEN, "make_piece QUEEN,BLACK -> BQUEEN");
+static_assert(make_piece<PolyglotPiece>(KING, BLACK) == PolyglotPiece::BKING, "make_piece KING,BLACK -> BKING");
 
-static_assert(make_piece<PolyglotPiece>(PAWN, WHITE) == PolyglotPiece::WPAWN,
-              "make_piece PAWN,WHITE -> WPAWN");
-static_assert(make_piece<PolyglotPiece>(KNIGHT, WHITE) == PolyglotPiece::WKNIGHT,
-              "make_piece KNIGHT,WHITE -> WKNIGHT");
-static_assert(make_piece<PolyglotPiece>(BISHOP, WHITE) == PolyglotPiece::WBISHOP,
-              "make_piece BISHOP,WHITE -> WBISHOP");
-static_assert(make_piece<PolyglotPiece>(ROOK, WHITE) == PolyglotPiece::WROOK,
-              "make_piece ROOK,WHITE -> WROOK");
-static_assert(make_piece<PolyglotPiece>(QUEEN, WHITE) == PolyglotPiece::WQUEEN,
-              "make_piece QUEEN,WHITE -> WQUEEN");
-static_assert(make_piece<PolyglotPiece>(KING, WHITE) == PolyglotPiece::WKING,
-              "make_piece KING,WHITE -> WKING");
+static_assert(make_piece<PolyglotPiece>(PAWN, WHITE) == PolyglotPiece::WPAWN, "make_piece PAWN,WHITE -> WPAWN");
+static_assert(make_piece<PolyglotPiece>(KNIGHT, WHITE) == PolyglotPiece::WKNIGHT, "make_piece KNIGHT,WHITE -> WKNIGHT");
+static_assert(make_piece<PolyglotPiece>(BISHOP, WHITE) == PolyglotPiece::WBISHOP, "make_piece BISHOP,WHITE -> WBISHOP");
+static_assert(make_piece<PolyglotPiece>(ROOK, WHITE) == PolyglotPiece::WROOK, "make_piece ROOK,WHITE -> WROOK");
+static_assert(make_piece<PolyglotPiece>(QUEEN, WHITE) == PolyglotPiece::WQUEEN, "make_piece QUEEN,WHITE -> WQUEEN");
+static_assert(make_piece<PolyglotPiece>(KING, WHITE) == PolyglotPiece::WKING, "make_piece KING,WHITE -> WKING");
 
 // --------- Round-trip consistency ----------
-static_assert(piece_of(make_piece<PolyglotPiece>(PAWN, WHITE)) == PAWN,
-              "Round-trip piece PAWN,WHITE");
-static_assert(piece_of(make_piece<PolyglotPiece>(KNIGHT, WHITE)) == KNIGHT,
-              "Round-trip piece KNIGHT,WHITE");
-static_assert(piece_of(make_piece<PolyglotPiece>(BISHOP, WHITE)) == BISHOP,
-              "Round-trip piece BISHOP,WHITE");
-static_assert(piece_of(make_piece<PolyglotPiece>(ROOK, WHITE)) == ROOK,
-              "Round-trip piece ROOK,WHITE");
-static_assert(piece_of(make_piece<PolyglotPiece>(QUEEN, WHITE)) == QUEEN,
-              "Round-trip piece ROOK,WHITE");
-static_assert(piece_of(make_piece<PolyglotPiece>(KING, WHITE)) == KING,
-              "Round-trip piece ROOK,WHITE");
+static_assert(piece_of(make_piece<PolyglotPiece>(PAWN, WHITE)) == PAWN, "Round-trip piece PAWN,WHITE");
+static_assert(piece_of(make_piece<PolyglotPiece>(KNIGHT, WHITE)) == KNIGHT, "Round-trip piece KNIGHT,WHITE");
+static_assert(piece_of(make_piece<PolyglotPiece>(BISHOP, WHITE)) == BISHOP, "Round-trip piece BISHOP,WHITE");
+static_assert(piece_of(make_piece<PolyglotPiece>(ROOK, WHITE)) == ROOK, "Round-trip piece ROOK,WHITE");
+static_assert(piece_of(make_piece<PolyglotPiece>(QUEEN, WHITE)) == QUEEN, "Round-trip piece ROOK,WHITE");
+static_assert(piece_of(make_piece<PolyglotPiece>(KING, WHITE)) == KING, "Round-trip piece ROOK,WHITE");
 
-static_assert(piece_of(make_piece<PolyglotPiece>(PAWN, BLACK)) == PAWN,
-              "Round-trip piece PAWN,BLACK");
-static_assert(piece_of(make_piece<PolyglotPiece>(KNIGHT, BLACK)) == KNIGHT,
-              "Round-trip piece KNIGHT,BLACK");
-static_assert(piece_of(make_piece<PolyglotPiece>(BISHOP, BLACK)) == BISHOP,
-              "Round-trip piece BISHOP,BLACK");
-static_assert(piece_of(make_piece<PolyglotPiece>(ROOK, BLACK)) == ROOK,
-              "Round-trip piece ROOK,BLACK");
-static_assert(piece_of(make_piece<PolyglotPiece>(QUEEN, BLACK)) == QUEEN,
-              "Round-trip piece ROOK,BLACK");
-static_assert(piece_of(make_piece<PolyglotPiece>(KING, BLACK)) == KING,
-              "Round-trip piece ROOK,BLACK");
+static_assert(piece_of(make_piece<PolyglotPiece>(PAWN, BLACK)) == PAWN, "Round-trip piece PAWN,BLACK");
+static_assert(piece_of(make_piece<PolyglotPiece>(KNIGHT, BLACK)) == KNIGHT, "Round-trip piece KNIGHT,BLACK");
+static_assert(piece_of(make_piece<PolyglotPiece>(BISHOP, BLACK)) == BISHOP, "Round-trip piece BISHOP,BLACK");
+static_assert(piece_of(make_piece<PolyglotPiece>(ROOK, BLACK)) == ROOK, "Round-trip piece ROOK,BLACK");
+static_assert(piece_of(make_piece<PolyglotPiece>(QUEEN, BLACK)) == QUEEN, "Round-trip piece ROOK,BLACK");
+static_assert(piece_of(make_piece<PolyglotPiece>(KING, BLACK)) == KING, "Round-trip piece ROOK,BLACK");
 
 // --------- Color assertions ----------
 static_assert(color_of(PolyglotPiece::BPAWN) == BLACK, "BPAWN should be BLACK");
@@ -128,58 +104,34 @@ static_assert(piece_of(EnginePiece::WKING) == KING, "WKING -> KING");
 static_assert(piece_of(EnginePiece::NO_PIECE) == NO_PIECE_TYPE, "NO_PIECE -> NO_PIECE_TYPE");
 
 // --------- Round-trip make_piece assertions ----------
-static_assert(make_piece<EnginePiece>(PAWN, BLACK) == EnginePiece::BPAWN,
-              "make_piece PAWN,BLACK -> BPAWN");
-static_assert(make_piece<EnginePiece>(KNIGHT, BLACK) == EnginePiece::BKNIGHT,
-              "make_piece KNIGHT,BLACK -> BKNIGHT");
-static_assert(make_piece<EnginePiece>(BISHOP, BLACK) == EnginePiece::BBISHOP,
-              "make_piece BISHOP,BLACK -> BBISHOP");
-static_assert(make_piece<EnginePiece>(ROOK, BLACK) == EnginePiece::BROOK,
-              "make_piece ROOK,BLACK -> BROOK");
-static_assert(make_piece<EnginePiece>(QUEEN, BLACK) == EnginePiece::BQUEEN,
-              "make_piece QUEEN,BLACK -> BQUEEN");
-static_assert(make_piece<EnginePiece>(KING, BLACK) == EnginePiece::BKING,
-              "make_piece KING,BLACK -> BKING");
+static_assert(make_piece<EnginePiece>(PAWN, BLACK) == EnginePiece::BPAWN, "make_piece PAWN,BLACK -> BPAWN");
+static_assert(make_piece<EnginePiece>(KNIGHT, BLACK) == EnginePiece::BKNIGHT, "make_piece KNIGHT,BLACK -> BKNIGHT");
+static_assert(make_piece<EnginePiece>(BISHOP, BLACK) == EnginePiece::BBISHOP, "make_piece BISHOP,BLACK -> BBISHOP");
+static_assert(make_piece<EnginePiece>(ROOK, BLACK) == EnginePiece::BROOK, "make_piece ROOK,BLACK -> BROOK");
+static_assert(make_piece<EnginePiece>(QUEEN, BLACK) == EnginePiece::BQUEEN, "make_piece QUEEN,BLACK -> BQUEEN");
+static_assert(make_piece<EnginePiece>(KING, BLACK) == EnginePiece::BKING, "make_piece KING,BLACK -> BKING");
 
-static_assert(make_piece<EnginePiece>(PAWN, WHITE) == EnginePiece::WPAWN,
-              "make_piece PAWN,WHITE -> WPAWN");
-static_assert(make_piece<EnginePiece>(KNIGHT, WHITE) == EnginePiece::WKNIGHT,
-              "make_piece KNIGHT,WHITE -> WKNIGHT");
-static_assert(make_piece<EnginePiece>(BISHOP, WHITE) == EnginePiece::WBISHOP,
-              "make_piece BISHOP,WHITE -> WBISHOP");
-static_assert(make_piece<EnginePiece>(ROOK, WHITE) == EnginePiece::WROOK,
-              "make_piece ROOK,WHITE -> WROOK");
-static_assert(make_piece<EnginePiece>(QUEEN, WHITE) == EnginePiece::WQUEEN,
-              "make_piece QUEEN,WHITE -> WQUEEN");
-static_assert(make_piece<EnginePiece>(KING, WHITE) == EnginePiece::WKING,
-              "make_piece KING,WHITE -> WKING");
+static_assert(make_piece<EnginePiece>(PAWN, WHITE) == EnginePiece::WPAWN, "make_piece PAWN,WHITE -> WPAWN");
+static_assert(make_piece<EnginePiece>(KNIGHT, WHITE) == EnginePiece::WKNIGHT, "make_piece KNIGHT,WHITE -> WKNIGHT");
+static_assert(make_piece<EnginePiece>(BISHOP, WHITE) == EnginePiece::WBISHOP, "make_piece BISHOP,WHITE -> WBISHOP");
+static_assert(make_piece<EnginePiece>(ROOK, WHITE) == EnginePiece::WROOK, "make_piece ROOK,WHITE -> WROOK");
+static_assert(make_piece<EnginePiece>(QUEEN, WHITE) == EnginePiece::WQUEEN, "make_piece QUEEN,WHITE -> WQUEEN");
+static_assert(make_piece<EnginePiece>(KING, WHITE) == EnginePiece::WKING, "make_piece KING,WHITE -> WKING");
 
 // --------- Round-trip consistency ----------
-static_assert(piece_of(make_piece<EnginePiece>(PAWN, WHITE)) == PAWN,
-              "Round-trip piece PAWN,WHITE");
-static_assert(piece_of(make_piece<EnginePiece>(KNIGHT, WHITE)) == KNIGHT,
-              "Round-trip piece KNIGHT,WHITE");
-static_assert(piece_of(make_piece<EnginePiece>(BISHOP, WHITE)) == BISHOP,
-              "Round-trip piece BISHOP,WHITE");
-static_assert(piece_of(make_piece<EnginePiece>(ROOK, WHITE)) == ROOK,
-              "Round-trip piece ROOK,WHITE");
-static_assert(piece_of(make_piece<EnginePiece>(QUEEN, WHITE)) == QUEEN,
-              "Round-trip piece ROOK,WHITE");
-static_assert(piece_of(make_piece<EnginePiece>(KING, WHITE)) == KING,
-              "Round-trip piece ROOK,WHITE");
+static_assert(piece_of(make_piece<EnginePiece>(PAWN, WHITE)) == PAWN, "Round-trip piece PAWN,WHITE");
+static_assert(piece_of(make_piece<EnginePiece>(KNIGHT, WHITE)) == KNIGHT, "Round-trip piece KNIGHT,WHITE");
+static_assert(piece_of(make_piece<EnginePiece>(BISHOP, WHITE)) == BISHOP, "Round-trip piece BISHOP,WHITE");
+static_assert(piece_of(make_piece<EnginePiece>(ROOK, WHITE)) == ROOK, "Round-trip piece ROOK,WHITE");
+static_assert(piece_of(make_piece<EnginePiece>(QUEEN, WHITE)) == QUEEN, "Round-trip piece ROOK,WHITE");
+static_assert(piece_of(make_piece<EnginePiece>(KING, WHITE)) == KING, "Round-trip piece ROOK,WHITE");
 
-static_assert(piece_of(make_piece<EnginePiece>(PAWN, BLACK)) == PAWN,
-              "Round-trip piece PAWN,BLACK");
-static_assert(piece_of(make_piece<EnginePiece>(KNIGHT, BLACK)) == KNIGHT,
-              "Round-trip piece KNIGHT,BLACK");
-static_assert(piece_of(make_piece<EnginePiece>(BISHOP, BLACK)) == BISHOP,
-              "Round-trip piece BISHOP,BLACK");
-static_assert(piece_of(make_piece<EnginePiece>(ROOK, BLACK)) == ROOK,
-              "Round-trip piece ROOK,BLACK");
-static_assert(piece_of(make_piece<EnginePiece>(QUEEN, BLACK)) == QUEEN,
-              "Round-trip piece ROOK,BLACK");
-static_assert(piece_of(make_piece<EnginePiece>(KING, BLACK)) == KING,
-              "Round-trip piece ROOK,BLACK");
+static_assert(piece_of(make_piece<EnginePiece>(PAWN, BLACK)) == PAWN, "Round-trip piece PAWN,BLACK");
+static_assert(piece_of(make_piece<EnginePiece>(KNIGHT, BLACK)) == KNIGHT, "Round-trip piece KNIGHT,BLACK");
+static_assert(piece_of(make_piece<EnginePiece>(BISHOP, BLACK)) == BISHOP, "Round-trip piece BISHOP,BLACK");
+static_assert(piece_of(make_piece<EnginePiece>(ROOK, BLACK)) == ROOK, "Round-trip piece ROOK,BLACK");
+static_assert(piece_of(make_piece<EnginePiece>(QUEEN, BLACK)) == QUEEN, "Round-trip piece ROOK,BLACK");
+static_assert(piece_of(make_piece<EnginePiece>(KING, BLACK)) == KING, "Round-trip piece ROOK,BLACK");
 static_assert(make_sq(RANK_1, FILE_A) == SQ_A1, "incorrect indexing");
 static_assert(make_sq(RANK_8, FILE_A) == SQ_A8, "incorrect indexing");
 static_assert(make_sq(RANK_1, FILE_H) == SQ_H1, "incorrect indexing");
@@ -194,13 +146,11 @@ struct perft_t {
     int depth;
     uint64_t nodes;
 };
-template <typename InputT, typename CheckInfo>
-struct TestEntry {
+template <typename InputT, typename CheckInfo> struct TestEntry {
     InputT input;
     CheckInfo info;
 };
-template <typename T, MoveGenType mt, bool EnableDiv = false>
-uint64_t perft(_Position<T> &pos, int depth) {
+template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Position<T> &pos, int depth) {
     if (depth == 0) {
         return 1;
     } else if (depth == 1) {
@@ -233,8 +183,7 @@ uint64_t perft(_Position<T> &pos, int depth) {
         return total;
     }
 }
-template <MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false>
-void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
+template <MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false> void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
     uint64_t nodes = 0;
     double elapsed = 0;
     using namespace std::chrono;
@@ -634,7 +583,7 @@ struct moveToUci_t {
 };
 void check_moveToUci_t(std::vector<TestEntry<Move, moveToUci_t>> &tests) {
     for (auto &tc : tests) {
-        REQUIRE(chess::uci::moveToUci(tc.input)==tc.info.destCmp);
+        REQUIRE(chess::uci::moveToUci(tc.input) == tc.info.destCmp);
     }
 }
 TEST_CASE("moveToUci") {
@@ -756,7 +705,7 @@ struct was_into_check_t {
 template <typename T> void check_was_into_check_t(std::vector<TestEntry<std::string, was_into_check_t>> &tests) {
     for (auto &tc : tests) {
         _Position<T> pos(tc.input);
-        REQUIRE(pos.was_into_check()==tc.info.was_into_check);
+        REQUIRE(pos.was_into_check() == tc.info.was_into_check);
     }
 }
 TEST_CASE("was_into_check") {

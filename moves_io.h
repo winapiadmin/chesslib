@@ -1,5 +1,5 @@
 #pragma once
-#include <stdint.h>
+#include <cstdint>
 #include <string>
 #include <string_view>
 namespace chess {
@@ -10,7 +10,7 @@ namespace uci {
 std::string moveToUci(const Move &move);
 
 std::string squareToString(Square sq);
-template <typename T, typename P=void> Move uciToMove(const _Position<T, P> &pos, std::string uci);
-template <typename T, typename P=void> Move uciToMove(const _Position<T, P> &pos, std::string_view uci);
+template <typename T, typename P = void> Move uciToMove(const _Position<T, P> &pos, std::string uci);
+template <typename T, typename P = void> Move uciToMove(const _Position<T, P> &pos, std::string_view uci);
 } // namespace uci
 } // namespace chess

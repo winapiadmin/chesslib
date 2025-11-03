@@ -1,19 +1,13 @@
 #include "moves_io.h"
 #include "position.h"
 #include "types.h"
+#include <algorithm>
 #include <iostream>
 #include <string_view>
-#include <algorithm>
 namespace chess {
 namespace uci {
 std::string squareToString(Square sq) {
-    constexpr std::string_view fileChars[65] = {
-        "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1", "a2", "b2", "c2", "d2", "e2",
-        "f2", "g2", "h2", "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3", "a4", "b4",
-        "c4", "d4", "e4", "f4", "g4", "h4", "a5", "b5", "c5", "d5", "e5", "f5", "g5",
-        "h5", "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6", "a7", "b7", "c7", "d7",
-        "e7", "f7", "g7", "h7", "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", "none"
-    };
+    constexpr std::string_view fileChars[65] = { "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1", "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2", "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3", "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4", "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5", "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", "none" };
     return std::string{ fileChars[sq] };
 }
 std::string moveToUci(const Move &mv) {
@@ -63,9 +57,7 @@ std::string moveToUci(const Move &mv) {
     }
     return move;
 }
-template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std::string uci) {
-    return uciToMove(pos, std::string_view(uci));
-}
+template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std::string uci) { return uciToMove(pos, std::string_view(uci)); }
 template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std::string_view uci) {
     if (uci.length() < 4) {
 #ifdef __EXCEPTIONS
@@ -99,8 +91,7 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
     }
 
     // promotion
-    if (pt == PAWN && uci.length() == 5 &&
-        (rank_of(target) == (pos.sideToMove() == WHITE ? RANK_8 : RANK_1))) {
+    if (pt == PAWN && uci.length() == 5 && (rank_of(target) == (pos.sideToMove() == WHITE ? RANK_8 : RANK_1))) {
         auto promotion = parse_pt(uci.substr(4, 1));
 
         if (promotion == NO_PIECE_TYPE || promotion == KING || promotion == PAWN) {
@@ -112,7 +103,7 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
 
         return Move::make<PROMOTION>(source, target, parse_pt(uci.substr(4, 1)));
     }
-    auto move= (uci.length() == 4) ? Move::make(source, target) : Move::NO_MOVE;
+    auto move = (uci.length() == 4) ? Move::make(source, target) : Move::NO_MOVE;
     Movelist moves;
     pos.legals(moves);
     auto it = std::find(moves.begin(), moves.end(), move);

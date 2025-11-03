@@ -1,5 +1,6 @@
 #pragma once
-#include <stdint.h>
+#include <cstdint>
+#include <iosfwd>
 namespace chess {
 class Move;
 enum Color : uint8_t;
@@ -13,9 +14,7 @@ std::ostream &operator<<(std::ostream &os, const CastlingRights &cr);
 std::ostream &operator<<(std::ostream &os, const PolyglotPiece &p);
 std::ostream &operator<<(std::ostream &os, const EnginePiece &p);
 std::ostream &operator<<(std::ostream &os, const Square &sq);
-template <typename T, typename>
-class _Position;
+template <typename T, typename> class _Position;
 
-template <typename PieceC = EnginePiece>
-std::ostream &operator<<(std::ostream &os, const _Position<PieceC, void> &pos);
-}
+template <typename PieceC = EnginePiece> std::ostream &operator<<(std::ostream &os, const _Position<PieceC, void> &pos);
+} // namespace chess

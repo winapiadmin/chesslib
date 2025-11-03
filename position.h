@@ -2,7 +2,6 @@
 #include "attacks.h"
 #include "bitboard.h"
 #include "types.h"
-#include "zobrist.h"
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -16,21 +15,8 @@ template <typename Piece> struct HistoryEntry {
     Square kings[COLOR_NB] = { SQ_NONE };
     Color turn;                    // true if white to move
     CastlingRights castlingRights; // Castling rights bitmask
-    Piece pieces_list[SQUARE_NB] = {
-        Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
-        Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
-        Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
-        Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
-        Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
-        Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
-        Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
-        Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
-        Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
-        Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
-        Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
-        Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
-        Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE
-    };
+    Piece pieces_list[SQUARE_NB] = { Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
+                                     Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE };
     // Game state information
     Square enPassant = SQ_NONE; // En passant target square
     uint8_t halfMoveClock;      // Half-move clock for 50/75-move rule
@@ -123,20 +109,21 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
   private:
     T *values_;
 };
+namespace zobrist {
+    extern const std::array<uint64_t, 64> RandomPiece[];
+    extern const std::array<uint64_t, 64> RandomPiece_EnginePiece[];
+    extern const uint64_t RandomCastle[];
+    extern const uint64_t RandomEP[];
+    extern const uint64_t RandomTurn;
+}
 enum class MoveGenType : uint8_t { ALL, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, CAPTURE };
-template <typename PieceC = EnginePiece,
-          typename = std::enable_if_t<std::is_same_v<PieceC, EnginePiece> ||
-                                      std::is_same_v<PieceC, PolyglotPiece>>>
-class _Position {
+template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_same_v<PieceC, EnginePiece> || std::is_same_v<PieceC, PolyglotPiece>>> class _Position {
   private:
-    static constexpr const std::array<uint64_t, 64>(*RandomPiece) =
-        std::is_same_v<PieceC, PolyglotPiece> ? zobrist::RandomPiece
-                                              : zobrist::RandomPiece_EnginePiece;
+    static inline const std::array<uint64_t, 64>* RandomPiece;
 
     HistoryEntry<PieceC> current_state;
     // Move history stack
-    HeapAllocatedValueList<HistoryEntry<PieceC>, 8192>
-        history; // ahh, but i hope it fulfils before I manages to find the absolute limit of a game
+    HeapAllocatedValueList<HistoryEntry<PieceC>, 8192> history; // ahh, but i hope it fulfils before I manages to find the absolute limit of a game
     // Move generation functions, but INTERNAL. (they're kind of long so i put them into a source
     // file) Pawns (fully extensively tested)
     template <Color c> void genEP(Movelist &mv) const;
@@ -157,13 +144,11 @@ class _Position {
         }
     }
     template <Color c, bool capturesOnly = false> void genKingMoves(Movelist &mv) const;
-    template <Color c, PieceType pt, bool capturesOnly = false>
-    void genSlidingMoves(Movelist &mv) const;
+    template <Color c, PieceType pt, bool capturesOnly = false> void genSlidingMoves(Movelist &mv) const;
 
   public:
     // Legal move generation functions
-    template <MoveGenType type = MoveGenType::ALL, Color c>
-    inline void legals(Movelist &out) const {
+    template <MoveGenType type = MoveGenType::ALL, Color c> inline void legals(Movelist &out) const {
         if constexpr (type == MoveGenType::ALL) {
             // Simple cases
             genEP<c>(out);
@@ -261,19 +246,13 @@ class _Position {
             return occ();
         return current_state.pieces[pt];
     }
-    template <typename... PTypes, typename = std::enable_if_t<(std::is_integral_v<PTypes> && ...)>>
-    [[nodiscard]] inline Bitboard pieces(PTypes... ptypes) const {
-        return (pieces(ptypes) | ...);
-    }
+    template <typename... PTypes, typename = std::enable_if_t<(std::is_integral_v<PTypes> && ...)>> [[nodiscard]] inline Bitboard pieces(PTypes... ptypes) const { return (pieces(ptypes) | ...); }
 
-    template <typename... PTypes, typename = std::enable_if_t<(std::is_integral_v<PTypes> && ...)>>
-    [[nodiscard]] inline Bitboard pieces(Color c, PTypes... ptypes) const {
-        return (pieces(ptypes, c) | ...);
-    }
+    template <typename... PTypes, typename = std::enable_if_t<(std::is_integral_v<PTypes> && ...)>> [[nodiscard]] inline Bitboard pieces(Color c, PTypes... ptypes) const { return (pieces(ptypes, c) | ...); }
 
     /**
      * @brief Returns the origin squares of pieces of a given color attacking a target square
-     * 
+     *
      * Sample code to not make myself (and others) confused:
     ```c++
     if (attackers(BLACK, E4)) {
@@ -312,11 +291,7 @@ class _Position {
         Bitboard diag_attackers = pieces(PieceType::BISHOP, by) | pieces(PieceType::QUEEN, by);
         Bitboard ortho_attackers = pieces(PieceType::ROOK, by) | pieces(PieceType::QUEEN, by);
 
-        return (attacks::pawn(~by, sq) & pieces(PieceType::PAWN, by)) ||
-               (attacks::knight(sq) & pieces(PieceType::KNIGHT, by)) ||
-               (attacks::king(sq) & pieces(PieceType::KING, by)) ||
-               (attacks::bishop(sq, occ_bb) & diag_attackers & us_bb) ||
-               (attacks::rook(sq, occ_bb) & ortho_attackers & us_bb);
+        return (attacks::pawn(~by, sq) & pieces(PieceType::PAWN, by)) || (attacks::knight(sq) & pieces(PieceType::KNIGHT, by)) || (attacks::king(sq) & pieces(PieceType::KING, by)) || (attacks::bishop(sq, occ_bb) & diag_attackers & us_bb) || (attacks::rook(sq, occ_bb) & ortho_attackers & us_bb);
     }
     /**
      * @brief Checks if a square is attacked by the given color.
@@ -326,20 +301,13 @@ class _Position {
      * @return
      */
     [[nodiscard]] inline bool isAttacked(Square sq, Color by, Bitboard occupied) const noexcept {
-        const Bitboard diag_attackers =
-            pieces(PieceType::BISHOP, by) | pieces(PieceType::QUEEN, by);
+        const Bitboard diag_attackers = pieces(PieceType::BISHOP, by) | pieces(PieceType::QUEEN, by);
         const Bitboard ortho_attackers = pieces(PieceType::ROOK, by) | pieces(PieceType::QUEEN, by);
 
-        return (attacks::pawn(~by, sq) & pieces(PieceType::PAWN, by)) ||
-               (attacks::knight(sq) & pieces(PieceType::KNIGHT, by)) ||
-               (attacks::king(sq) & pieces(PieceType::KING, by)) ||
-               (attacks::bishop(sq, occupied) & diag_attackers) ||
-               (attacks::rook(sq, occupied) & ortho_attackers);
+        return (attacks::pawn(~by, sq) & pieces(PieceType::PAWN, by)) || (attacks::knight(sq) & pieces(PieceType::KNIGHT, by)) || (attacks::king(sq) & pieces(PieceType::KING, by)) || (attacks::bishop(sq, occupied) & diag_attackers) || (attacks::rook(sq, occupied) & ortho_attackers);
     }
 
-    [[nodiscard]] inline Bitboard attackers(Color color, Square square) const {
-        return attackers(color, square, occ());
-    }
+    [[nodiscard]] inline Bitboard attackers(Color color, Square square) const { return attackers(color, square, occ()); }
     // Compile-time piece type and color, runtime square
     template <PieceType pt> inline void placePiece(Square s, Color c) {
         if constexpr (pt != NO_PIECE_TYPE) {
@@ -407,7 +375,8 @@ class _Position {
 #ifndef __EXCEPTIONS
             assert(b && "Inconsistient piece map");
 #else
-            if (!b) throw std::invalid_argument("Inconsistient piece map");
+            if (!b)
+                throw std::invalid_argument("Inconsistient piece map");
 #endif
         }
         return p;
@@ -418,24 +387,17 @@ class _Position {
     inline uint64_t key() const { return current_state.hash; }
     inline Color side_to_move() const { return current_state.turn; }
     inline Square ep_square() const { return current_state.enPassant; }
-    template <PieceType pt> inline Square square(Color c) const {
-        return Square(lsb(pieces<pt>(c)));
-    }
+    template <PieceType pt> inline Square square(Color c) const { return Square(lsb(pieces<pt>(c))); }
     inline Square kingSq(Color c) const { return current_state.kings[c]; }
     inline Bitboard checkers() const { return current_state.checkers; }
     _Position(std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    inline bool isCapture(Move mv) const {
-        return mv.type_of() == EN_PASSANT ||
-               (mv.type_of() != CASTLING && piece_on(mv.to_sq()) != PieceC::NO_PIECE);
-    }
+    inline bool isCapture(Move mv) const { return mv.type_of() == EN_PASSANT || (mv.type_of() != CASTLING && piece_on(mv.to_sq()) != PieceC::NO_PIECE); }
 
     std::string fen() const;
     inline int halfmoveClock() const { return current_state.halfMoveClock; }
     inline int fullmoveNumber() const { return current_state.fullMoveNumber; }
     inline int rule50_count() const { return current_state.halfMoveClock; }
-    CastlingRights castlingRights(Color c) const {
-        return current_state.castlingRights & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING);
-    }
+    CastlingRights castlingRights(Color c) const { return current_state.castlingRights & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING); }
     CastlingRights castlingRights() const { return current_state.castlingRights; }
     inline const HistoryEntry<PieceC> &state() const { return current_state; }
     uint64_t zobrist() const;
@@ -454,7 +416,7 @@ class _Position {
     }
 
     inline bool was_into_check() const {
-        bool atk=false;
+        bool atk = false;
         Bitboard bb = pieces<KING>(~sideToMove());
         while (!atk && bb) {
             atk |= isAttacked((Square)pop_lsb(bb), sideToMove());
@@ -475,13 +437,13 @@ class _Position {
     }
     inline bool _attacked_for_king(Bitboard path, Bitboard occupied) const {
         Bitboard b = 0;
-        while (!b&&path) {
+        while (!b && path) {
             b |= attackers_mask(~sideToMove(), static_cast<Square>(pop_lsb(path)), occupied);
         }
         return !!b;
     }
-    template <bool Strict=false>
-    bool is_valid() const;
+    template <bool Strict = false> bool is_valid() const;
+
   private:
     template <PieceType pt> [[nodiscard]] inline Bitboard pinMask(Color c, Square sq) const {
         static_assert(pt == BISHOP || pt == ROOK, "Only bishop or rook allowed!");
@@ -519,17 +481,10 @@ class _Position {
         refresh_attacks();
     }
     _Position(const _Position &other)
-        : current_state(other.current_state),
-          history(other.history) // calls HeapAllocatedValueList's copy constructor
+        : current_state(other.current_state), history(other.history) // calls HeapAllocatedValueList's copy constructor
     {}
 
-    template <
-        typename T,
-        std::enable_if_t<(std::is_same_v<T, PolyglotPiece> || std::is_same_v<T, EnginePiece>) &&
-                             !std::is_same_v<T, PieceC>,
-                         int> = 0>
-    [[deprecated("Incompatible piece method used, you shouldn't call this")]] inline _Position(
-        HistoryEntry<T> state) {
+    template <typename T, std::enable_if_t<(std::is_same_v<T, PolyglotPiece> || std::is_same_v<T, EnginePiece>) && !std::is_same_v<T, PieceC>, int> = 0> [[deprecated("Incompatible piece method used, you shouldn't call this")]] inline _Position(HistoryEntry<T> state) {
         // incompatible!
         current_state = HistoryEntry<PieceC>();
         current_state.turn = state.turn;
@@ -540,8 +495,7 @@ class _Position {
         current_state.hash = state.hash;
 #pragma unroll
         for (int s = 0; s < 64; ++s) {
-            current_state.pieces_list[s] =
-                make_piece<PieceC>(type_of(state.pieces_list[s]), color_of(state.pieces_list[s]));
+            current_state.pieces_list[s] = make_piece<PieceC>(type_of(state.pieces_list[s]), color_of(state.pieces_list[s]));
         }
         refresh_attacks();
     }
