@@ -505,7 +505,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                 default:
 #if defined(_DEBUG) || !defined(NDEBUG)
                     assert(false && "Invalid FEN character");
-#else
+#elif defined(__EXCEPTIONS)
                     throw std::invalid_argument("Invalid FEN character");
 #endif
                 }
@@ -611,7 +611,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
     } else {
 #if defined(_DEBUG) || !defined(NDEBUG)
         assert(enpassant == "-" && "Invalid en passant FEN field");
-#else
+#elif defined(__EXCEPTIONS)
         if (enpassant != "-")
             throw std::invalid_argument("Invalid en passant FEN field");
 #endif

@@ -1,4 +1,8 @@
 #define DOCTEST_CONFIG_IMPLEMENT
+#ifndef __EXCEPTIONS
+#define DOCTEST_CONFIG_DISABLE
+#define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
+#endif
 #include "moves_io.h"
 #include "position.h"
 #include "printers.h"

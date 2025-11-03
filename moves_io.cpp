@@ -46,7 +46,7 @@ std::string moveToUci(const Move &mv) {
         default:
 #if defined(_DEBUG) || !defined(NDEBUG)
             assert(false && "this isn't chess960");
-#else
+#elif defined(__EXCEPTIONS)
             throw std::invalid_argument("this isn't chess960");
 #endif
         }
