@@ -508,6 +508,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
 #elif defined(__EXCEPTIONS)
                     throw std::invalid_argument("Invalid FEN character");
 #endif
+                    break;
                 }
 
 #if defined(_DEBUG) || !defined(NDEBUG) || defined(__EXCEPTIONS)

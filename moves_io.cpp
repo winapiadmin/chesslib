@@ -48,6 +48,8 @@ std::string moveToUci(const Move &mv) {
             assert(false && "this isn't chess960");
 #elif defined(__EXCEPTIONS)
             throw std::invalid_argument("this isn't chess960");
+#else
+            break;
 #endif
         }
         break;
