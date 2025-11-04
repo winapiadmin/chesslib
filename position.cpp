@@ -9,6 +9,95 @@
 #define _POSSIBLY_CONSTEXPR const
 #endif
 namespace chess {
+template<>
+const std::array<uint64_t, 64>* _Position<PolyglotPiece>::RandomPiece =
+    zobrist::RandomPiece;
+
+template<>
+const std::array<uint64_t, 64>* _Position<EnginePiece>::RandomPiece =
+    zobrist::RandomPiece_EnginePiece;
+template void _Position<EnginePiece, void>::genEP<Color::WHITE>(Movelist &) const;
+template void _Position<EnginePiece, void>::genEP<Color::BLACK>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genEP<Color::WHITE>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genEP<Color::BLACK>(Movelist &) const;
+
+template void _Position<EnginePiece, void>::genPawnDoubleMoves<Color::WHITE>(Movelist &) const;
+template void _Position<EnginePiece, void>::genPawnDoubleMoves<Color::BLACK>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genPawnDoubleMoves<Color::WHITE>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genPawnDoubleMoves<Color::BLACK>(Movelist &) const;
+
+template void _Position<EnginePiece, void>::genPawnSingleMoves<Color::WHITE, true>(Movelist &) const;
+template void _Position<EnginePiece, void>::genPawnSingleMoves<Color::BLACK, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genPawnSingleMoves<Color::WHITE, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genPawnSingleMoves<Color::BLACK, true>(Movelist &) const;
+
+template void _Position<EnginePiece, void>::genPawnSingleMoves<Color::WHITE, false>(Movelist &) const;
+template void _Position<EnginePiece, void>::genPawnSingleMoves<Color::BLACK, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genPawnSingleMoves<Color::WHITE, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genPawnSingleMoves<Color::BLACK, false>(Movelist &) const;
+
+template void _Position<EnginePiece, void>::genKingMoves<Color::WHITE, true>(Movelist &) const;
+template void _Position<EnginePiece, void>::genKingMoves<Color::BLACK, true>(Movelist &) const;
+
+template void _Position<EnginePiece, void>::genKingMoves<Color::WHITE, false>(Movelist &) const;
+template void _Position<EnginePiece, void>::genKingMoves<Color::BLACK, false>(Movelist &) const;
+
+template void _Position<PolyglotPiece, void>::genKingMoves<Color::WHITE, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genKingMoves<Color::BLACK, true>(Movelist &) const;
+
+template void _Position<PolyglotPiece, void>::genKingMoves<Color::WHITE, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genKingMoves<Color::BLACK, false>(Movelist &) const;
+
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, BISHOP, false>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, BISHOP, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, BISHOP, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, BISHOP, false>(Movelist &) const;
+
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, ROOK, false>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, ROOK, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, ROOK, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, ROOK, false>(Movelist &) const;
+
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, QUEEN, false>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, QUEEN, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, QUEEN, false>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, QUEEN, false>(Movelist &) const;
+
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, BISHOP, true>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, BISHOP, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, BISHOP, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, BISHOP, true>(Movelist &) const;
+
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, ROOK, true>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, ROOK, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, ROOK, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, ROOK, true>(Movelist &) const;
+
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, QUEEN, true>(Movelist &) const;
+template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, QUEEN, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, QUEEN, true>(Movelist &) const;
+template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, QUEEN, true>(Movelist &) const;
+
+template _Position<EnginePiece, void>::_Position(std::string);
+template _Position<PolyglotPiece, void>::_Position(std::string);
+template void _Position<EnginePiece, void>::setFEN(const std::string &);
+template void _Position<PolyglotPiece, void>::setFEN(const std::string &);
+template std::string _Position<EnginePiece, void>::fen() const;
+template std::string _Position<PolyglotPiece, void>::fen() const;
+template void _Position<EnginePiece, void>::doMove(const Move &move);
+template void _Position<PolyglotPiece, void>::doMove(const Move &move);
+template void _Position<EnginePiece, void>::refresh_attacks();
+template void _Position<PolyglotPiece, void>::refresh_attacks();
+template uint64_t _Position<EnginePiece, void>::zobrist() const;
+template uint64_t _Position<PolyglotPiece, void>::zobrist() const;
+template Move _Position<EnginePiece, void>::parse_uci(std::string) const;
+template Move _Position<PolyglotPiece, void>::parse_uci(std::string) const;
+template Move _Position<EnginePiece, void>::push_uci(std::string);
+template Move _Position<PolyglotPiece, void>::push_uci(std::string);
+template bool _Position<EnginePiece, void>::is_valid<false>() const;
+template bool _Position<PolyglotPiece, void>::is_valid<false>() const;
+template bool _Position<EnginePiece, void>::is_valid<true>() const;
+template bool _Position<PolyglotPiece, void>::is_valid<true>() const;
 namespace _chess {
 #if defined(__AVX512BW__)
 template<int Offset = 0>
@@ -989,93 +1078,4 @@ template <typename PieceC, typename T> CastlingRights _Position<PieceC, T>::clea
     cr |= (castling & cr_BOOO) ? BLACK_OOO : NO_CASTLING;
     return cr;
 }
-template void _Position<EnginePiece, void>::genEP<Color::WHITE>(Movelist &) const;
-template void _Position<EnginePiece, void>::genEP<Color::BLACK>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genEP<Color::WHITE>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genEP<Color::BLACK>(Movelist &) const;
-
-template void _Position<EnginePiece, void>::genPawnDoubleMoves<Color::WHITE>(Movelist &) const;
-template void _Position<EnginePiece, void>::genPawnDoubleMoves<Color::BLACK>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genPawnDoubleMoves<Color::WHITE>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genPawnDoubleMoves<Color::BLACK>(Movelist &) const;
-
-template void _Position<EnginePiece, void>::genPawnSingleMoves<Color::WHITE, true>(Movelist &) const;
-template void _Position<EnginePiece, void>::genPawnSingleMoves<Color::BLACK, true>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genPawnSingleMoves<Color::WHITE, true>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genPawnSingleMoves<Color::BLACK, true>(Movelist &) const;
-
-template void _Position<EnginePiece, void>::genPawnSingleMoves<Color::WHITE, false>(Movelist &) const;
-template void _Position<EnginePiece, void>::genPawnSingleMoves<Color::BLACK, false>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genPawnSingleMoves<Color::WHITE, false>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genPawnSingleMoves<Color::BLACK, false>(Movelist &) const;
-
-template void _Position<EnginePiece, void>::genKingMoves<Color::WHITE, true>(Movelist &) const;
-template void _Position<EnginePiece, void>::genKingMoves<Color::BLACK, true>(Movelist &) const;
-
-template void _Position<EnginePiece, void>::genKingMoves<Color::WHITE, false>(Movelist &) const;
-template void _Position<EnginePiece, void>::genKingMoves<Color::BLACK, false>(Movelist &) const;
-
-template void _Position<PolyglotPiece, void>::genKingMoves<Color::WHITE, true>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genKingMoves<Color::BLACK, true>(Movelist &) const;
-
-template void _Position<PolyglotPiece, void>::genKingMoves<Color::WHITE, false>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genKingMoves<Color::BLACK, false>(Movelist &) const;
-
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, BISHOP, false>(Movelist &) const;
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, BISHOP, false>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, BISHOP, false>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, BISHOP, false>(Movelist &) const;
-
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, ROOK, false>(Movelist &) const;
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, ROOK, false>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, ROOK, false>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, ROOK, false>(Movelist &) const;
-
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, QUEEN, false>(Movelist &) const;
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, QUEEN, false>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, QUEEN, false>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, QUEEN, false>(Movelist &) const;
-
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, BISHOP, true>(Movelist &) const;
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, BISHOP, true>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, BISHOP, true>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, BISHOP, true>(Movelist &) const;
-
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, ROOK, true>(Movelist &) const;
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, ROOK, true>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, ROOK, true>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, ROOK, true>(Movelist &) const;
-
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::WHITE, QUEEN, true>(Movelist &) const;
-template void _Position<EnginePiece, void>::genSlidingMoves<Color::BLACK, QUEEN, true>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::WHITE, QUEEN, true>(Movelist &) const;
-template void _Position<PolyglotPiece, void>::genSlidingMoves<Color::BLACK, QUEEN, true>(Movelist &) const;
-
-template _Position<EnginePiece, void>::_Position(std::string);
-template _Position<PolyglotPiece, void>::_Position(std::string);
-template void _Position<EnginePiece, void>::setFEN(const std::string &);
-template void _Position<PolyglotPiece, void>::setFEN(const std::string &);
-template std::string _Position<EnginePiece, void>::fen() const;
-template std::string _Position<PolyglotPiece, void>::fen() const;
-template void _Position<EnginePiece, void>::doMove(const Move &move);
-template void _Position<PolyglotPiece, void>::doMove(const Move &move);
-template void _Position<EnginePiece, void>::refresh_attacks();
-template void _Position<PolyglotPiece, void>::refresh_attacks();
-template uint64_t _Position<EnginePiece, void>::zobrist() const;
-template uint64_t _Position<PolyglotPiece, void>::zobrist() const;
-template Move _Position<EnginePiece, void>::parse_uci(std::string) const;
-template Move _Position<PolyglotPiece, void>::parse_uci(std::string) const;
-template Move _Position<EnginePiece, void>::push_uci(std::string);
-template Move _Position<PolyglotPiece, void>::push_uci(std::string);
-template bool _Position<EnginePiece, void>::is_valid<false>() const;
-template bool _Position<PolyglotPiece, void>::is_valid<false>() const;
-template bool _Position<EnginePiece, void>::is_valid<true>() const;
-template bool _Position<PolyglotPiece, void>::is_valid<true>() const;
-template<>
-const std::array<uint64_t, 64>* _Position<PolyglotPiece>::RandomPiece =
-    zobrist::RandomPiece;
-
-template<>
-const std::array<uint64_t, 64>* _Position<EnginePiece>::RandomPiece =
-    zobrist::RandomPiece_EnginePiece;
 } // namespace chess
