@@ -1,5 +1,4 @@
 #include "position.h"
-#include "zobrist.h"
 #include "moves_io.h"
 #include "position.h"
 #include <sstream>
