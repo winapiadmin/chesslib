@@ -8,6 +8,16 @@
 #include <string_view>
 #include <utility>
 namespace chess {
+namespace _chess{
+
+    template<typename PieceC>
+    constexpr auto selectRandomPiece() -> const std::array<uint64_t,64>* {
+        if constexpr (std::is_same_v<PieceC, PolyglotPiece>)
+            return &zobrist::RandomPiece[0];
+        else
+            return &zobrist::RandomPiece_EnginePiece[0];
+    }
+}
 #pragma pack(push, 1)
 template <typename Piece> struct HistoryEntry {
     // Bitboards for each piece type (white and black)
@@ -114,7 +124,9 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
 enum class MoveGenType : uint8_t { ALL, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, CAPTURE };
 template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_same_v<PieceC, EnginePiece> || std::is_same_v<PieceC, PolyglotPiece>>> class _Position {
   private:
-    static inline const std::array<uint64_t, 64>* RandomPiece;
+  static constexpr const std::array<uint64_t, 64>* RandomPiece =
+    _chess::selectRandomPiece<PieceC>();
+
 
     HistoryEntry<PieceC> current_state;
     // Move history stack

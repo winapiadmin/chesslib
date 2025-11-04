@@ -8,13 +8,6 @@
 #define _POSSIBLY_CONSTEXPR const
 #endif
 namespace chess {
-template<>
-const std::array<uint64_t, 64>* _Position<PolyglotPiece>::RandomPiece =
-    zobrist::RandomPiece;
-
-template<>
-const std::array<uint64_t, 64>* _Position<EnginePiece>::RandomPiece =
-    zobrist::RandomPiece_EnginePiece;
 template void _Position<EnginePiece, void>::genEP<Color::WHITE>(Movelist &) const;
 template void _Position<EnginePiece, void>::genEP<Color::BLACK>(Movelist &) const;
 template void _Position<PolyglotPiece, void>::genEP<Color::WHITE>(Movelist &) const;
