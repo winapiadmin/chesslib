@@ -2,6 +2,7 @@
 #include "attacks.h"
 #include "bitboard.h"
 #include "types.h"
+#include "zobrist.h"
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -109,13 +110,7 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
   private:
     T *values_;
 };
-namespace zobrist {
-    extern const std::array<uint64_t, 64> RandomPiece[];
-    extern const std::array<uint64_t, 64> RandomPiece_EnginePiece[];
-    extern const uint64_t RandomCastle[];
-    extern const uint64_t RandomEP[];
-    extern const uint64_t RandomTurn;
-}
+
 enum class MoveGenType : uint8_t { ALL, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, CAPTURE };
 template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_same_v<PieceC, EnginePiece> || std::is_same_v<PieceC, PolyglotPiece>>> class _Position {
   private:

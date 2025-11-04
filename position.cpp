@@ -1,5 +1,5 @@
-#include "zobrist.h"
 #include "position.h"
+#include "zobrist.h"
 #include "moves_io.h"
 #include "position.h"
 #include <sstream>
@@ -9,8 +9,6 @@
 #define _POSSIBLY_CONSTEXPR const
 #endif
 namespace chess {
-    // workarounds for https://github.com/winapiadmin/chesslib/issues/16
-#ifndef _MSC_VER
 template<>
 const std::array<uint64_t, 64>* _Position<PolyglotPiece>::RandomPiece =
     zobrist::RandomPiece;
@@ -18,7 +16,6 @@ const std::array<uint64_t, 64>* _Position<PolyglotPiece>::RandomPiece =
 template<>
 const std::array<uint64_t, 64>* _Position<EnginePiece>::RandomPiece =
     zobrist::RandomPiece_EnginePiece;
-#endif
 template void _Position<EnginePiece, void>::genEP<Color::WHITE>(Movelist &) const;
 template void _Position<EnginePiece, void>::genEP<Color::BLACK>(Movelist &) const;
 template void _Position<PolyglotPiece, void>::genEP<Color::WHITE>(Movelist &) const;
