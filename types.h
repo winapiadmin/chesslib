@@ -370,6 +370,7 @@ template <typename T, std::size_t MaxSize> class ValueList {
     }
 
     inline const T *begin() const { return values_; }
+    inline T *data() { return values_; }
     inline const T *end() const { return values_ + size_; }
     size_type size_ = 0;
 

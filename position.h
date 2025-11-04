@@ -242,11 +242,15 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
         }
     }
     inline Bitboard pieces(PieceType pt) const {
-        if (pt == PIECE_TYPE_NB || pt == ALL_PIECES)
+        switch(int(pt)){
+        case PIECE_TYPE_NB:
+        case ALL_PIECES:
             return occ();
-        return current_state.pieces[pt];
+        default:
+            return current_state.pieces[pt];
+        }
     }
-    template <typename... PTypes, typename = std::enable_if_t<(std::is_integral_v<PTypes> && ...)>> [[nodiscard]] inline Bitboard pieces(PTypes... ptypes) const { return (pieces(ptypes) | ...); }
+    template <typename... PTypes, typename = std::enable_if_t<(std::is_integral_v<PTypes> && ...)>> [[nodiscard]] inline Bitboard pieces(PTypes... ptypes) const { return (current_state.pieces[ptypes] | ...); }
 
     template <typename... PTypes, typename = std::enable_if_t<(std::is_integral_v<PTypes> && ...)>> [[nodiscard]] inline Bitboard pieces(Color c, PTypes... ptypes) const { return (pieces(ptypes, c) | ...); }
 
@@ -410,6 +414,13 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
     Move parse_uci(std::string) const;
     Move push_uci(std::string);
     Square _valid_ep_square() const;
+    template<PieceType pt>
+    int count() const{ return popcount(pieces(pt));}
+    template<PieceType pt, Color c>
+    int count() const{ return popcount(pieces<pt, c>());}
+    template<PieceType pt>
+    int count(Color c) const{ return popcount(pieces<pt>(c));}
+    int count(PieceType pt, Color c) const{ return popcount(pieces(pt, c));}
     inline bool is_attacked_by(Color color, Square sq, Bitboard occupied = 0) const {
         Bitboard occ_bb = occupied ? occupied : this->occ();
         return attackers_mask(color, sq, occ_bb) != 0;

@@ -9,7 +9,75 @@
 #define _POSSIBLY_CONSTEXPR const
 #endif
 namespace chess {
+namespace _chess {
+#if defined(__AVX512BW__)
+template<int Offset = 0>
+struct alignas(64) SplatTable {
+    std::array<uint16_t, 64> data;
+    constexpr int clamp64(int x) {
+        return (x < 0) ? 0 : (x > 63 ? 63 : x);
+    }
 
+    constexpr SplatTable() : data{} {
+        for (int i = 0; i < 64; ++i) {
+            int from = clamp64(i - Offset);
+            data[i] = Move((Square)from, (Square)i).raw();
+        }
+    }
+};
+
+inline constexpr SplatTable<> SPLAT_TABLE{};
+template<int Offset>
+inline constexpr SplatTable<Offset> SPLAT_PAWN_TABLE{};
+// AVX-512 (32 lanes of uint16_t)
+inline Move* write_moves(Move* moveList, uint32_t mask, __m512i vec, uint16_t base = 0) {
+    alignas(64) uint16_t tmp16[32];
+    _mm512_storeu_si512(reinterpret_cast<__m512i*>(moveList),
+                        _mm512_maskz_compress_epi16(mask, vector));
+    return moveList;
+}
+
+inline Move* splat_moves(Move* moveList, Square from, Bitboard to_bb) {
+    const auto* table = reinterpret_cast<const __m512i*>(SPLAT_TABLE.data.data());
+    __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
+    // two 32-lane blocks (0..31, 32..63)
+    moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0),
+                           _mm512_or_si512(_mm512_load_si512(table + 0), fromVec), 0);
+    moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32),
+                           _mm512_or_si512(_mm512_load_si512(table + 1), fromVec), 0);
+    return moveList;
+}
+
+template<int offset>
+inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
+    const auto* table = reinterpret_cast<const __m512i*>(SPLAT_PAWN_TABLE<offset>.data.data());
+    moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0),
+                           _mm512_load_si512(table + 0), 0);
+    moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32),
+                           _mm512_load_si512(table + 1), 0);
+    return moveList;
+}
+
+#else
+template<Direction offset>
+inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
+    while (to_bb)
+    {
+        Square to   = (Square)pop_lsb(to_bb);
+        Square from = to - offset;
+        assert(from >= 0 && from < 64); // sanity check
+        *moveList++ = Move(from, to);
+    }
+    return moveList;
+}
+
+inline Move* splat_moves(Move* moveList, Square from, Bitboard to_bb) {
+    while (to_bb)
+        *moveList++ = Move(from, (Square)pop_lsb(to_bb));
+    return moveList;
+}
+#endif
+} // namespace _chess
 static _POSSIBLY_CONSTEXPR CastlingRights make_clear_mask(Color c, PieceType pt, Square sq) {
     if (pt == KING) {
         if (c == WHITE && sq == SQ_E1)
@@ -87,6 +155,7 @@ template <typename PieceC, typename T> template <Color c, bool capturesOnly> voi
     const Bitboard all_occ = occ();
 
     const Bitboard pinned = pawns & current_state._pin_mask;
+    Move* moveList; // no chance
 
     // ---------- 1. Single forward pushes ----------
 
@@ -109,13 +178,15 @@ template <typename PieceC, typename T> template <Color c, bool capturesOnly> voi
             moves.push_back(Move::make<PROMOTION>(from, to, ROOK));
             moves.push_back(Move::make<PROMOTION>(from, to, QUEEN));
         }
-
-        while (non_promo_targets) {
-            Square to = Square(pop_lsb(non_promo_targets));
-            Square from = Square(to - UP);
-
-            moves.push_back(Move(from, to));
-        }
+        // while (non_promo_targets) {
+        //     Square to = Square(pop_lsb(non_promo_targets));
+        //     Square from = Square(to - UP);
+        //     moves.push_back(Move(from, to));
+        // }
+        moveList =moves.data()+moves.size();
+        Move* moveEnd = _chess::splat_pawn_moves<UP>(moveList, non_promo_targets);
+        moves.size_+=std::distance(moveList, moveEnd);
+        moveList = moveEnd;
     }
     // ---------- 2. Left captures ----------
     Bitboard left = (pawns & NOT_FILE_A);
@@ -137,18 +208,35 @@ template <typename PieceC, typename T> template <Color c, bool capturesOnly> voi
             moves.push_back(Move::make<PROMOTION>(from, to, QUEEN));
         }
     }
+    {
+        // while (non_promo_left_targets) {
+        //     Square to = Square(pop_lsb(non_promo_left_targets));
+        //     Square from = Square(to - ((c == WHITE) ? 7 : -9));
+        //     Bitboard from_bb = 1ULL << from;
+        //     Bitboard move_bb = from_bb | (1ULL << to);
 
-    while (non_promo_left_targets) {
-        Square to = Square(pop_lsb(non_promo_left_targets));
-        Square from = Square(to - ((c == WHITE) ? 7 : -9));
-        Bitboard from_bb = 1ULL << from;
-        Bitboard move_bb = from_bb | (1ULL << to);
+        //     // skip if pinned but capture not along pin ray
+        //     if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb || (move_bb & current_state._rook_pin) == move_bb)))
+        //         moves.push_back(Move(from, to));
+        //     }
+        // }
+        Bitboard legal_sources=0;
+        while (non_promo_left_targets) {
+            Square to = Square(pop_lsb(non_promo_left_targets));
+            Square from = Square(to - ((c == WHITE) ? 7 : -9));
+            Bitboard from_bb = 1ULL << from, to_bb=1ULL<<to;
+            Bitboard move_bb = from_bb | to_bb;
 
-        // skip if pinned but capture not along pin ray
-        if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb || (move_bb & current_state._rook_pin) == move_bb)))
-            moves.push_back(Move(from, to));
+            // skip if pinned but capture not along pin ray
+            bool legal=!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb || (move_bb & current_state._rook_pin) == move_bb));
+            legal_sources |= legal?to_bb:0;
+        }
+        moveList =moves.data()+moves.size();
+        constexpr Direction dir=c==WHITE?NORTH_WEST:SOUTH_WEST;
+        Move* moveEnd = _chess::splat_pawn_moves<dir>(moveList, legal_sources);
+        moves.size_+=std::distance(moveList, moveEnd);
+        moveList = moveEnd;
     }
-
     // ---------- 3. Right captures ----------
     Bitboard right = (pawns & NOT_FILE_H);
     Bitboard right_tgt = (c == WHITE ? (right << 9) : (right >> 7)) & enemy_occ & current_state.check_mask;
@@ -168,15 +256,32 @@ template <typename PieceC, typename T> template <Color c, bool capturesOnly> voi
             moves.push_back(Move::make<PROMOTION>(from, to, QUEEN));
         }
     }
+    {
+        // while (non_promo_right_targets) {
+        //     Square to = Square(pop_lsb(non_promo_right_targets));
+        //     Square from = Square(to - ((c == WHITE) ? 9 : -7));
+        //     Bitboard from_bb = 1ULL << from;
+        //     Bitboard move_bb = from_bb | (1ULL << to);
 
-    while (non_promo_right_targets) {
-        Square to = Square(pop_lsb(non_promo_right_targets));
-        Square from = Square(to - ((c == WHITE) ? 9 : -7));
-        Bitboard from_bb = 1ULL << from;
-        Bitboard move_bb = from_bb | (1ULL << to);
+        //     if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb || (move_bb & current_state._rook_pin) == move_bb)))
+        //         moves.push_back(Move(from, to));
+        // }
+        Bitboard legal_sources=0;
+        while (non_promo_right_targets) {
+            Square to = Square(pop_lsb(non_promo_right_targets));
+            Square from = Square(to - ((c == WHITE) ? 9 : -7));
+            Bitboard from_bb = 1ULL << from, to_bb=1ULL<<to;
+            Bitboard move_bb = from_bb | to_bb;
 
-        if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb || (move_bb & current_state._rook_pin) == move_bb)))
-            moves.push_back(Move(from, to));
+            // skip if pinned but capture not along pin ray
+            bool legal=!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb || (move_bb & current_state._rook_pin) == move_bb));
+            legal_sources |= legal?to_bb:0;
+        }
+        moveList =moves.data()+moves.size();
+        constexpr Direction dir=c==WHITE?NORTH_EAST:SOUTH_EAST;
+        Move* moveEnd = _chess::splat_pawn_moves<dir>(moveList, legal_sources);
+        moves.size_+=std::distance(moveList, moveEnd);
+        moveList = moveEnd;
     }
 }
 
@@ -655,11 +760,72 @@ template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen() c
     return fen;
 }
 template <typename PieceC, typename T> template <bool Strict> bool _Position<PieceC, T>::is_valid() const {
-    if (popcount(pieces<KING, WHITE>()) != 1)
+    if (count<KING, WHITE>()!=1) return false;
+    if (count<KING, BLACK>()!=1) return false;
+    Color stm = sideToMove();
+    // stm checking
+    bool whiteInCheck = isAttacked(kingSq(WHITE), BLACK);
+    bool blackInCheck = isAttacked(kingSq(BLACK), WHITE);
+
+    // Both kings cannot be in check simultaneously
+    if (whiteInCheck && blackInCheck)
         return false;
-    if (popcount(pieces<KING, WHITE>()) != 1)
+
+    // The side to move cannot have its king currently in check from itself (nonsense)
+    if (isAttacked(kingSq(~stm), stm))
         return false;
-    // not implemented
+    if (piece_on(SQ_A1) != PieceC::WROOK && (castlingRights() & WHITE_OOO) != 0)
+        return false;
+    // pawns not on backrank
+    if ((pieces(PAWN) & (attacks::MASK_RANK[RANK_1]|attacks::MASK_RANK[RANK_8]))!=0) return false;
+    if constexpr (Strict){
+        // pawns not > 8
+        {
+            int pawns = count<PAWN, WHITE>();
+            int queens = count<QUEEN, WHITE>();
+            int rooks  = count<ROOK, WHITE>();
+            int bishops= count<BISHOP, WHITE>();
+            int knights= count<KNIGHT, WHITE>();
+
+            // Base set: 1 queen, 2 rooks, 2 bishops, 2 knights
+            int promotions = std::max(0, (queens - 1))
+                        + std::max(0, (rooks  - 2))
+                        + std::max(0, (bishops- 2))
+                        + std::max(0, (knights- 2));
+
+            if (pawns + promotions > 8)
+                return false;  // impossible
+        }
+        {
+            int pawns = count<PAWN, BLACK>();
+            int queens = count<QUEEN, BLACK>();
+            int rooks  = count<ROOK, BLACK>();
+            int bishops= count<BISHOP, BLACK>();
+            int knights= count<KNIGHT, BLACK>();
+
+            // Base set: 1 queen, 2 rooks, 2 bishops, 2 knights
+            int promotions = std::max(0, (queens - 1))
+                        + std::max(0, (rooks  - 2))
+                        + std::max(0, (bishops- 2))
+                        + std::max(0, (knights- 2));
+
+            if (pawns + promotions > 8)
+                return false;  // impossible
+        }
+    }
+    if (Square ep_sq=ep_square(); ep_sq != SQ_NONE){
+        if ((stm == WHITE && rank_of(ep_sq) != RANK_6) ||
+            (stm == BLACK && rank_of(ep_sq) != RANK_3))
+            return false;
+        Square behind = ep_sq+((stm == WHITE) ? SOUTH : NORTH);
+        if (piece_at(behind) != make_piece<PieceC>(PAWN, ~stm))
+            return false;
+
+        if (!(attacks::pawn(~stm, ep_sq) & pieces<PAWN>(stm)))
+            return false;
+    }
+    // Too many checkers
+    if (popcount(checkers())>2) return false;
     return false;
 }
 template <typename PieceC, typename T> void _Position<PieceC, T>::refresh_attacks() {
