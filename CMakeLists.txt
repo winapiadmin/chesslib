@@ -44,6 +44,8 @@ add_library(chesslib STATIC ${SOURCES})
 target_include_directories(chesslib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_executable(perft_tt examples/perft_with_tt.cpp)
 target_link_libraries(perft_tt PRIVATE chesslib)
+add_executable(debug_efficiency examples/dbg_efficiency.cpp)
+target_link_libraries(debug_efficiency PRIVATE chesslib)
 # --- Enable CTest integration ---
 enable_testing()
 include(FetchContent)

@@ -111,14 +111,14 @@ inline constexpr SplatTable<> SPLAT_TABLE{};
 template<int Offset>
 inline constexpr SplatTable<Offset> SPLAT_PAWN_TABLE{};
 // AVX-512 (32 lanes of uint16_t)
-inline Move* write_moves(Move* moveList, uint32_t mask, __m512i vector) {
+inline static Move* write_moves(Move* moveList, uint32_t mask, __m512i vector) {
     // Avoid _mm512_mask_compressstoreu_epi16() as it's 256 uOps on Zen4
     _mm512_storeu_si512(reinterpret_cast<__m512i*>(moveList),
                         _mm512_maskz_compress_epi16(mask, vector));
     return moveList + popcount(mask);
 }
 
-inline Move* splat_moves(Move* moveList, Square from, Bitboard to_bb) {
+inline static Move* splat_moves(Move* moveList, Square from, Bitboard to_bb) {
     const auto* table = reinterpret_cast<const __m512i*>(SPLAT_TABLE.data.data());
     __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
     // two 32-lane blocks (0..31, 32..63)
@@ -131,7 +131,7 @@ inline Move* splat_moves(Move* moveList, Square from, Bitboard to_bb) {
 }
 
 template<int offset>
-inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
+inline static Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
     const auto* table = reinterpret_cast<const __m512i*>(SPLAT_PAWN_TABLE<offset>.data.data());
     moveList =
       write_moves(moveList, static_cast<uint32_t>(to_bb >> 0), _mm512_load_si512(table + 0));
@@ -143,7 +143,7 @@ inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
 
 #else
 template<Direction offset>
-inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
+inline static Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
     while (to_bb)
     {
         Square to   = (Square)pop_lsb(to_bb);
@@ -154,7 +154,7 @@ inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
     return moveList;
 }
 
-inline Move* splat_moves(Move* moveList, Square from, Bitboard to_bb) {
+inline static Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
     while (to_bb)
         *moveList++ = Move(from, (Square)pop_lsb(to_bb));
     return moveList;
@@ -236,6 +236,8 @@ template <typename PieceC, typename T> template <Color c, bool capturesOnly> voi
     const Bitboard pawns = pieces<PAWN, c>();
     const Bitboard enemy_occ = occ(~c);
     const Bitboard all_occ = occ();
+    const Bitboard bishopPin = current_state._bishop_pin;
+    const Bitboard rookPin = current_state._rook_pin;
 
     const Bitboard pinned = pawns & current_state._pin_mask;
     Move* moveList; // no chance
@@ -303,22 +305,34 @@ template <typename PieceC, typename T> template <Color c, bool capturesOnly> voi
         //         moves.push_back(Move(from, to));
         //     }
         // }
-        Bitboard legal_sources=0;
-        while (non_promo_left_targets) {
-            Square to = Square(pop_lsb(non_promo_left_targets));
-            Square from = Square(to - ((c == WHITE) ? 7 : -9));
-            Bitboard from_bb = 1ULL << from, to_bb=1ULL<<to;
-            Bitboard move_bb = from_bb | to_bb;
+        Bitboard legal_sources = 0;
+        Bitboard targets = non_promo_left_targets;
 
-            // skip if pinned but capture not along pin ray
-            bool legal=!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb || (move_bb & current_state._rook_pin) == move_bb));
-            legal_sources |= legal?to_bb:0;
+        // precomputed pin masks
+        const Bitboard pinnedSet = pinned;
+
+        constexpr int shift = (c == WHITE) ? 7 : -9; // pawn left capture delta
+
+        while (targets) {
+            int to = pop_lsb(targets);
+            int from = to - shift;
+
+            Bitboard move_bb = (1ULL << from) | (1ULL << to);
+
+            // Determine legality using bitwise logic instead of branch
+            Bitboard pinMatch = ((move_bb & bishopPin) == move_bb) | ((move_bb & rookPin) == move_bb);
+            bool legal = !((pinnedSet >> from) & 1ULL) || pinMatch;
+
+            // branchless combine
+            legal_sources |= -(uint64_t)legal & (1ULL << to);
         }
-        moveList =moves.data()+moves.size();
-        constexpr Direction dir=c==WHITE?NORTH_WEST:SOUTH_WEST;
-        Move* moveEnd = _chess::splat_pawn_moves<dir>(moveList, legal_sources);
-        moves.size_+=std::distance(moveList, moveEnd);
-        moveList = moveEnd;
+
+        // generate pawn moves
+        Move *moveList = moves.data() + moves.size();
+        constexpr Direction dir = (c == WHITE) ? NORTH_WEST : SOUTH_WEST;
+        Move *moveEnd = _chess::splat_pawn_moves<dir>(moveList, legal_sources);
+        moves.size_ += moveEnd - moveList;
+
     }
     // ---------- 3. Right captures ----------
     Bitboard right = (pawns & NOT_FILE_H);
@@ -326,13 +340,16 @@ template <typename PieceC, typename T> template <Color c, bool capturesOnly> voi
     Bitboard promo_right_targets = right_tgt & PROMO_NEXT;
     Bitboard non_promo_right_targets = right_tgt & ~promo_right_targets; // NAND
 
+    const Bitboard pinnedSet = pinned;
     while (promo_right_targets) {
         Square to = Square(pop_lsb(promo_right_targets));
         Square from = Square(to - ((c == WHITE) ? 9 : -7));
         Bitboard from_bb = 1ULL << from;
         Bitboard move_bb = from_bb | (1ULL << to);
 
-        if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb || (move_bb & current_state._rook_pin) == move_bb))) {
+        Bitboard pinMatch = ((move_bb & bishopPin) == move_bb) | ((move_bb & rookPin) == move_bb);
+        bool legal = !((pinnedSet >> from) & 1ULL) || pinMatch;
+        if (legal) {
             moves.push_back(Move::make<PROMOTION>(from, to, KNIGHT));
             moves.push_back(Move::make<PROMOTION>(from, to, BISHOP));
             moves.push_back(Move::make<PROMOTION>(from, to, ROOK));
@@ -357,8 +374,11 @@ template <typename PieceC, typename T> template <Color c, bool capturesOnly> voi
             Bitboard move_bb = from_bb | to_bb;
 
             // skip if pinned but capture not along pin ray
-            bool legal=!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb || (move_bb & current_state._rook_pin) == move_bb));
-            legal_sources |= legal?to_bb:0;
+            Bitboard pinMatch = ((move_bb & bishopPin) == move_bb) | ((move_bb & rookPin) == move_bb);
+            bool legal = !((pinnedSet >> from) & 1ULL) || pinMatch;
+
+            // branchless combine
+            legal_sources |= -(uint64_t)legal & (1ULL << to);
         }
         moveList =moves.data()+moves.size();
         constexpr Direction dir=c==WHITE?NORTH_EAST:SOUTH_EAST;

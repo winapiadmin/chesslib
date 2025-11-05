@@ -7,8 +7,33 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <cstdlib>
+#if defined(_MSC_VER)
+#include <malloc.h>
+#endif
+
 namespace chess {
 namespace _chess{
+inline void *aligned_alloc(size_t alignment, size_t size) {
+    #if defined(_MSC_VER)
+        return _aligned_malloc(size, alignment);
+    #elif defined(__APPLE__) || defined(__linux__)
+        void *ptr = nullptr;
+        if (posix_memalign(&ptr, alignment, size) != 0)
+            return nullptr;
+        return ptr;
+    #else
+        return std::aligned_alloc(alignment, size);
+    #endif
+    }
+
+    inline void aligned_free(void *ptr) {
+    #if defined(_MSC_VER)
+        _aligned_free(ptr);
+    #else
+        free(ptr);
+    #endif
+    }
     template<typename PieceC>
     auto selectRandomPiece() -> const std::array<uint64_t,64>* {
         if constexpr (std::is_same_v<PieceC, PolyglotPiece>)
@@ -20,8 +45,8 @@ namespace _chess{
 #pragma pack(push, 1)
 template <typename Piece> struct HistoryEntry {
     // Bitboards for each piece type (white and black)
-    alignas(8) Bitboard pieces[7];
-    alignas(8) Bitboard occ[COLOR_NB];
+    Bitboard pieces[7];
+    Bitboard occ[COLOR_NB];
     Square kings[COLOR_NB] = { SQ_NONE };
     Color turn;                    // true if white to move
     CastlingRights castlingRights; // Castling rights bitmask
@@ -30,7 +55,7 @@ template <typename Piece> struct HistoryEntry {
     // Game state information
     Square enPassant = SQ_NONE; // En passant target square
     uint8_t halfMoveClock;      // Half-move clock for 50/75-move rule
-    int fullMoveNumber;         // Full-move number (starts at 1)
+    uint16_t fullMoveNumber;         // Full-move number (starts at 1)
     bool epIncluded;
     Bitboard _pin_mask;
     Move mv;
@@ -43,16 +68,18 @@ template <typename Piece> struct HistoryEntry {
 };
 #pragma pack(pop)
 template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
+  private:
+    constexpr static int ALIGNMENT = 32;
   public:
     using size_type = std::size_t;
     inline HeapAllocatedValueList() {
-        values_ = reinterpret_cast<T *>(calloc(MaxSize, sizeof(T)));
+        values_ = reinterpret_cast<T *>(_chess::aligned_alloc(ALIGNMENT, MaxSize * sizeof(T)));
         assert(values_);
     }
-    inline ~HeapAllocatedValueList() { free(values_); }
+    inline ~HeapAllocatedValueList() { _chess::aligned_free(values_); }
 
     HeapAllocatedValueList(const HeapAllocatedValueList &other) : size_(other.size_) {
-        values_ = reinterpret_cast<T *>(calloc(MaxSize, sizeof(T)));
+        values_ = reinterpret_cast<T *>(_chess::aligned_alloc(ALIGNMENT, MaxSize * sizeof(T)));
         assert(values_);
         std::copy(other.values_, other.values_ + size_, values_);
     }
@@ -60,7 +87,7 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
     HeapAllocatedValueList &operator=(const HeapAllocatedValueList &other) {
         if (this != &other) {
             // Allocate new memory and copy
-            T *new_values = reinterpret_cast<T *>(calloc(MaxSize, sizeof(T)));
+            T *new_values = reinterpret_cast<T *>(_chess::aligned_alloc(ALIGNMENT, MaxSize * sizeof(T)));
             assert(new_values);
             std::copy(other.values_, other.values_ + other.size_, new_values);
 
@@ -75,7 +102,7 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
     }
 
     HeapAllocatedValueList(HeapAllocatedValueList &&other) noexcept : size_(other.size_) {
-        values_ = reinterpret_cast<T *>(calloc(MaxSize, sizeof(T)));
+        values_ = reinterpret_cast<T *>(_chess::aligned_alloc(ALIGNMENT, MaxSize * sizeof(T)));
         assert(values_);
         std::copy(other.values_, other.values_ + size_, values_);
     }
@@ -83,7 +110,7 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
     HeapAllocatedValueList &operator=(HeapAllocatedValueList &&other) noexcept {
         if (this != &other) {
             free(values_);
-            values_ = reinterpret_cast<T *>(calloc(MaxSize, sizeof(T)));
+            values_ = reinterpret_cast<T *>(_chess::aligned_alloc(ALIGNMENT, MaxSize * sizeof(T)));
             assert(values_);
             std::copy(other.values_, other.values_ + size_, values_);
         }
