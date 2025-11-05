@@ -38,7 +38,7 @@ endif()
 # --- Core Library ---
 set(SOURCES
     position.cpp
-    attacks.cpp
+    attacks.cpp "zobrist.cpp"
  "moves_io.cpp" "printers.cpp")
 add_library(chesslib STATIC ${SOURCES})
 target_include_directories(chesslib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
