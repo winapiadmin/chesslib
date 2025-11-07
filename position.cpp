@@ -76,8 +76,10 @@ template void _Position<EnginePiece, void>::setFEN(const std::string &);
 template void _Position<PolyglotPiece, void>::setFEN(const std::string &);
 template std::string _Position<EnginePiece, void>::fen() const;
 template std::string _Position<PolyglotPiece, void>::fen() const;
-template void _Position<EnginePiece, void>::doMove(const Move &move);
-template void _Position<PolyglotPiece, void>::doMove(const Move &move);
+template void _Position<EnginePiece, void>::doMove<false>(const Move &move);
+template void _Position<PolyglotPiece, void>::doMove<false>(const Move &move);
+template void _Position<EnginePiece, void>::doMove<true>(const Move &move);
+template void _Position<PolyglotPiece, void>::doMove<true>(const Move &move);
 template void _Position<EnginePiece, void>::refresh_attacks();
 template void _Position<PolyglotPiece, void>::refresh_attacks();
 template uint64_t _Position<EnginePiece, void>::zobrist() const;
@@ -140,6 +142,129 @@ inline static Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
 
     return moveList;
 }
+// temp AVX2 solution, but apperantly it runs slower and fails the tests
+//#elif defined(__AVX2__)
+//template <int Offset = 0> struct alignas(64) SplatTable {
+//    alignas(32) std::array<uint16_t, 64> data;
+//    constexpr int clamp64(int x) { return (x < 0) ? 0 : (x > 63 ? 63 : x); }
+//
+//    constexpr SplatTable() : data{} {
+//        for (int i = 0; i < 64; ++i) {
+//            int from = clamp64(i - Offset);
+//            data[i] = Move((Square)from, (Square)i).raw();
+//        }
+//    }
+//};
+//
+//inline constexpr SplatTable<> SPLAT_TABLE{};
+//template <int Offset> inline constexpr SplatTable<Offset> SPLAT_PAWN_TABLE{};
+//// ------------------------
+//// Aligned 128-bit PSHUFB shuffle tables
+//// ------------------------
+//constexpr std::array<uint8_t, 16> make_shuffle_mask(uint8_t mask8) {
+//    std::array<uint8_t, 16> shuf{};
+//    int cnt = 0;
+//    for (int i = 0; i < 8; i++) {
+//        if (mask8 & (1 << i)) {
+//            shuf[2 * cnt] = 2 * i;
+//            shuf[2 * cnt + 1] = 2 * i + 1;
+//            ++cnt;
+//        }
+//    }
+//    for (int i = 2 * cnt; i < 16; i++)
+//        shuf[i] = 0x80; // zero out
+//    return shuf;
+//}
+//
+//constexpr std::array<std::array<uint8_t, 16>, 256> generate_shuffle_table() {
+//    std::array<std::array<uint8_t, 16>, 256> table{};
+//    for (int i = 0; i < 256; i++)
+//        table[i] = make_shuffle_mask(i);
+//    return table;
+//}
+//
+//alignas(16) constexpr auto shuffle_table = generate_shuffle_table();
+//// compress 128-bit lane using shuffle_table (branchless)
+//inline __m128i compress_lane(__m128i lane, uint8_t mask8) { return _mm_shuffle_epi8(lane, _mm_load_si128(reinterpret_cast<const __m128i *>(shuffle_table[mask8].data()))); }
+//
+//// compress a 256-bit half (two 128-bit lanes)
+//inline void compress_half_256_from_vec(__m256i srcVec, uint16_t mask16, int16_t *dst, int &count) {
+//    __m128i lane0 = _mm256_castsi256_si128(srcVec);
+//    __m128i lane1 = _mm256_extracti128_si256(srcVec, 1);
+//
+//    __m128i comp0 = compress_lane(lane0, uint8_t(mask16 & 0xFF));
+//    __m128i comp1 = compress_lane(lane1, uint8_t(mask16 >> 8));
+//
+//    alignas(16) int16_t tmp0[8], tmp1[8];
+//    _mm_store_si128(reinterpret_cast<__m128i *>(tmp0), comp0);
+//    _mm_store_si128(reinterpret_cast<__m128i *>(tmp1), comp1);
+//
+//    int pop0 = _mm_popcnt_u32(mask16 & 0xFF);
+//    int pop1 = _mm_popcnt_u32(mask16 >> 8);
+//
+//    int idx = count;
+//    if (pop0 > 0)
+//        std::memcpy(dst + idx, tmp0, pop0 * sizeof(int16_t));
+//    idx += pop0;
+//    if (pop1 > 0)
+//        std::memcpy(dst + idx, tmp1, pop1 * sizeof(int16_t));
+//    idx += pop1;
+//
+//    count = idx;
+//}
+//
+//// write_moves: compress 32 elements (two 256-bit halves) into moveList
+//inline Move *write_moves(Move *moveList, uint32_t mask, __m256i loVec, __m256i hiVec) {
+//    alignas(32) Move tmp[32];
+//    int16_t *tmp16 = reinterpret_cast<int16_t *>(tmp);
+//
+//    int count = 0;
+//    compress_half_256_from_vec(loVec, uint16_t(mask & 0xFFFF), tmp16, count);
+//    compress_half_256_from_vec(hiVec, uint16_t(mask >> 16), tmp16 + count, count);
+//
+//    if (count > 0)
+//        std::memcpy(moveList, tmp, count * sizeof(Move));
+//    return moveList + count;
+//}
+//
+//// ----------------- splat_moves AVX2 -----------------
+//inline Move *splat_moves(Move *moveList, uint16_t from, uint64_t to_bb) {
+//    const uint16_t *base = SPLAT_TABLE.data.data();
+//
+//    // load 4 blocks: 0..15, 16..31, 32..47, 48..63
+//    __m256i t0 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 0));
+//    __m256i t1 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 16));
+//    __m256i t2 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 32));
+//    __m256i t3 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 48));
+//
+//    __m256i fromVec = _mm256_set1_epi16(from);
+//
+//    // lower 32-bit bitboard
+//    moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0), _mm256_or_si256(t0, fromVec), _mm256_or_si256(t1, fromVec));
+//
+//    // upper 32-bit bitboard
+//    moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), _mm256_or_si256(t2, fromVec), _mm256_or_si256(t3, fromVec));
+//
+//    return moveList;
+//}
+//
+//// ----------------- splat_pawn_moves AVX2 -----------------
+//template <int Offset> inline Move *splat_pawn_moves(Move *moveList, uint64_t to_bb) {
+//    const uint16_t *base = SPLAT_PAWN_TABLE<Offset>.data.data();
+//
+//    __m256i t0 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 0));
+//    __m256i t1 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 16));
+//    __m256i t2 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 32));
+//    __m256i t3 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 48));
+//
+//    // lower 32-bit bitboard
+//    moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0), t0, t1);
+//
+//    // upper 32-bit bitboard
+//    moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), t2, t3);
+//
+//    return moveList;
+//}
 
 #else
 template<Direction offset>
@@ -147,9 +272,13 @@ inline static Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
     while (to_bb)
     {
         Square to   = (Square)pop_lsb(to_bb);
+#if defined(_DEBUG) || !defined(NDEBUG)
         Square from = to - offset;
         assert(from >= 0 && from < 64); // sanity check
         *moveList++ = Move(from, to);
+#else
+        *moveList++ = Move(to - offset, to);
+#endif
     }
     return moveList;
 }
@@ -453,10 +582,8 @@ template <typename PieceC, typename T> template <Color c, bool capturesOnly> voi
     Bitboard moves = attacks::king(kingSq) & ~myOcc & ~enemyAttacks;
     if constexpr (capturesOnly)
         moves &= occ(~c);
-    while (moves) {
-        const Square to = static_cast<Square>(pop_lsb(moves));
-        out.push_back(Move(kingSq, to));
-    }
+    _chess::splat_moves(out.data() + out.size(), kingSq, moves);
+    out.size_ += popcount(moves);
     if constexpr (!capturesOnly) {
 
         // Castling
@@ -486,7 +613,7 @@ template <typename PieceC, typename T> template <Color c, bool capturesOnly> voi
         }
     }
 }
-template <typename PieceC, typename T> void _Position<PieceC, T>::doMove(const Move &move) {
+template <typename PieceC, typename T> template <bool Strict> void _Position<PieceC, T>::doMove(const Move &move) {
 
     Square from_sq = move.from_sq(), to_sq = move.to_sq();
     Color us = side_to_move(), them = ~us;
@@ -562,7 +689,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::doMove(const M
             File f = file_of(current_state.enPassant);
             Bitboard ep_mask = (1ULL << current_state.enPassant);
 
-            // Shift toward the side-to-move�s capturing rank.
+            // Shift toward the side-to-move's capturing rank.
             ep_mask = (stm == WHITE) ? (ep_mask >> 8) : (ep_mask << 8);
 
             // Keep adjacent files only.
@@ -585,6 +712,23 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::doMove(const M
     current_state.halfMoveClock = (is_capture || moving_piecetype == PAWN) ? 0 : (current_state.halfMoveClock + 1);
     current_state.hash ^= zobrist::RandomTurn;
     refresh_attacks();
+    if constexpr (Strict) {
+        // Calculate the repetition info. It is the ply distance from the previous
+        // occurrence of the same position, negative in the 3-fold case, or zero
+        // if the position was not repeated.
+        current_state.repetition = 0;
+        int end = std::min(rule50_count(), current_state.pliesFromNull);
+        if (end >= 4) {
+            auto *stp = &history[history.size_ - 3];
+            for (int i = 4; i <= end; i += 2) {
+                stp -= 2;
+                if (stp->hash == hash()) {
+                    current_state.repetition = stp->repetition ? -i : i;
+                    break;
+                }
+            }
+        }
+    }
 }
 
 template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const std::string &str) {
@@ -799,6 +943,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
     // 6. Fullmove number
     current_state.fullMoveNumber = fullmove;
     refresh_attacks();
+    current_state.repetition = current_state.pliesFromNull = 0;
 }
 
 template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen() const {
@@ -916,11 +1061,10 @@ template <typename PieceC, typename T> template <bool Strict> bool _Position<Pie
                 return false;  // impossible
         }
     }
-    if (Square ep_sq=ep_square(); ep_sq != SQ_NONE){
-        if ((stm == WHITE && rank_of(ep_sq) != RANK_6) ||
-            (stm == BLACK && rank_of(ep_sq) != RANK_3))
+    if (Square ep_sq = ep_square(); ep_sq != SQ_NONE) {
+        if ((stm == WHITE && rank_of(ep_sq) != RANK_6) || (stm == BLACK && rank_of(ep_sq) != RANK_3))
             return false;
-        Square behind = ep_sq+((stm == WHITE) ? SOUTH : NORTH);
+        Square behind = ep_sq + ((stm == WHITE) ? SOUTH : NORTH);
         if (piece_at(behind) != make_piece<PieceC>(PAWN, ~stm))
             return false;
 
@@ -965,9 +1109,9 @@ template <typename PieceC, typename T> uint64_t _Position<PieceC, T>::zobrist() 
     uint64_t hash = 0;
     const auto &pl = current_state.pieces_list;
 #pragma unroll(64)
-    for (int sq = 0; sq < 64; ++sq)
-        hash ^= (pl[sq] == PieceC::NO_PIECE) ? 0 : RandomPiece[(int)pl[sq]][sq];
-
+    for (int sq = 0; sq < 64; ++sq) {
+        hash ^= (pl[sq] == PieceC::NO_PIECE) ? 0 : zobrist::RandomPiece[enum_idx<PieceC>()][(int)pl[sq]][sq];
+    }
     hash ^= (current_state.turn == WHITE) ? zobrist::RandomTurn : 0;
     hash ^= zobrist::RandomCastle[current_state.castlingRights];
     auto ep_sq = current_state.enPassant;
@@ -990,7 +1134,7 @@ template <typename PieceC, typename T> uint64_t _Position<PieceC, T>::zobrist() 
     }
     return hash;
 }
-template <typename PieceC, typename T> template <Color c, PieceType pt, bool capturesOnly> void _Position<PieceC, T>::genSlidingMoves(Movelist &list) const {
+template <typename PieceC, typename T> template <Color c, PieceType pt, bool capturesOnly> void _Position<PieceC, T>::genSlidingMoves(Movelist &moves) const {
     static_assert(pt == BISHOP || pt == ROOK || pt == QUEEN, "Sliding pieces only.");
     Bitboard sliders = pieces<pt, c>();
     Bitboard occ_all = occ();
@@ -1021,10 +1165,8 @@ template <typename PieceC, typename T> template <Color c, PieceType pt, bool cap
         Bitboard targets = func(from, occ_all) & filtered_pin;
         if constexpr (capturesOnly)
             targets &= occ(~c);
-        while (targets) {
-            Square to = static_cast<Square>(pop_lsb(targets));
-            list.push_back(Move(from, to));
-        }
+        _chess::splat_moves(moves.data() + moves.size_, from, targets);
+        moves.size_ += popcount(targets);
     }
 }
 

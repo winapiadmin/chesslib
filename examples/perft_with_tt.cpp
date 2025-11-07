@@ -34,7 +34,7 @@ template<int Depth, bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL>
 
         uint64_t total = 0;
         for (const Move &m : moves) {
-            p.doMove(m);
+            p.doMove<false>(m);
             const uint64_t nodes = perft<Depth - 1, false, MGen>(p);
             total += nodes;
             p.undoMove();
@@ -72,7 +72,7 @@ template <bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL> uint64_t 
 
         uint64_t total = 0;
         for (const Move &m : moves) {
-            p.doMove(m);
+            p.doMove<false>(m);
             const uint64_t nodes = perft<false, MGen>(p, Depth - 1);
             total += nodes;
             p.undoMove();

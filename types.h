@@ -1,11 +1,7 @@
 #pragma once
 
 #include <cassert>
-// #include <cstddef>
 #include <cstdint>
-// #include <cstring>
-// #include <ostream>
-// #include <string_view>
 #include <string>
 #include <type_traits>
 #if defined(_MSC_VER)
@@ -27,17 +23,17 @@
 #elif __GNUC__ >= 13
 #define ASSUME(cond) __attribute__((assume(cond)))
 #else
-#define ASSUME(cond)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
-    do {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-        if (!(cond))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
-            UNREACHABLE();                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             \
+#define ASSUME(cond) \
+    do { \
+        if (!(cond)) \
+            UNREACHABLE(); \
     } while (0)
 #endif
 #else
-#define ASSUME(cond)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
-    do {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-        if (!(cond))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
-            UNREACHABLE();                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             \
+#define ASSUME(cond) \
+    do { \
+        if (!(cond)) \
+            UNREACHABLE(); \
     } while (0)
 #endif
 
@@ -64,72 +60,17 @@ constexpr bool is_constant_evaluated() {
 }
 namespace chess {
 using Bitboard = uint64_t;
+using Key = uint64_t;
 //clang-format off
 enum Square : int8_t {
-    SQ_A1,
-    SQ_B1,
-    SQ_C1,
-    SQ_D1,
-    SQ_E1,
-    SQ_F1,
-    SQ_G1,
-    SQ_H1,
-    SQ_A2,
-    SQ_B2,
-    SQ_C2,
-    SQ_D2,
-    SQ_E2,
-    SQ_F2,
-    SQ_G2,
-    SQ_H2,
-    SQ_A3,
-    SQ_B3,
-    SQ_C3,
-    SQ_D3,
-    SQ_E3,
-    SQ_F3,
-    SQ_G3,
-    SQ_H3,
-    SQ_A4,
-    SQ_B4,
-    SQ_C4,
-    SQ_D4,
-    SQ_E4,
-    SQ_F4,
-    SQ_G4,
-    SQ_H4,
-    SQ_A5,
-    SQ_B5,
-    SQ_C5,
-    SQ_D5,
-    SQ_E5,
-    SQ_F5,
-    SQ_G5,
-    SQ_H5,
-    SQ_A6,
-    SQ_B6,
-    SQ_C6,
-    SQ_D6,
-    SQ_E6,
-    SQ_F6,
-    SQ_G6,
-    SQ_H6,
-    SQ_A7,
-    SQ_B7,
-    SQ_C7,
-    SQ_D7,
-    SQ_E7,
-    SQ_F7,
-    SQ_G7,
-    SQ_H7,
-    SQ_A8,
-    SQ_B8,
-    SQ_C8,
-    SQ_D8,
-    SQ_E8,
-    SQ_F8,
-    SQ_G8,
-    SQ_H8,
+    SQ_A1, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,
+    SQ_A2, SQ_B2, SQ_C2, SQ_D2, SQ_E2, SQ_F2, SQ_G2, SQ_H2,
+    SQ_A3, SQ_B3, SQ_C3, SQ_D3, SQ_E3, SQ_F3, SQ_G3, SQ_H3,
+    SQ_A4, SQ_B4, SQ_C4, SQ_D4, SQ_E4, SQ_F4, SQ_G4, SQ_H4,
+    SQ_A5, SQ_B5, SQ_C5, SQ_D5, SQ_E5, SQ_F5, SQ_G5, SQ_H5,
+    SQ_A6, SQ_B6, SQ_C6, SQ_D6, SQ_E6, SQ_F6, SQ_G6, SQ_H6,
+    SQ_A7, SQ_B7, SQ_C7, SQ_D7, SQ_E7, SQ_F7, SQ_G7, SQ_H7,
+    SQ_A8, SQ_B8, SQ_C8, SQ_D8, SQ_E8, SQ_F8, SQ_G8, SQ_H8,
     SQ_NONE,
 
     SQUARE_ZERO = 0,
@@ -217,7 +158,14 @@ constexpr Square &operator-=(Square &s, Direction d) { return s = s - d; }
 enum class PolyglotPiece : uint8_t { WPAWN = 1, WKNIGHT = 3, WBISHOP = 5, WROOK = 7, WQUEEN = 9, WKING = 11, BPAWN = 0, BKNIGHT = 2, BBISHOP = 4, BROOK = 6, BQUEEN = 8, BKING = 10, NO_PIECE = 12, PIECE_NB = 12 };
 // Normal board, you can use ANY! (but comfortable for certain chess engines such as Stockfish)
 enum class EnginePiece : uint8_t { NO_PIECE, WPAWN = PAWN + 0, WKNIGHT, WBISHOP, WROOK, WQUEEN, WKING, BPAWN = PAWN + 8, BKNIGHT, BBISHOP, BROOK, BQUEEN, BKING, PIECE_NB = 16 };
-//clang-format on
+template <typename T> size_t enum_idx() {
+    if constexpr (std::is_same_v<T, PolyglotPiece>)
+        return 0;
+    else if constexpr (std::is_same_v<T, EnginePiece>)
+        return 1;
+    return -1;
+}
+    //clang-format on
 constexpr PieceType piece_of(PolyglotPiece p) {
     int val = static_cast<int>(p);
     return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>(val / 2 + 1);
@@ -227,6 +175,9 @@ constexpr PieceType piece_of(EnginePiece p) {
     int val = static_cast<int>(p);
     return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>((val - 1) % 8 + 1);
 }
+constexpr PieceType type_of(PolyglotPiece p) { return piece_of(p); }
+
+constexpr PieceType type_of(EnginePiece p) { return piece_of(p); }
 
 constexpr Color color_of(PolyglotPiece pt) { return static_cast<Color>((static_cast<int>(pt) + 1) % 2); }
 constexpr Color color_of(EnginePiece pt) { return static_cast<Color>(static_cast<int>(pt) / static_cast<int>(EnginePiece::BPAWN)); }

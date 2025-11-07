@@ -34,13 +34,6 @@ inline void *aligned_alloc(size_t alignment, size_t size) {
         free(ptr);
     #endif
     }
-    template<typename PieceC>
-    auto selectRandomPiece() -> const std::array<uint64_t,64>* {
-        if constexpr (std::is_same_v<PieceC, PolyglotPiece>)
-            return &zobrist::RandomPiece[0];
-        else
-            return &zobrist::RandomPiece_EnginePiece[0];
-    }
 }
 #pragma pack(push, 1)
 template <typename Piece> struct HistoryEntry {
@@ -59,11 +52,12 @@ template <typename Piece> struct HistoryEntry {
     bool epIncluded;
     Bitboard _pin_mask;
     Move mv;
-    uint64_t hash;
+    Key hash;
     Bitboard _rook_pin;
     Bitboard _bishop_pin;
     Bitboard checkers;
     Bitboard check_mask;
+    uint8_t repetition = 0, pliesFromNull = 0;
     // implementation-specific implementations goes here
 };
 #pragma pack(pop)
@@ -150,10 +144,6 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
 enum class MoveGenType : uint8_t { ALL, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, CAPTURE };
 template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_same_v<PieceC, EnginePiece> || std::is_same_v<PieceC, PolyglotPiece>>> class _Position {
   private:
-  const std::array<uint64_t, 64>* RandomPiece =
-    _chess::selectRandomPiece<PieceC>();
-
-
     HistoryEntry<PieceC> current_state;
     // Move history stack
     HeapAllocatedValueList<HistoryEntry<PieceC>, 8192> history; // ahh, but i hope it fulfils before I manages to find the absolute limit of a game
@@ -227,7 +217,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
             return;
         }
     }
-
+    template <bool Strict=true>
     void doMove(const Move &move);
     template <bool RetAll = false> inline auto undoMove() {
         current_state = history.pop();
@@ -242,6 +232,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
         current_state.turn = ~current_state.turn;
         current_state.hash ^= zobrist::RandomTurn;
         current_state.fullMoveNumber += (current_state.turn == WHITE);
+        current_state.pliesFromNull = current_state.repetition = 0;
     }
 
     inline Bitboard pieces() const { return occ(); }
@@ -346,49 +337,51 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
 
     [[nodiscard]] inline Bitboard attackers(Color color, Square square) const { return attackers(color, square, occ()); }
     // Compile-time piece type and color, runtime square
-    template <PieceType pt> inline void placePiece(Square s, Color c) {
+    template <PieceType pt> inline void placePiece(Square sq, Color c) {
         if constexpr (pt != NO_PIECE_TYPE) {
-            current_state.pieces[pt] |= 1ULL << s;
-            current_state.occ[c] |= 1ULL << s;
-            current_state.pieces_list[s] = make_piece<PieceC>(pt, c);
-            current_state.hash ^= RandomPiece[static_cast<int>(current_state.pieces_list[s])][s];
+            Bitboard v = 1ULL << sq;
+            current_state.pieces[pt] |= v;
+            current_state.occ[c] |= v;
+            current_state.pieces_list[sq] = make_piece<PieceC>(pt, c);
+            current_state.hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][(int)current_state.pieces_list[sq]][sq];
             if constexpr (pt == KING)
-                current_state.kings[c] = s;
+                current_state.kings[c] = sq;
         }
     }
 
-    template <PieceType pt> inline void removePiece(Square s, Color c) {
+    template <PieceType pt> inline void removePiece(Square sq, Color c) {
         if constexpr (pt != NO_PIECE_TYPE) {
-            current_state.pieces[pt] &= ~(1ULL << s);
-            current_state.occ[c] &= ~(1ULL << s);
-            current_state.pieces_list[s] = PieceC::NO_PIECE;
-            current_state.hash ^= RandomPiece[static_cast<int>(make_piece<PieceC>(pt, c))][s];
+            Bitboard v = ~(1ULL << sq);
+            current_state.pieces[pt] &= v;
+            current_state.occ[c] &= v;
+            current_state.pieces_list[sq] = PieceC::NO_PIECE;
+            current_state.hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][static_cast<int>(make_piece<PieceC>(pt, c))][sq];
             if constexpr (pt == KING)
                 current_state.kings[c] = SQ_NONE;
         }
     }
 
-    inline void placePiece(PieceType pt, Square s, Color c) {
+    inline void placePiece(PieceType pt, Square sq, Color c) {
         bool a = pt == KING;
         // if (pt == NO_PIECE_TYPE)
         //     return;
-        Bitboard v = 1ULL << s;
+        Bitboard v = 1ULL << sq;
         current_state.pieces[pt] |= v;
         current_state.occ[c] |= v;
-        current_state.pieces_list[s] = make_piece<PieceC>(pt, c);
-        current_state.hash ^= RandomPiece[static_cast<int>(current_state.pieces_list[s])][s];
-        current_state.kings[c] = a ? s : current_state.kings[c];
+        current_state.pieces_list[sq] = make_piece<PieceC>(pt, c);
+        current_state.hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][(int)current_state.pieces_list[sq]][sq];
+        current_state.kings[c] = a ? sq : current_state.kings[c];
     }
 
-    inline void removePiece(PieceType pt, Square s, Color c) {
+    inline void removePiece(PieceType pt, Square sq, Color c) {
         bool a = pt == KING;
         if (pt == NO_PIECE_TYPE)
             return;
-        Bitboard v = ~(1ULL << s);
+        Bitboard v = ~(1ULL << sq);
         current_state.pieces[pt] &= v;
         current_state.occ[c] &= v;
-        current_state.pieces_list[s] = PieceC::NO_PIECE;
-        current_state.hash ^= RandomPiece[static_cast<int>(make_piece<PieceC>(pt, c))][s];
+        current_state.pieces_list[sq] = PieceC::NO_PIECE;
+        current_state.hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][static_cast<int>(make_piece<PieceC>(pt, c))][sq];
         current_state.kings[c] = a ? SQ_NONE : current_state.kings[c];
     }
 
@@ -431,11 +424,11 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
     inline bool isCapture(Move mv) const { return mv.type_of() == EN_PASSANT || (mv.type_of() != CASTLING && piece_on(mv.to_sq()) != PieceC::NO_PIECE); }
 
     std::string fen() const;
-    inline int halfmoveClock() const { return current_state.halfMoveClock; }
-    inline int fullmoveNumber() const { return current_state.fullMoveNumber; }
-    inline int rule50_count() const { return current_state.halfMoveClock; }
-    CastlingRights castlingRights(Color c) const { return current_state.castlingRights & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING); }
-    CastlingRights castlingRights() const { return current_state.castlingRights; }
+    inline uint8_t halfmoveClock() const { return current_state.halfMoveClock; }
+    inline uint16_t fullmoveNumber() const { return current_state.fullMoveNumber; }
+    inline uint8_t rule50_count() const { return current_state.halfMoveClock; }
+    inline CastlingRights castlingRights(Color c) const { return current_state.castlingRights & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING); }
+    inline CastlingRights castlingRights() const { return current_state.castlingRights; }
     inline const HistoryEntry<PieceC> &state() const { return current_state; }
     uint64_t zobrist() const;
     inline PieceC piece_at(Square sq) const { return piece_on(sq); }
@@ -448,12 +441,31 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
     Move push_uci(std::string);
     Square _valid_ep_square() const;
     template<PieceType pt>
-    int count() const{ return popcount(pieces(pt));}
+    inline int count() const{ return popcount(pieces(pt));}
     template<PieceType pt, Color c>
-    int count() const{ return popcount(pieces<pt, c>());}
+    inline int count() const{ return popcount(pieces<pt, c>());}
     template<PieceType pt>
-    int count(Color c) const{ return popcount(pieces<pt>(c));}
-    int count(PieceType pt, Color c) const{ return popcount(pieces(pt, c));}
+    inline int count(Color c) const{ return popcount(pieces<pt>(c));}
+    inline int count(PieceType pt, Color c) const { return popcount(pieces(pt, c)); }
+    // Return true if a position repeats once earlier but strictly
+    // after the root, or repeats twice before or at the root.
+    inline bool is_repetition(int ply) const { return current_state.repetition && current_state.repetition < ply; }
+    // Test if it's draw of 75 move rule (that forces everyone to draw). Excludes checkmates, of course!
+    inline bool is_draw(int ply) const { return rule50_count() > 149 || is_repetition(ply); }
+    // Tests whether there has been at least one repetition
+    // of positions since the last capture or pawn move.
+    bool has_repeated() const {
+        auto stc = &history[history.size()-1];
+        int end = std::min(rule50_count(), current_state.pliesFromNull);
+        while (end-- >= 4) {
+            if (stc->repetition)
+                return true;
+
+            stc--;
+        }
+        return false;
+    }
+
     inline bool is_attacked_by(Color color, Square sq, Bitboard occupied = 0) const {
         Bitboard occ_bb = occupied ? occupied : this->occ();
         return attackers_mask(color, sq, occ_bb) != 0;

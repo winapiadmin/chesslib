@@ -39,7 +39,7 @@ endif()
 set(SOURCES
     position.cpp
     attacks.cpp "zobrist.cpp"
- "moves_io.cpp" "printers.cpp")
+ "moves_io.cpp" "printers.cpp" "repetition.h")
 add_library(chesslib STATIC ${SOURCES})
 target_include_directories(chesslib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_executable(perft_tt examples/perft_with_tt.cpp)

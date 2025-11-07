@@ -166,7 +166,7 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
 
         uint64_t total = 0;
         for (const Move &m : moves) {
-            pos.doMove(m);
+            pos.doMove<false>(m);
             const uint64_t nodes = perft<T, mt, false>(pos, depth - 1);
             pos.undoMove();
 
@@ -813,6 +813,7 @@ TEST_CASE("was_into_check") {
     check_was_into_check_t<PolyglotPiece>(tests);
     check_was_into_check_t<EnginePiece>(tests);
 }
+TEST_CASE("Zobrist mapping?") { REQUIRE(zobrist::RandomPiece[enum_idx<PolyglotPiece>()][(int)PolyglotPiece::BPAWN][0] == 0x9D39247E33776D41); }
 int main(int argc, char **argv) {
     doctest::Context ctx;
     ctx.setOption("success", true);
