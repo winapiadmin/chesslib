@@ -11,7 +11,7 @@ struct TTEntry {
     int depth;
 };
 std::vector<TTEntry> tt;
-template<int Depth, bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL> uint64_t perft(Position &p) {
+template <int Depth, bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL> inline uint64_t perft(Position &p) {
     static_assert(Depth >= 0, "Negative depth in perft template!");
     if constexpr (Depth == 1) {
         Movelist moves;
@@ -22,7 +22,6 @@ template<int Depth, bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL>
             }
         return moves.size();
     } else {
-
 #ifdef TT_ENABLED
     const uint64_t hash = p.hash();
     TTEntry &entry = tt[hash & (tt.size() - 1)];
@@ -51,21 +50,13 @@ template<int Depth, bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL>
         return total;
     }
 }
-template <bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL> uint64_t perft(Position &p, int Depth) {
-    if (Depth == 1) {
-        Movelist moves;
-        p.legals<MGen>(moves);
-        if constexpr (EnableDiv)
-            for (const Move &m : moves) {
-                std::cout << m << ": 1\n";
-            }
-        return moves.size();
-    } else {
+template <bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL> inline uint64_t perft(Position &p, int Depth) {
+    if (Depth != 1) {
 #ifdef TT_ENABLED
-    const uint64_t hash = p.hash();
-    TTEntry &entry = tt[hash & (tt.size() - 1)];
-    if (entry.hash == hash && entry.depth == Depth)
-        return entry.nodes;
+        const uint64_t hash = p.hash();
+        TTEntry &entry = tt[hash & (tt.size() - 1)];
+        if (entry.hash == hash && entry.depth == Depth)
+            return entry.nodes;
 #endif
         Movelist moves;
         p.legals<MGen>(moves);
@@ -86,24 +77,55 @@ template <bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL> uint64_t 
         entry.nodes = total;
 #endif
         return total;
+    } else {
+        Movelist moves;
+        p.legals<MGen>(moves);
+        if constexpr (EnableDiv)
+            for (const Move &m : moves) {
+                std::cout << m << ": 1\n";
+            }
+        return moves.size();
     }
 }
-int main() {
+template <int DEPTH> void benchmark(Position &pos) {
     using namespace std::chrono;
-    Position pos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    
-    #ifdef TT_ENABLED
-    tt.resize(1 << 28);
+    #ifndef TT_ENABLED
+    constexpr int N_RUNS = 5;
+    #else
+    constexpr int N_RUNS=1;
     #endif
-    auto start_time = high_resolution_clock::now();
-    uint64_t nodes = //perft(pos, 7);
-    perft<7, false>(pos);
-    auto end_time = high_resolution_clock::now();
+    uint64_t nodes = 0;
+    double totalTime = 0.0;
 
-    double elapsed = duration<double>(end_time - start_time).count(); // seconds
-    double mnps = (nodes / elapsed) / 1'000'000.0;
+    // Warmup
+    perft<3, false>(pos);
 
-    std::cout << "Depth 7 perft: " << nodes << " nodes\n";
-    std::cout << "Time: " << elapsed << " s\n";
-    std::cout << "Speed: " << mnps << " Mnps\n";
+    std::cout << "Running " << N_RUNS << " benchmark iterations:\n";
+
+    for (int i = 0; i < N_RUNS; ++i) {
+        auto start = high_resolution_clock::now();
+        nodes = perft<DEPTH, false>(pos);
+        auto end = high_resolution_clock::now();
+        double elapsed = duration<double>(end - start).count();
+        totalTime += elapsed;
+
+        double mnps = (nodes / elapsed) / 1'000'000.0;
+        std::cout << "Run " << (i + 1) << ": " << elapsed << " s, " << mnps << " Mnps\n";
+    }
+
+    double avgTime = totalTime / N_RUNS;
+    double avgMnps = (nodes / avgTime) / 1'000'000.0;
+
+    std::cout << "Average: " << avgTime << " s, " << avgMnps << " Mnps\n";
+}
+
+
+int main() {
+    Position pos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+
+#ifdef TT_ENABLED
+    tt.resize(1 << 28);
+#endif
+
+    benchmark<6>(pos);
 }

@@ -61,7 +61,7 @@ constexpr bool is_constant_evaluated() {
 namespace chess {
 using Bitboard = uint64_t;
 using Key = uint64_t;
-//clang-format off
+// clang-format off
 enum Square : int8_t {
     SQ_A1, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,
     SQ_A2, SQ_B2, SQ_C2, SQ_D2, SQ_E2, SQ_F2, SQ_G2, SQ_H2,
@@ -114,7 +114,7 @@ enum Direction : int8_t {
     NORTH_WEST = NORTH + WEST,
     DIR_NONE = 0
 };
-//clang-format on
+// clang-format on
 inline constexpr Square relative_square(Color c, Square s) { return Square(s ^ (c * 56)); }
 
 inline constexpr Rank relative_rank(Color c, Rank r) { return Rank(r ^ (c * 7)); }
@@ -155,9 +155,39 @@ constexpr Square operator-(Square s, Direction d) { return Square(int(s) - int(d
 constexpr Square &operator+=(Square &s, Direction d) { return s = s + d; }
 constexpr Square &operator-=(Square &s, Direction d) { return s = s - d; }
 // specifically for Polyglot (a.k.a zobrist hashing but use proper hash)
-enum class PolyglotPiece : uint8_t { WPAWN = 1, WKNIGHT = 3, WBISHOP = 5, WROOK = 7, WQUEEN = 9, WKING = 11, BPAWN = 0, BKNIGHT = 2, BBISHOP = 4, BROOK = 6, BQUEEN = 8, BKING = 10, NO_PIECE = 12, PIECE_NB = 12 };
+enum class PolyglotPiece : uint8_t {
+    WPAWN = 1,
+    WKNIGHT = 3,
+    WBISHOP = 5,
+    WROOK = 7,
+    WQUEEN = 9,
+    WKING = 11,
+    BPAWN = 0,
+    BKNIGHT = 2,
+    BBISHOP = 4,
+    BROOK = 6,
+    BQUEEN = 8,
+    BKING = 10,
+    NO_PIECE = 12,
+    PIECE_NB = 12
+};
 // Normal board, you can use ANY! (but comfortable for certain chess engines such as Stockfish)
-enum class EnginePiece : uint8_t { NO_PIECE, WPAWN = PAWN + 0, WKNIGHT, WBISHOP, WROOK, WQUEEN, WKING, BPAWN = PAWN + 8, BKNIGHT, BBISHOP, BROOK, BQUEEN, BKING, PIECE_NB = 16 };
+enum class EnginePiece : uint8_t {
+    NO_PIECE,
+    WPAWN = PAWN + 0,
+    WKNIGHT,
+    WBISHOP,
+    WROOK,
+    WQUEEN,
+    WKING,
+    BPAWN = PAWN + 8,
+    BKNIGHT,
+    BBISHOP,
+    BROOK,
+    BQUEEN,
+    BKING,
+    PIECE_NB = 16
+};
 template <typename T> size_t enum_idx() {
     if constexpr (std::is_same_v<T, PolyglotPiece>)
         return 0;
@@ -165,7 +195,7 @@ template <typename T> size_t enum_idx() {
         return 1;
     return -1;
 }
-    //clang-format on
+// clang-format on
 constexpr PieceType piece_of(PolyglotPiece p) {
     int val = static_cast<int>(p);
     return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>(val / 2 + 1);

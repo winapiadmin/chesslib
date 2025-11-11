@@ -15,52 +15,135 @@
 namespace chess {
 namespace _chess{
 inline void *aligned_alloc(size_t alignment, size_t size) {
-    #if defined(_MSC_VER)
-        return _aligned_malloc(size, alignment);
-    #elif defined(__APPLE__) || defined(__linux__)
-        void *ptr = nullptr;
-        if (posix_memalign(&ptr, alignment, size) != 0)
-            return nullptr;
-        return ptr;
-    #else
-        return std::aligned_alloc(alignment, size);
-    #endif
-    }
-
-    inline void aligned_free(void *ptr) {
-    #if defined(_MSC_VER)
-        _aligned_free(ptr);
-    #else
-        free(ptr);
-    #endif
-    }
+#if defined(_MSC_VER)
+    return _aligned_malloc(size, alignment);
+#elif defined(__APPLE__) || defined(__linux__)
+    void *ptr = nullptr;
+    if (posix_memalign(&ptr, alignment, size) != 0)
+        return nullptr;
+    return ptr;
+#else
+    return std::aligned_alloc(alignment, size);
+#endif
 }
-#pragma pack(push, 1)
-template <typename Piece> struct HistoryEntry {
+
+inline void aligned_free(void *ptr) {
+#if defined(_MSC_VER)
+    _aligned_free(ptr);
+#else
+    free(ptr);
+#endif
+}
+template <size_t N> inline void memcpy_handimpl(void *dst, const void *src) {
+    static_assert(N > 0, "Size must be > 0");
+
+#define MEMCPY_SCALAR(dst, src, N) \
+    do { \
+        uint8_t *d8 = (uint8_t *)(dst); \
+        const uint8_t *s8 = (const uint8_t *)(src); \
+        for (size_t t = 0; t < (N); ++t) \
+            d8[t] = s8[t]; \
+    } while (0)
+
+// SSE (128-bit) unaligned copy
+#define MEMCPY_SSE(dst, src, N) \
+    do { \
+        size_t i = 0; \
+        for (; i + 16 <= (N); i += 16) { \
+            __m128i tmp = _mm_loadu_si128((__m128i *)((const uint8_t *)(src) + i)); \
+            _mm_storeu_si128((__m128i *)((uint8_t *)(dst) + i), tmp); \
+        } \
+        MEMCPY_SCALAR((uint8_t *)(dst) + i, (const uint8_t *)(src) + i, (N) - i); \
+    } while (0)
+
+// SSE2 (128-bit, more instructions)
+#define MEMCPY_SSE2 MEMCPY_SSE
+
+// SSSE3 / SSE4.1: same copy pattern, can add shuffle/optimized if needed
+#define MEMCPY_SSSE3 MEMCPY_SSE
+#define MEMCPY_SSE41 MEMCPY_SSE
+
+// AVX (256-bit)
+#define MEMCPY_AVX(dst, src, N) \
+    do { \
+        size_t i = 0; \
+        for (; i + 32 <= (N); i += 32) { \
+            __m256i tmp = _mm256_loadu_si256((__m256i *)((const uint8_t *)(src) + i)); \
+            _mm256_storeu_si256((__m256i *)((uint8_t *)(dst) + i), tmp); \
+        } \
+        MEMCPY_SCALAR((uint8_t *)(dst) + i, (const uint8_t *)(src) + i, (N) - i); \
+    } while (0)
+
+// AVX2 (256-bit, more instructions)
+#define MEMCPY_AVX2 MEMCPY_AVX
+
+// AVX512 (512-bit)
+#define MEMCPY_AVX512(dst, src, N) \
+    do { \
+        size_t i = 0; \
+        for (; i + 64 <= (N); i += 64) { \
+            __m512i tmp = _mm512_loadu_si512((__m512i *)((const uint8_t *)(src) + i)); \
+            _mm512_storeu_si512((__m512i *)((uint8_t *)(dst) + i), tmp); \
+        } \
+        MEMCPY_SCALAR((uint8_t *)(dst) + i, (const uint8_t *)(src) + i, (N) - i); \
+    } while (0)
+
+// Helper macro to select automatically based on compiler defines
+#if defined(__AVX512F__)
+#define MEMCPY_BEST(dst, src, N) MEMCPY_AVX512(dst, src, N)
+#elif defined(__AVX2__)
+#define MEMCPY_BEST(dst, src, N) MEMCPY_AVX2(dst, src, N)
+#elif defined(__AVX__)
+#define MEMCPY_BEST(dst, src, N) MEMCPY_AVX(dst, src, N)
+#elif defined(__SSE4_1__)
+#define MEMCPY_BEST(dst, src, N) MEMCPY_SSE41(dst, src, N)
+#elif defined(__SSSE3__)
+#define MEMCPY_BEST(dst, src, N) MEMCPY_SSSE3(dst, src, N)
+#elif defined(__SSE2__) || defined(_M_X64) || defined(_M_AMD64) || (_M_IX86_FP == 2)
+#define MEMCPY_BEST(dst, src, N) MEMCPY_SSE2(dst, src, N)
+#elif defined(__SSE__) || (_M_IX86_FP == 1)
+#define MEMCPY_BEST(dst, src, N) MEMCPY_SSE(dst, src, N)
+#else
+#define MEMCPY_BEST(dst, src, N) MEMCPY_SCALAR(dst, src, N)
+#endif
+    MEMCPY_BEST(dst, src, N);
+#undef MEMCPY_BEST
+#undef MEMCPY_AVX512
+#undef MEMCPY_AVX2
+#undef MEMCPY_AVX
+#undef MEMCPY_SSE41
+#undef MEMCPY_SSSE3
+#undef MEMCPY_SSE2
+#undef MEMCPY_SSE
+#undef MEMCPY_SCALAR
+    //return dst;
+}
+} // namespace _chess
+
+template <typename Piece> struct alignas(64) HistoryEntry {
     // Bitboards for each piece type (white and black)
-    Bitboard pieces[7];
-    Bitboard occ[COLOR_NB];
-    Square kings[COLOR_NB] = { SQ_NONE };
-    Color turn;                    // true if white to move
-    CastlingRights castlingRights; // Castling rights bitmask
+    struct {
+        Bitboard pieces[7];
+        Bitboard occ[COLOR_NB];
+    };
     Piece pieces_list[SQUARE_NB] = { Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
                                      Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE };
-    // Game state information
-    Square enPassant = SQ_NONE; // En passant target square
-    uint8_t halfMoveClock;      // Half-move clock for 50/75-move rule
-    uint16_t fullMoveNumber;         // Full-move number (starts at 1)
-    bool epIncluded;
-    Bitboard _pin_mask;
+    Color turn;                    // true if white to move
     Move mv;
     Key hash;
-    Bitboard _rook_pin;
-    Bitboard _bishop_pin;
-    Bitboard checkers;
-    Bitboard check_mask;
-    uint8_t repetition = 0, pliesFromNull = 0;
+    struct {
+        uint8_t halfMoveClock;   // Half-move clock for 50/75-move rule
+        uint16_t fullMoveNumber; // Full-move number (starts at 1)
+        bool epIncluded;
+        int8_t repetition = 0;
+        uint8_t pliesFromNull = 0;
+    };
+    Square enPassant = SQ_NONE; // En passant target square
+    Square kings[COLOR_NB] = { SQ_NONE };
+    CastlingRights castlingRights; // Castling rights bitmask
     // implementation-specific implementations goes here
 };
-#pragma pack(pop)
+
 template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
   private:
     constexpr static int ALIGNMENT = 32;
@@ -118,14 +201,14 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
         values_[size_++] = value;
     }
     inline void clear() { size_ = 0; }
-    inline T pop() {
+    inline const T& pop() {
         assert(size_ > 0);
         return values_[--size_]; // always safe due to mask
     }
 
     inline void pop_back() { size_ -= (size_ > 0) ? 1 : 0; }
 
-    inline T front() const { return (size_ > 0) ? values_[0] : T{}; }
+    inline const T& front() const { return (size_ > 0) ? values_[0] : T{}; }
 
     inline T &operator[](int index) {
         assert(index < MaxSize); // relax the conditions, it's BRANCHLESS so forgive
@@ -134,6 +217,7 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
     }
 
     inline const T *begin() const { return values_; }
+    inline T *data() const { return values_; }
     inline const T *end() const { return values_ + size_; }
     size_type size_ = 0;
 
@@ -145,30 +229,23 @@ enum class MoveGenType : uint8_t { ALL, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
 template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_same_v<PieceC, EnginePiece> || std::is_same_v<PieceC, PolyglotPiece>>> class _Position {
   private:
     HistoryEntry<PieceC> current_state;
+
     // Move history stack
-    HeapAllocatedValueList<HistoryEntry<PieceC>, 8192> history; // ahh, but i hope it fulfils before I manages to find the absolute limit of a game
+    HeapAllocatedValueList<HistoryEntry<PieceC>, 6144> history; // ahh, but i hope it fulfils before I manages to find the absolute limit of a game
     // Move generation functions, but INTERNAL. (they're kind of long so i put them into a source
     // file) Pawns (fully extensively tested)
     template <Color c> void genEP(Movelist &mv) const;
     template <Color c> void genPawnDoubleMoves(Movelist &mv) const;
     template <Color c, bool capturesOnly = false> void genPawnSingleMoves(Movelist &mv) const;
-    template <Color c, bool capturesOnly = false> inline void genKnightMoves(Movelist &list) const {
-        Bitboard knights = pieces<KNIGHT, c>() & ~current_state._pin_mask; // yes, unconditionally.
-        while (knights) {
-            Square x = static_cast<Square>(pop_lsb(knights));
-            Bitboard moves = attacks::knight(x) & ~occ(c);
-            moves &= current_state.check_mask;
-            if constexpr (capturesOnly)
-                moves &= occ(~c);
-            while (moves) {
-                Square y = static_cast<Square>(pop_lsb(moves));
-                list.push_back(Move(x, y));
-            }
-        }
-    }
+    template <Color c, bool capturesOnly = false> void genKnightMoves(Movelist &list) const;
     template <Color c, bool capturesOnly = false> void genKingMoves(Movelist &mv) const;
     template <Color c, PieceType pt, bool capturesOnly = false> void genSlidingMoves(Movelist &mv) const;
 
+    Bitboard _rook_pin;
+    Bitboard _bishop_pin;
+    Bitboard _checkers;
+    Bitboard _check_mask;
+    Bitboard _pin_mask;
   public:
     // Legal move generation functions
     template <MoveGenType type = MoveGenType::ALL, Color c> inline void legals(Movelist &out) const {
@@ -219,9 +296,9 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
     }
     template <bool Strict=true>
     void doMove(const Move &move);
-    template <bool RetAll = false> inline auto undoMove() {
-        current_state = history.pop();
-
+    template <bool RetAll = false> inline auto undoMove() -> std::conditional_t<RetAll, HistoryEntry<PieceC> &, void> {
+        // manual impl
+        _chess::memcpy_handimpl<sizeof(HistoryEntry<PieceC>)>(&current_state, history.data() + (--history.size_));
         if constexpr (RetAll) {
             return current_state;
         }
@@ -419,7 +496,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
     inline Square ep_square() const { return current_state.enPassant; }
     template <PieceType pt> inline Square square(Color c) const { return Square(lsb(pieces<pt>(c))); }
     inline Square kingSq(Color c) const { return current_state.kings[c]; }
-    inline Bitboard checkers() const { return current_state.checkers; }
+    inline Bitboard checkers() const { return _checkers; }
+    inline Bitboard pin_mask() const { return _pin_mask; }
     _Position(std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     inline bool isCapture(Move mv) const { return mv.type_of() == EN_PASSANT || (mv.type_of() != CASTLING && piece_on(mv.to_sq()) != PieceC::NO_PIECE); }
 
@@ -451,10 +529,10 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
     // after the root, or repeats twice before or at the root.
     inline bool is_repetition(int ply) const { return current_state.repetition && current_state.repetition < ply; }
     // Test if it's draw of 75 move rule (that forces everyone to draw). Excludes checkmates, of course!
-    inline bool is_draw(int ply) const { return rule50_count() > 149 || is_repetition(ply); }
+    inline bool is_draw(int ply) const { return rule50_count() > 99 || is_repetition(ply); }
     // Tests whether there has been at least one repetition
     // of positions since the last capture or pawn move.
-    bool has_repeated() const {
+    inline bool has_repeated() const {
         auto stc = &history[history.size()-1];
         int end = std::min(rule50_count(), current_state.pliesFromNull);
         while (end-- >= 4) {

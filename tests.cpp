@@ -166,7 +166,7 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
 
         uint64_t total = 0;
         for (const Move &m : moves) {
-            pos.doMove<false>(m);
+            pos.template doMove<false>(m);
             const uint64_t nodes = perft<T, mt, false>(pos, depth - 1);
             pos.undoMove();
 
@@ -210,7 +210,7 @@ TEST_CASE("Castling move making FEN rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK
     std::string fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
     Position position(fen);
     REQUIRE(position.hash() == 0x4f874e21f78d3590);
-    position.doMove(Move::make<CASTLING>(SQ_E1, SQ_H1));
+    position.doMove<false>(Move::make<CASTLING>(SQ_E1, SQ_H1));
     REQUIRE(position.hash() == position.zobrist());
     REQUIRE(position.hash() == 0x31F235158B7EEE80);
     REQUIRE(position.fen() == "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQ1RK1 b - - 2 8");
@@ -219,7 +219,7 @@ TEST_CASE("EP move making FEN 8/5k1K/8/8/4Pp2/8/8/8 b - e3 0 1") {
     std::string fen = "8/5k1K/8/8/4Pp2/8/8/8 b - e3 0 1";
     Position position(fen);
     REQUIRE(position.hash() == 0x775d0e2acc42db8c);
-    position.doMove(Move::make<EN_PASSANT>(SQ_F4, SQ_E3));
+    position.doMove<false>(Move::make<EN_PASSANT>(SQ_F4, SQ_E3));
     REQUIRE(position.hash() == position.zobrist());
     REQUIRE(position.hash() == 0x3ec71faae73cfbed);
     REQUIRE(position.fen() == "8/5k1K/8/8/8/4p3/8/8 w - - 0 2");
@@ -228,7 +228,7 @@ TEST_CASE("EP move making FEN 8/5k1K/8/3pP3/8/8/8/8 w - d6 0 2") {
     std::string fen = "8/5k1K/8/3pP3/8/8/8/8 w - d6 0 2";
     Position position(fen);
     REQUIRE(position.hash() == 0xbdc108e30cccd00b);
-    position.doMove(Move::make<EN_PASSANT>(SQ_E5, SQ_D6));
+    position.doMove<false>(Move::make<EN_PASSANT>(SQ_E5, SQ_D6));
     REQUIRE(position.fen() == "8/5k1K/3P4/8/8/8/8/8 b - - 0 2");
     REQUIRE(position.hash() == position.zobrist());
     REQUIRE(position.hash() == 0x5c57e65793a2c8fe);
@@ -237,10 +237,27 @@ TEST_CASE("Promotion FEN 8/5kP1/7K/8/8/8/8/8 w - - 0 1") {
     std::string fen = "8/5kP1/7K/8/8/8/8/8 w - - 0 1";
     Position position(fen);
     REQUIRE(position.hash() == 0x3793b24e1b95a6d5);
-    position.doMove(Move::make<PROMOTION>(SQ_G7, SQ_G8));
+    position.doMove<false>(Move::make<PROMOTION>(SQ_G7, SQ_G8));
     REQUIRE(position.fen() == "6N1/5k2/7K/8/8/8/8/8 b - - 0 1");
     REQUIRE(position.hash() == position.zobrist());
     REQUIRE(position.hash() == 0x6adb9bf15f32cb92);
+}
+TEST_CASE("EP replace on non-EP move") {
+    Position position("rnbqkbnr/pppppp2/7p/6pP/8/8/PPPPPPP1/RNBQKBNR w KQkq g6 0 3");
+    position.doMove<false>(Move(SQ_E2, SQ_E4));
+    REQUIRE(position.fen() == "rnbqkbnr/pppppp2/7p/6pP/4P3/8/PPPP1PP1/RNBQKBNR b KQkq e3 0 3");
+}
+TEST_CASE("EP ignore on non-EP move") {
+    Position position("rnbqkbnr/pppppp2/7p/6pP/8/8/PPPPPPP1/RNBQKBNR w KQkq g6 0 3");
+    position.doMove<false>(Move(SQ_E2, SQ_E3));
+    REQUIRE(position.fen() == "rnbqkbnr/pppppp2/7p/6pP/8/4P3/PPPP1PP1/RNBQKBNR b KQkq - 0 3");
+}
+TEST_CASE("Move making and unmaking") {
+    Position position;
+    position.doMove<false>(Move(SQ_E2, SQ_E4));
+    REQUIRE(position.fen() == "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+    position.undoMove();
+    REQUIRE(position.fen() == "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 }
 TEST_CASE("Perft pawn-only startpos") {
     std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -248,27 +265,19 @@ TEST_CASE("Perft pawn-only startpos") {
     REQUIRE(perft<EnginePiece, MoveGenType::PAWN>(position, 6) == 11515584);
     REQUIRE(perft<EnginePiece, MoveGenType::PAWN>(position, 5) == 815968);
 }
-TEST_CASE("EP replace on non-EP move") {
-    Position position("rnbqkbnr/pppppp2/7p/6pP/8/8/PPPPPPP1/RNBQKBNR w KQkq g6 0 3");
-    position.doMove(Move(SQ_E2, SQ_E4));
-    REQUIRE(position.fen() == "rnbqkbnr/pppppp2/7p/6pP/4P3/8/PPPP1PP1/RNBQKBNR b KQkq e3 0 3");
-}
-TEST_CASE("EP ignore on non-EP move") {
-    Position position("rnbqkbnr/pppppp2/7p/6pP/8/8/PPPPPPP1/RNBQKBNR w KQkq g6 0 3");
-    position.doMove(Move(SQ_E2, SQ_E3));
-    REQUIRE(position.fen() == "rnbqkbnr/pppppp2/7p/6pP/8/4P3/PPPP1PP1/RNBQKBNR b KQkq - 0 3");
-}
 TEST_CASE("King walk empty board wking e4 bking f8 depth 6") {
     std::string fen = "5k2/8/8/8/3K4/8/8/8 w - - 0 1";
     Position position(fen);
-    REQUIRE(perft<EnginePiece, MoveGenType::KING>(position, 6) == 95366);
+    REQUIRE(perft<EnginePiece, MoveGenType::KING, true>(position, 1) == 8);
+    REQUIRE(perft<EnginePiece, MoveGenType::KING, true>(position, 3) == 310);
+    REQUIRE(perft<EnginePiece, MoveGenType::KING, true>(position, 6) == 95366);
 }
 TEST_CASE("Pin detection double push movegen") {
     std::string fen = "rnbqkbnr/1ppppppp/8/p7/Q1P5/8/PP1PPPPP/RNB1KBNR b KQkq - 1 2";
     Position position(fen);
     Movelist out;
     position.legals<MoveGenType::PAWN>(out);
-    auto pin_mask = position.state()._pin_mask;
+    auto pin_mask = position.pin_mask();
     REQUIRE(out.size() == 12);
     REQUIRE(pin_mask != 0);
     auto pin_maskAND0x8000000000000ULL = pin_mask & 0x8000000000000ULL;
@@ -277,13 +286,13 @@ TEST_CASE("Pin detection double push movegen") {
 }
 TEST_CASE("Move making pin update") {
     Position pos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    pos.doMove(Move(SQ_C2, SQ_C4));
-    pos.doMove(Move(SQ_A7, SQ_A5));
-    pos.doMove(Move(SQ_D1, SQ_A4));
+    pos.doMove<false>(Move(SQ_C2, SQ_C4));
+    pos.doMove<false>(Move(SQ_A7, SQ_A5));
+    pos.doMove<false>(Move(SQ_D1, SQ_A4));
     {
         Movelist out;
         pos.legals<MoveGenType::PAWN>(out);
-        auto pin_mask = pos.state()._pin_mask;
+        auto pin_mask = pos.pin_mask();
         REQUIRE(out.size() == 12);
         REQUIRE(pin_mask != 0);
         auto pin_maskAND0x8000000000000ULL = pin_mask & 0x8000000000000ULL;
@@ -533,7 +542,10 @@ TEST_CASE("Random position perfts") {
         {                                    "2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 3,     3875 },
         {                                    "2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 4,   112556 },
         {                                    "2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1", 5,  1189238 },
-        {                    "2K2q1q/2n4n/3qb3/1r2qq2/5n2/k4n2/r5Q1/1q6 w - - 0 1", 1,        0 }  // checkmate
+        {                    "2K2q1q/2n4n/3qb3/1r2qq2/5n2/k4n2/r5Q1/1q6 w - - 0 1", 1,        0 }, // checkmate
+        // Pins (i noticed an desync of position.h that leaves pins unchanged)
+        {                            "8/1Q1pkp1Q/3ppp2/8/1Q2Q2Q/4K3/8/8 w - - 0 1", 5,  6990511 },
+        {                                  "8/3pkp2/3ppp2/8/1Q6/4K3/8/8 w - - 0 1", 5,   617665 }
     };
     check_perfts(positions);
 }
@@ -561,10 +573,10 @@ TEST_CASE("Experienced bugs in this repo") {
     }
     {
         Position p;
-        p.doMove(Move(SQ_A2, SQ_A3));
-        p.doMove(Move(SQ_B8, SQ_A6));
-        p.doMove(Move(SQ_F2, SQ_F3));
-        p.doMove(Move(SQ_F7, SQ_F5));
+        p.doMove<false>(Move(SQ_A2, SQ_A3));
+        p.doMove<false>(Move(SQ_B8, SQ_A6));
+        p.doMove<false>(Move(SQ_F2, SQ_F3));
+        p.doMove<false>(Move(SQ_F7, SQ_F5));
         REQUIRE(p.zobrist() == p.hash());
         REQUIRE(p.hash() == 4177524090105507023);
     }
@@ -577,16 +589,13 @@ TEST_CASE("Captures only?") {
     };
     check_perfts<MoveGenType::CAPTURE>(tests);
 }
-struct moveToUci_t {
-    std::string destCmp;
-};
-void check_moveToUci_t(std::vector<TestEntry<Move, moveToUci_t>> &tests) {
+void check_moveToUci(std::vector<TestEntry<Move, std::string>> &tests) {
     for (auto &tc : tests) {
-        REQUIRE(chess::uci::moveToUci(tc.input) == tc.info.destCmp);
+        REQUIRE(chess::uci::moveToUci(tc.input) == tc.info);
     }
 }
 TEST_CASE("moveToUci") {
-    std::vector<TestEntry<Move, moveToUci_t>> tests = {
+    std::vector<TestEntry<Move, std::string>> tests = {
         { Move(SQ_A2, SQ_A4), "a2a4" },
         { Move::make<NORMAL>(SQ_H1, SQ_G4), "h1g4" },
         { Move::make<NORMAL>(SQ_A4, SQ_E6), "a4e6" },
@@ -690,7 +699,7 @@ TEST_CASE("moveToUci") {
         { Move::make<NORMAL>(SQ_H5, SQ_E8), "h5e8" },
         { Move::make<PROMOTION>(SQ_F2, SQ_F1, ROOK), "f2f1r" },
     };
-    check_moveToUci_t(tests);
+    check_moveToUci(tests);
 }
 TEST_CASE("push_uci/parse_uci") {
     Position p;
@@ -698,17 +707,14 @@ TEST_CASE("push_uci/parse_uci") {
     p.setFEN("rn1qkbnr/pP1ppppp/8/1b6/8/8/PPP1PPPP/RNBQKBNR w KQkq - 1 5");
     REQUIRE(p.parse_uci("b7a8q") == Move::make<PROMOTION>(SQ_B7, SQ_A8, QUEEN));
 }
-struct was_into_check_t {
-    bool was_into_check;
-};
-template <typename T> void check_was_into_check_t(std::vector<TestEntry<std::string, was_into_check_t>> &tests) {
+template <typename T> void check_was_into_check(std::vector<TestEntry<std::string, bool>> &tests) {
     for (auto &tc : tests) {
         _Position<T> pos(tc.input);
-        REQUIRE(pos.was_into_check() == tc.info.was_into_check);
+        REQUIRE(pos.was_into_check() == tc.info);
     }
 }
 TEST_CASE("was_into_check") {
-    std::vector<TestEntry<std::string, was_into_check_t>> tests = {
+    std::vector<TestEntry<std::string, bool>> tests = {
         {                "3K4/1N1Q4/8/2r4k/6r1/8/1q1Q4/r3P3 w q - 24 70", false },
         {                         "8/8/3b3K/4N3/4k3/7n/4q3/7B w - - 8 9",  true },
         {            "N7/1B4P1/4B2n/2Kn4/8/3k4/Pp2r1p1/1p5P w - - 29 85", false },
@@ -810,10 +816,35 @@ TEST_CASE("was_into_check") {
         {        "b2Q1q2/1r6/2R5/B1R3q1/p2K1kR1/4q3/8/1r3b2 b - - 15 92",  true },
         {            "pB6/4q1nk/7n/4p2B/1N3K2/P7/rn2bRb1/2r5 w - - 7 57", false },
     };
-    check_was_into_check_t<PolyglotPiece>(tests);
-    check_was_into_check_t<EnginePiece>(tests);
+    check_was_into_check<PolyglotPiece>(tests);
+    check_was_into_check<EnginePiece>(tests);
 }
 TEST_CASE("Zobrist mapping?") { REQUIRE(zobrist::RandomPiece[enum_idx<PolyglotPiece>()][(int)PolyglotPiece::BPAWN][0] == 0x9D39247E33776D41); }
+struct repetitions_t {
+    std::string FEN;
+    std::vector<Move> moves;
+    int repetition;
+};
+void check_repetitions(std::vector<TestEntry<repetitions_t, bool>> &tests) {
+    for (auto &tc : tests) {
+        _Position<PolyglotPiece> pos(tc.input.FEN);
+        for (auto &move : tc.input.moves)
+            pos.doMove(move);
+        REQUIRE(pos.is_repetition(tc.input.repetition) == tc.info);
+    }
+    for (auto &tc : tests) {
+        _Position<EnginePiece> pos(tc.input.FEN);
+        for (auto &move : tc.input.moves)
+            pos.doMove(move);
+        REQUIRE(pos.is_repetition(tc.input.repetition) == tc.info);
+    }
+}
+TEST_CASE("is_repetition") {
+    std::vector<TestEntry<repetitions_t, bool>> tests = {
+        { "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", { Move(SQ_B1, SQ_C3), Move(SQ_B8, SQ_C6), Move(SQ_C3, SQ_B1), Move(SQ_C6, SQ_B8), Move(SQ_G1, SQ_F3), Move(SQ_G8, SQ_F6), Move(SQ_F3, SQ_G1), Move(SQ_F6, SQ_G8) }, 3 , true}
+    };
+    check_repetitions(tests);
+}
 int main(int argc, char **argv) {
     doctest::Context ctx;
     ctx.setOption("success", true);

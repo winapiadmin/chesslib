@@ -1,7 +1,7 @@
 #include "zobrist.h"
 #include "types.h"
 namespace chess::zobrist{
-//clang-format off
+// clang-format off
 std::array<uint64_t, 64> _RandomPiece[12] = {
     {
         0x9D39247E33776D41, 0x2AF7398005AAA5C7, 0x44DB015024623547, 0x9C15F73E62A76AE2,
@@ -313,5 +313,5 @@ uint64_t RandomEP[9] = {
 };
 uint64_t RandomTurn = 0xF8D626AAAF278509;
 std::array<uint64_t, 64> *RandomPiece[2] = { _RandomPiece, RandomPiece_EnginePiece };
-//clang-format on
+// clang-format on
 }

@@ -92,7 +92,7 @@ namespace chess::attacks {
     };
     extern const Bitboard BishopMagics[];
     extern const Bitboard RookMagics[];
-    //clang-format on
+    // clang-format on
     #ifdef __BMI2__
         constexpr uint64_t software_pext_u64(uint64_t val, uint64_t mask) {
             uint64_t result = 0;
@@ -129,82 +129,6 @@ namespace chess::attacks {
     #endif
     
 }
-
-namespace chess::_chess {
-    // [INTERNAL]
-
-    // Reverse bits horizontally in 64-bit integer
-    constexpr Bitboard reverse(Bitboard b) {
-        b = (b & 0x5555555555555555ULL) << 1  | ((b >> 1)  & 0x5555555555555555ULL);
-        b = (b & 0x3333333333333333ULL) << 2  | ((b >> 2)  & 0x3333333333333333ULL);
-        b = (b & 0x0f0f0f0f0f0f0f0fULL) << 4  | ((b >> 4)  & 0x0f0f0f0f0f0f0f0fULL);
-        b = (b & 0x00ff00ff00ff00ffULL) << 8  | ((b >> 8)  & 0x00ff00ff00ff00ffULL);
-        b = (b & 0x0000ffff0000ffffULL) << 16 | ((b >> 16) & 0x0000ffff0000ffffULL);
-        b = (b & 0x00000000ffffffffULL) << 32 | ((b >> 32) & 0x00000000ffffffffULL);
-        return b;
-    }
-
-    constexpr Bitboard hyp_quint(Bitboard sliderBB, Bitboard occ, Bitboard mask) {
-        Bitboard occ_masked = occ & mask;
-        Bitboard left = occ_masked - 2 * sliderBB;
-        Bitboard right = reverse(occ_masked) - 2 * reverse(sliderBB);
-        return (left ^ reverse(right)) & mask;
-    }
-
-    // For Bishop: Mask for diagonal and anti-diagonal
-    constexpr Bitboard diag_mask(Square sq) {
-        int r = rank_of(sq);
-        int f = file_of(sq);
-        Bitboard mask = 0ULL;
-        int start_r = (r > f) ? r - f : 0;
-        int start_f = (f > r) ? f - r : 0;
-        while (start_r < 8 && start_f < 8) {
-            mask |= 1ULL << (start_r * 8 + start_f);
-            ++start_r;
-            ++start_f;
-        }
-        return mask;
-    }
-    constexpr Bitboard antidiag_mask(Square sq) {
-        int r = rank_of(sq);
-        int f = file_of(sq);
-        Bitboard mask = 0ULL;
-        int sum = r + f;
-        int start_r = (sum < 7) ? 0 : sum - 7;
-        int start_f = (sum < 7) ? sum : 7;
-        while (start_r < 8 && start_f >= 0) {
-            mask |= 1ULL << (start_r * 8 + start_f);
-            ++start_r;
-            --start_f;
-        }
-        return mask;
-    }
-
-    // Hyperbola Quintessence for Bishop
-    constexpr Bitboard _HyperbolaBishopAttacks(Square sq, Bitboard occ) {
-        Bitboard slider = 1ULL << sq;
-        Bitboard d_mask = diag_mask(sq);
-        Bitboard ad_mask = antidiag_mask(sq);
-        return hyp_quint(slider, occ, d_mask) | hyp_quint(slider, occ, ad_mask);
-    }
-
-    // For Rook: Rank and File Masks
-    constexpr Bitboard rank_mask(Square sq) {
-        return attacks::MASK_RANK[rank_of(sq)];
-    }
-
-    constexpr Bitboard file_mask(Square sq) {
-        return attacks::MASK_FILE[file_of(sq)];
-    }
-
-    // Hyperbola Quintessence for Rook
-    constexpr Bitboard _HyperbolaRookAttacks(Square sq, Bitboard occ) {
-        Bitboard slider = 1ULL << sq;
-        Bitboard r_mask = rank_mask(sq);
-        Bitboard f_mask = file_mask(sq);
-        return hyp_quint(slider, occ, r_mask) | hyp_quint(slider, occ, f_mask);
-    }
-}  // namespace chess::_chess [INTERNAL]
 namespace chess::attacks{
 	extern const std::array<Magic, 64> RookTable;
 	extern const std::array<Bitboard, 0x19000> RookAttacks;
@@ -218,8 +142,7 @@ namespace chess::attacks{
      */
     template<Direction direction>
     [[nodiscard]] static constexpr Bitboard shift(const Bitboard b){
-        ASSUME(direction==NORTH||direction==EAST||direction==SOUTH||direction==WEST||
-                 direction==NORTH_EAST||direction==SOUTH_EAST||direction==SOUTH_WEST||direction==NORTH_WEST);
+        ASSUME(direction == NORTH || direction == EAST || direction == SOUTH || direction == WEST || direction == NORTH_EAST || direction == SOUTH_EAST || direction == SOUTH_WEST || direction == NORTH_WEST);
 		switch (direction)
 		{
 		case Direction::NORTH :
@@ -278,16 +201,14 @@ namespace chess::attacks{
     template<Color c>
     [[nodiscard]] constexpr Bitboard pawn(const Bitboard pawns) {
         ASSUME(c==WHITE||c==BLACK);
-        Bitboard attacks = 0ULL;
         if constexpr (c == WHITE) {
-            attacks |= ((pawns & ~MASK_FILE[FILE_A]) << 7); // left captures
-            attacks |= ((pawns & ~MASK_FILE[FILE_H]) << 9); // right captures
+            return ((pawns & ~MASK_FILE[FILE_A]) << 7) | // left captures
+                   ((pawns & ~MASK_FILE[FILE_H]) << 9);  // right captures
         }
         else {
-            attacks |= ((pawns & ~MASK_FILE[FILE_H]) >> 7);
-            attacks |= ((pawns & ~MASK_FILE[FILE_A]) >> 9);
+            return ((pawns & ~MASK_FILE[FILE_H]) >> 7) |
+                   ((pawns & ~MASK_FILE[FILE_A]) >> 9);
         }
-        return attacks;
 	}
 
     /**
@@ -309,7 +230,7 @@ namespace chess::attacks{
 		return KnightAttacks[(int)sq];
 	}
     /**
-     * @brief Returns the knight attacks for a given knights
+     * @brief Returns the knight attacks for given knights
      * @param sq
      * @return
      */
@@ -330,8 +251,7 @@ namespace chess::attacks{
      * @return
      */
     [[nodiscard]] constexpr Bitboard bishop(Square sq, Bitboard occupied) {
-        if (is_constant_evaluated()) { return _chess::_HyperbolaBishopAttacks(sq, occupied); }
-		else { return BishopAttacks[BishopTable[(int)sq].index+BishopTable[(int)sq](occupied)]; }
+        return BishopAttacks[BishopTable[(int)sq].index+BishopTable[(int)sq](occupied)];
 	}
 
     /**
@@ -341,8 +261,7 @@ namespace chess::attacks{
      * @return
      */
     [[nodiscard]] constexpr Bitboard rook(Square sq, Bitboard occupied) {
-        if (is_constant_evaluated()) { return _chess::_HyperbolaRookAttacks(sq, occupied); }
-		else { return RookAttacks[RookTable[(int)sq].index+RookTable[(int)sq](occupied)]; }
+		return RookAttacks[RookTable[(int)sq].index+RookTable[(int)sq](occupied)];
 	}
 
     /**
