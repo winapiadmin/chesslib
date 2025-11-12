@@ -394,8 +394,8 @@ template <typename PieceC, typename T> template <Color c, bool capturesOnly> voi
         const Bitboard unpinned = pawns ^ pinned;
         Bitboard one_push = (c == WHITE ? unpinned << 8 : unpinned >> 8) & ~all_occ;
         one_push &= check_mask;
-
-        Bitboard pinned_push = (c == WHITE ? pinned << 8 : pinned >> 8) & ~all_occ;
+        Bitboard _pinned = pinned & ~bishopPin;
+        Bitboard pinned_push = (c == WHITE ? _pinned << 8 : _pinned >> 8) & ~all_occ;
         pinned_push &= rookPin & check_mask;
         Bitboard push_targets = one_push | pinned_push;
         Bitboard promo_targets = push_targets & PROMO_NEXT;
@@ -659,8 +659,8 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
 #if defined(_DEBUG) || !defined(NDEBUG)
     assert(target_piecetype != KING && "No captures");
     assert(moving_piecetype != NO_PIECE_TYPE && "Expected a piece to move.");
-#endif
-#if defined(__EXCEPTIONS) && (defined(_DEBUG) || !defined(NDEBUG))
+#elif defined(__EXCEPTIONS) && (defined(_DEBUG) || !defined(NDEBUG))
+
     if (target_piecetype == KING)
         throw std::invalid_argument("No captures to king exists.");
     if (moving_piecetype == NO_PIECE_TYPE)

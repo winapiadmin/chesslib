@@ -37,12 +37,10 @@ inline void aligned_free(void *ptr) {
 }
 } // namespace _chess
 
-template <typename Piece> struct alignas(32) HistoryEntry {
+template <typename Piece> struct alignas(64) HistoryEntry {
     // Bitboards for each piece type (white and black)
-    struct {
-        Bitboard pieces[7];
-        Bitboard occ[COLOR_NB];
-    };
+    Bitboard pieces[7];
+    Bitboard occ[COLOR_NB];
     Color turn;                    // true if white to move
     Move mv;
     Key hash;
@@ -61,7 +59,7 @@ template <typename Piece> struct alignas(32) HistoryEntry {
 
 template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
   private:
-    constexpr static int ALIGNMENT = 32;
+    constexpr static int ALIGNMENT = 64;
   public:
     using size_type = std::size_t;
     inline HeapAllocatedValueList() {
@@ -161,8 +159,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
     Bitboard _checkers;
     Bitboard _check_mask;
     Bitboard _pin_mask;
-    PieceC pieces_list[SQUARE_NB] = { PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE,
-                                      PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE };
+    alignas(64) PieceC pieces_list[SQUARE_NB] = { PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE,
+                                                  PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE };
     
   public:
     // Legal move generation functions
@@ -243,8 +241,11 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
                 sqs[n_sqs++] = static_cast<Square>(static_cast<int>(move.to_sq()) - pawn_push(mover));
                 break;
             }
+            default:
+                break;
         }
         // Update all squares
+        ASSUME(n_sqs <= 4);
         for (int i = 0; i < n_sqs; ++i) {
 
             const Square sq = sqs[i];
@@ -258,12 +259,16 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
             // Determine color first
             Color pc = (current_state.occ[WHITE] & sq_bb) ? WHITE : BLACK;
 
-            // Find piece type (can be branchless via bit scan)
-            PieceType pt = PAWN;
-            for (; pt <= KING; ++pt) {
-                if (current_state.pieces[pt] & sq_bb) break;
-            }
-
+            const Bitboard *p = current_state.pieces;
+            // clang-format off
+            
+            PieceType pt = (p[PAWN] & sq_bb)   ? PAWN :
+                           (p[KNIGHT] & sq_bb) ? KNIGHT :
+                           (p[BISHOP] & sq_bb) ? BISHOP :
+                           (p[ROOK] & sq_bb)   ? ROOK :
+                           (p[QUEEN] & sq_bb)  ? QUEEN :
+                           (p[KING] & sq_bb)   ? KING : PAWN; // fallback, though should never happen
+            // clang-format on
             pieces_list[sq] = make_piece<PieceC>(pt, pc);
         }
 
@@ -421,14 +426,14 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
 
     inline void removePiece(PieceType pt, Square sq, Color c) {
         bool a = pt == KING;
-        if (pt == NO_PIECE_TYPE)
-            return;
-        Bitboard v = ~(1ULL << sq);
-        current_state.pieces[pt] &= v;
-        current_state.occ[c] &= v;
-        pieces_list[sq] = PieceC::NO_PIECE;
-        current_state.hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][static_cast<int>(make_piece<PieceC>(pt, c))][sq];
-        current_state.kings[c] = a ? SQ_NONE : current_state.kings[c];
+        if (pt != NO_PIECE_TYPE) {
+            Bitboard v = ~(1ULL << sq);
+            current_state.pieces[pt] &= v;
+            current_state.occ[c] &= v;
+            pieces_list[sq] = PieceC::NO_PIECE;
+            current_state.hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][static_cast<int>(make_piece<PieceC>(pt, c))][sq];
+            current_state.kings[c] = a ? SQ_NONE : current_state.kings[c];
+        }
     }
 
     inline Bitboard occ(Color c) const {

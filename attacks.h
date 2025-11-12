@@ -95,6 +95,8 @@ namespace chess::attacks {
     // clang-format on
     #ifdef __BMI2__
         constexpr uint64_t software_pext_u64(uint64_t val, uint64_t mask) {
+            if (!is_constant_evaluated())
+                return ~0ULL;
             uint64_t result = 0;
             uint64_t bit_position = 0;
 
@@ -234,7 +236,7 @@ namespace chess::attacks{
      * @param sq
      * @return
      */
-    [[nodiscard]]constexpr Bitboard knight(Bitboard knights) {
+    [[nodiscard]] constexpr Bitboard knight(Bitboard knights) {
         Bitboard l1 = (knights >> 1) & 0x7f7f7f7f7f7f7f7fULL;  // shift left by 1, mask out file A
         Bitboard l2 = (knights >> 2) & 0x3f3f3f3f3f3f3f3fULL;  // shift left by 2, mask out files A+B
         Bitboard r1 = (knights << 1) & 0xfefefefefefefefeULL;  // shift right by 1, mask out file H
