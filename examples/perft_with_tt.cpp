@@ -121,11 +121,11 @@ template <int DEPTH> void benchmark(Position &pos) {
 
 
 int main() {
-    Position pos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    Position pos;
 
 #ifdef TT_ENABLED
     tt.resize(1 << 28);
 #endif
 
-    benchmark<6>(pos);
+    benchmark<7>(pos);
 }

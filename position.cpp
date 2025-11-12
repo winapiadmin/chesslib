@@ -654,7 +654,7 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     PieceType target_piecetype = piece_of(target_piece);
     Color target_color = color_of(target_piece);
     bool is_capture = isCapture(move);
-    _chess::memcpy_handimpl < sizeof(HistoryEntry<PieceC>)>(history.data() + history.size_++, &current_state);
+    history.push_back(current_state);
     current_state.mv = move; // Update the move in the current state
 #if defined(_DEBUG) || !defined(NDEBUG)
     assert(target_piecetype != KING && "No captures");
