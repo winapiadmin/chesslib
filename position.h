@@ -8,6 +8,7 @@
 #include <string_view>
 #include <utility>
 #include <cstdlib>
+#include "printers.h"
 #if defined(_MSC_VER)
 #include <malloc.h>
 #endif
@@ -34,100 +35,14 @@ inline void aligned_free(void *ptr) {
     free(ptr);
 #endif
 }
-template <size_t N> inline void memcpy_handimpl(void *dst, const void *src) {
-    static_assert(N > 0, "Size must be > 0");
-
-#define MEMCPY_SCALAR(dst, src, N) \
-    do { \
-        uint8_t *d8 = (uint8_t *)(dst); \
-        const uint8_t *s8 = (const uint8_t *)(src); \
-        for (size_t t = 0; t < (N); ++t) \
-            d8[t] = s8[t]; \
-    } while (0)
-
-// SSE (128-bit) unaligned copy
-#define MEMCPY_SSE(dst, src, N) \
-    do { \
-        size_t i = 0; \
-        for (; i + 16 <= (N); i += 16) { \
-            __m128i tmp = _mm_loadu_si128((__m128i *)((const uint8_t *)(src) + i)); \
-            _mm_storeu_si128((__m128i *)((uint8_t *)(dst) + i), tmp); \
-        } \
-        MEMCPY_SCALAR((uint8_t *)(dst) + i, (const uint8_t *)(src) + i, (N) - i); \
-    } while (0)
-
-// SSE2 (128-bit, more instructions)
-#define MEMCPY_SSE2 MEMCPY_SSE
-
-// SSSE3 / SSE4.1: same copy pattern, can add shuffle/optimized if needed
-#define MEMCPY_SSSE3 MEMCPY_SSE
-#define MEMCPY_SSE41 MEMCPY_SSE
-
-// AVX (256-bit)
-#define MEMCPY_AVX(dst, src, N) \
-    do { \
-        size_t i = 0; \
-        for (; i + 32 <= (N); i += 32) { \
-            __m256i tmp = _mm256_loadu_si256((__m256i *)((const uint8_t *)(src) + i)); \
-            _mm256_storeu_si256((__m256i *)((uint8_t *)(dst) + i), tmp); \
-        } \
-        MEMCPY_SCALAR((uint8_t *)(dst) + i, (const uint8_t *)(src) + i, (N) - i); \
-    } while (0)
-
-// AVX2 (256-bit, more instructions)
-#define MEMCPY_AVX2 MEMCPY_AVX
-
-// AVX512 (512-bit)
-#define MEMCPY_AVX512(dst, src, N) \
-    do { \
-        size_t i = 0; \
-        for (; i + 64 <= (N); i += 64) { \
-            __m512i tmp = _mm512_loadu_si512((__m512i *)((const uint8_t *)(src) + i)); \
-            _mm512_storeu_si512((__m512i *)((uint8_t *)(dst) + i), tmp); \
-        } \
-        MEMCPY_SCALAR((uint8_t *)(dst) + i, (const uint8_t *)(src) + i, (N) - i); \
-    } while (0)
-
-// Helper macro to select automatically based on compiler defines
-#if defined(__AVX512F__)
-#define MEMCPY_BEST(dst, src, N) MEMCPY_AVX512(dst, src, N)
-#elif defined(__AVX2__)
-#define MEMCPY_BEST(dst, src, N) MEMCPY_AVX2(dst, src, N)
-#elif defined(__AVX__)
-#define MEMCPY_BEST(dst, src, N) MEMCPY_AVX(dst, src, N)
-#elif defined(__SSE4_1__)
-#define MEMCPY_BEST(dst, src, N) MEMCPY_SSE41(dst, src, N)
-#elif defined(__SSSE3__)
-#define MEMCPY_BEST(dst, src, N) MEMCPY_SSSE3(dst, src, N)
-#elif defined(__SSE2__) || defined(_M_X64) || defined(_M_AMD64) || (_M_IX86_FP == 2)
-#define MEMCPY_BEST(dst, src, N) MEMCPY_SSE2(dst, src, N)
-#elif defined(__SSE__) || (_M_IX86_FP == 1)
-#define MEMCPY_BEST(dst, src, N) MEMCPY_SSE(dst, src, N)
-#else
-#define MEMCPY_BEST(dst, src, N) MEMCPY_SCALAR(dst, src, N)
-#endif
-    MEMCPY_BEST(dst, src, N);
-#undef MEMCPY_BEST
-#undef MEMCPY_AVX512
-#undef MEMCPY_AVX2
-#undef MEMCPY_AVX
-#undef MEMCPY_SSE41
-#undef MEMCPY_SSSE3
-#undef MEMCPY_SSE2
-#undef MEMCPY_SSE
-#undef MEMCPY_SCALAR
-    //return dst;
-}
 } // namespace _chess
 
-template <typename Piece> struct alignas(64) HistoryEntry {
+template <typename Piece> struct alignas(32) HistoryEntry {
     // Bitboards for each piece type (white and black)
     struct {
         Bitboard pieces[7];
         Bitboard occ[COLOR_NB];
     };
-    Piece pieces_list[SQUARE_NB] = { Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE,
-                                     Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE };
     Color turn;                    // true if white to move
     Move mv;
     Key hash;
@@ -246,6 +161,9 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
     Bitboard _checkers;
     Bitboard _check_mask;
     Bitboard _pin_mask;
+    PieceC pieces_list[SQUARE_NB] = { PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE,
+                                      PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE };
+    
   public:
     // Legal move generation functions
     template <MoveGenType type = MoveGenType::ALL, Color c> inline void legals(Movelist &out) const {
@@ -296,9 +214,59 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
     }
     template <bool Strict=true>
     void doMove(const Move &move);
-    template <bool RetAll = false> inline auto undoMove() -> std::conditional_t<RetAll, HistoryEntry<PieceC> &, void> {
-        // manual impl
-        _chess::memcpy_handimpl<sizeof(HistoryEntry<PieceC>)>(&current_state, history.data() + (--history.size_));
+    template <bool RetAll = false>
+    inline auto undoMove() -> std::conditional_t<RetAll, HistoryEntry<PieceC> &, void> {
+        // Save only the move (we'll restore the full state next)
+        const Move move = current_state.mv;
+
+        // Make sure there's something to pop
+        assert(history.size_ > 0 && "undoMove called with empty history");
+
+        // Restore previous state from history
+        current_state = history.pop();
+
+        // After restore, sideToMove() is the mover
+        const Color mover = sideToMove();
+        // Squares to update
+        Square sqs[4];
+        int n_sqs = 0;
+        sqs[n_sqs++] = move.from_sq();
+        sqs[n_sqs++] = move.to_sq();
+        switch(auto type = move.type_of()){
+            case CASTLING: {
+                bool is_king_side = file_of(move.to_sq()) > file_of(move.from_sq());
+                sqs[n_sqs++] = relative_square(mover, is_king_side ? SQ_G1 : SQ_C1); // king to
+                sqs[n_sqs++] = relative_square(mover, is_king_side ? SQ_F1 : SQ_D1); // rook to
+                break;
+            }
+            case EN_PASSANT: {
+                sqs[n_sqs++] = static_cast<Square>(static_cast<int>(move.to_sq()) - pawn_push(mover));
+                break;
+            }
+        }
+        // Update all squares
+        for (int i = 0; i < n_sqs; ++i) {
+
+            const Square sq = sqs[i];
+            Bitboard sq_bb = 1ULL << sq;
+
+            if ((occ()&sq_bb)==0) {
+                pieces_list[sq] = PieceC::NO_PIECE;
+                continue;
+            }
+
+            // Determine color first
+            Color pc = (current_state.occ[WHITE] & sq_bb) ? WHITE : BLACK;
+
+            // Find piece type (can be branchless via bit scan)
+            PieceType pt = PAWN;
+            for (; pt <= KING; ++pt) {
+                if (current_state.pieces[pt] & sq_bb) break;
+            }
+
+            pieces_list[sq] = make_piece<PieceC>(pt, pc);
+        }
+
         if constexpr (RetAll) {
             return current_state;
         }
@@ -310,6 +278,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
         current_state.hash ^= zobrist::RandomTurn;
         current_state.fullMoveNumber += (current_state.turn == WHITE);
         current_state.pliesFromNull = current_state.repetition = 0;
+        current_state.mv = Move::null();
     }
 
     inline Bitboard pieces() const { return occ(); }
@@ -419,8 +388,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
             Bitboard v = 1ULL << sq;
             current_state.pieces[pt] |= v;
             current_state.occ[c] |= v;
-            current_state.pieces_list[sq] = make_piece<PieceC>(pt, c);
-            current_state.hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][(int)current_state.pieces_list[sq]][sq];
+            pieces_list[sq] = make_piece<PieceC>(pt, c);
+            current_state.hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][(int)pieces_list[sq]][sq];
             if constexpr (pt == KING)
                 current_state.kings[c] = sq;
         }
@@ -431,7 +400,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
             Bitboard v = ~(1ULL << sq);
             current_state.pieces[pt] &= v;
             current_state.occ[c] &= v;
-            current_state.pieces_list[sq] = PieceC::NO_PIECE;
+            pieces_list[sq] = PieceC::NO_PIECE;
             current_state.hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][static_cast<int>(make_piece<PieceC>(pt, c))][sq];
             if constexpr (pt == KING)
                 current_state.kings[c] = SQ_NONE;
@@ -445,8 +414,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
         Bitboard v = 1ULL << sq;
         current_state.pieces[pt] |= v;
         current_state.occ[c] |= v;
-        current_state.pieces_list[sq] = make_piece<PieceC>(pt, c);
-        current_state.hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][(int)current_state.pieces_list[sq]][sq];
+        pieces_list[sq] = make_piece<PieceC>(pt, c);
+        current_state.hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][(int)pieces_list[sq]][sq];
         current_state.kings[c] = a ? sq : current_state.kings[c];
     }
 
@@ -457,7 +426,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
         Bitboard v = ~(1ULL << sq);
         current_state.pieces[pt] &= v;
         current_state.occ[c] &= v;
-        current_state.pieces_list[sq] = PieceC::NO_PIECE;
+        pieces_list[sq] = PieceC::NO_PIECE;
         current_state.hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][static_cast<int>(make_piece<PieceC>(pt, c))][sq];
         current_state.kings[c] = a ? SQ_NONE : current_state.kings[c];
     }
@@ -469,9 +438,9 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
     inline Bitboard occ() const { return current_state.occ[0] | current_state.occ[1]; }
     PieceC piece_on(Square s) const {
 #if !defined(_DEBUG) || defined(NDEBUG)
-        return current_state.pieces_list[s];
+        return pieces_list[s];
 #else
-        auto p = current_state.pieces_list[s];
+        auto p = pieces_list[s];
         auto p2 = piece_of(p);
         if (p2 == ALL_PIECES)
             return p;

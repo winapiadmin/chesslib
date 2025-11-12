@@ -92,14 +92,14 @@ std::ostream &operator<<(std::ostream &os, const Square &sq) {
     return os;
 }
 std::ostream &operator<<(std::ostream &os, const PolyglotPiece &p) {
-    constexpr std::string_view EnginePieceToChar(" PNBRQK  pnbrqk ");
-    constexpr std::string_view PolyglotPieceToChar("PNBRQKpnbrqk ");
+    constexpr std::string_view EnginePieceToChar(".PNBRQK'/pnbrqk,");
+    constexpr std::string_view PolyglotPieceToChar("PNBRQKpnbrqk.");
     constexpr std::string_view PieceToChar = std::is_same_v<decltype(p), EnginePiece> ? EnginePieceToChar : PolyglotPieceToChar;
     return os << PieceToChar[(int)p];
 }
 std::ostream &operator<<(std::ostream &os, const EnginePiece &p) {
-    constexpr std::string_view EnginePieceToChar(" PNBRQK  pnbrqk ");
-    constexpr std::string_view PolyglotPieceToChar("PNBRQKpnbrqk ");
+    constexpr std::string_view EnginePieceToChar(".PNBRQK'/pnbrqk,");
+    constexpr std::string_view PolyglotPieceToChar("PNBRQKpnbrqk.");
     constexpr std::string_view PieceToChar = std::is_same_v<decltype(p), EnginePiece> ? EnginePieceToChar : PolyglotPieceToChar;
     return os << PieceToChar[(int)p];
 }
