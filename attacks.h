@@ -90,8 +90,8 @@ namespace chess::attacks {
         0x101010101010101,  0x202020202020202,  0x404040404040404,  0x808080808080808,
         0x1010101010101010, 0x2020202020202020, 0x4040404040404040, 0x8080808080808080,
     };
-    extern const Bitboard BishopMagics[];
-    extern const Bitboard RookMagics[];
+    extern const std::array<uint64_t, 64> BishopMagics;
+    extern const std::array<uint64_t, 64> RookMagics;
     // clang-format on
     #ifdef __BMI2__
         constexpr uint64_t software_pext_u64(uint64_t val, uint64_t mask) {
