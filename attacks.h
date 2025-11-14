@@ -92,222 +92,200 @@ namespace chess::attacks {
     };
     extern const std::array<uint64_t, 64> BishopMagics;
     extern const std::array<uint64_t, 64> RookMagics;
-    // clang-format on
-    #ifdef __BMI2__
-        constexpr uint64_t software_pext_u64(uint64_t val, uint64_t mask) {
-            if (!is_constant_evaluated())
-                return ~0ULL;
-            uint64_t result = 0;
-            uint64_t bit_position = 0;
+// clang-format on
+#ifdef __BMI2__
+constexpr uint64_t software_pext_u64(uint64_t val, uint64_t mask) {
+    if (!is_constant_evaluated())
+        return ~0ULL;
+    uint64_t result = 0;
+    uint64_t bit_position = 0;
 
-            for (uint64_t bit = 1; bit!= 0; bit <<= 1) {
-                if (mask & bit) {
-                    if (val & bit) {
-                        result |= 1ULL << bit_position;
-                    }
-                    ++bit_position;
-                }
+    for (uint64_t bit = 1; bit != 0; bit <<= 1) {
+        if (mask & bit) {
+            if (val & bit) {
+                result |= 1ULL << bit_position;
             }
-            return result;
+            ++bit_position;
         }
-        struct Magic {
-            Bitboard       mask;
-            int            index;
-            constexpr Bitboard       operator()(Bitboard b) const {
-                if (is_constant_evaluated()) { return software_pext_u64(b, mask); }
-                else { return _pext_u64(b, mask); }
-            }
-        };
-    #else
-        struct Magic {
-            Bitboard       mask;
-            Bitboard       magic;
-            int            index;
-            Bitboard       shift;
-            constexpr Bitboard       operator()(Bitboard b) const {
-                return (((b & mask)) * magic) >> shift;
-            }
-        };
-    #endif
-    
-}
-namespace chess::attacks{
-	extern const std::array<Magic, 64> RookTable;
-	extern const std::array<Bitboard, 0x19000> RookAttacks;
-	extern const std::array<Magic, 64> BishopTable;
-	extern const std::array<Bitboard, 0x1480> BishopAttacks;
-    /**
-     * @brief  Shifts a bitboard in a given direction
-     * @tparam direction
-     * @param b
-     * @return
-     */
-    template<Direction direction>
-    [[nodiscard]] static constexpr Bitboard shift(const Bitboard b){
-        ASSUME(direction == NORTH || direction == EAST || direction == SOUTH || direction == WEST || direction == NORTH_EAST || direction == SOUTH_EAST || direction == SOUTH_WEST || direction == NORTH_WEST);
-		switch (direction)
-		{
-		case Direction::NORTH :
-			return b << 8;
-		case Direction::SOUTH :
-			return b >> 8;
-		case Direction::NORTH_WEST :
-			return (b & ~MASK_FILE[0]) << 7;
-		case Direction::WEST :
-			return (b & ~MASK_FILE[0]) >> 1;
-		case Direction::SOUTH_WEST :
-			return (b & ~MASK_FILE[0]) >> 9;
-		case Direction::NORTH_EAST :
-			return (b & ~MASK_FILE[7]) << 9;
-		case Direction::EAST :
-			return (b & ~MASK_FILE[7]) << 1;
-		case Direction::SOUTH_EAST :
-			return (b & ~MASK_FILE[7]) >> 7;
-        default:
-            UNREACHABLE();
-		}
-	}
-
-    /**
-     * @brief
-     * @tparam c
-     * @param pawns
-     * @return
-     */
-    template<Color c>
-    [[nodiscard]] constexpr Bitboard pawnLeftAttacks(const Bitboard pawns){
-        ASSUME(c==WHITE||c==BLACK);
-		return c == WHITE ? (pawns << 7) & ~MASK_FILE[7]
-                                        : (pawns >> 7) & ~MASK_FILE[0];
-	}
-
-    /**
-     * @brief Generate the right side pawn attacks.
-     * @tparam c
-     * @param pawns
-     * @return
-     */
-    template<Color c>
-    [[nodiscard]] constexpr Bitboard pawnRightAttacks(const Bitboard pawns){
-        ASSUME(c==WHITE||c==BLACK);
-		return c == WHITE ? (pawns << 9) & ~MASK_FILE[0]
-                                        : (pawns >> 9) & ~MASK_FILE[7];
-	}
-
-    /**
-     * @brief Generate the right side pawn attacks.
-     * @tparam c
-     * @param pawns
-     * @return
-     */
-    template<Color c>
-    [[nodiscard]] constexpr Bitboard pawn(const Bitboard pawns) {
-        ASSUME(c==WHITE||c==BLACK);
-        if constexpr (c == WHITE) {
-            return ((pawns & ~MASK_FILE[FILE_A]) << 7) | // left captures
-                   ((pawns & ~MASK_FILE[FILE_H]) << 9);  // right captures
-        }
-        else {
-            return ((pawns & ~MASK_FILE[FILE_H]) >> 7) |
-                   ((pawns & ~MASK_FILE[FILE_A]) >> 9);
-        }
-	}
-
-    /**
-     * @brief Returns the pawn attacks for a given color and square
-     * @param c
-     * @param sq
-     * @return
-     */
-    [[nodiscard]] constexpr Bitboard pawn(Color c, Square sq) {
-		return PawnAttacks[(int)c][(int)sq];
-	}
-
-    /**
-     * @brief Returns the knight attacks for a given square
-     * @param sq
-     * @return
-     */
-    [[nodiscard]] constexpr Bitboard knight(Square sq) {
-		return KnightAttacks[(int)sq];
-	}
-    /**
-     * @brief Returns the knight attacks for given knights
-     * @param sq
-     * @return
-     */
-    [[nodiscard]] constexpr Bitboard knight(Bitboard knights) {
-        Bitboard l1 = (knights >> 1) & 0x7f7f7f7f7f7f7f7fULL;  // shift left by 1, mask out file A
-        Bitboard l2 = (knights >> 2) & 0x3f3f3f3f3f3f3f3fULL;  // shift left by 2, mask out files A+B
-        Bitboard r1 = (knights << 1) & 0xfefefefefefefefeULL;  // shift right by 1, mask out file H
-        Bitboard r2 = (knights << 2) & 0xfcfcfcfcfcfcfcfcULL;  // shift right by 2, mask out files G+H
-        Bitboard h1 = l1 | r1; // 1-square horizontal shifts
-        Bitboard h2 = l2 | r2; // 2-square horizontal shifts
-        return (h1 << 16) | (h1 >> 16) | (h2 << 8) | (h2 >> 8);  // vertical shifts: +2,+1,-2,-1
     }
+    return result;
+}
+struct Magic {
+    Bitboard mask;
+    int index;
+    constexpr Bitboard operator()(Bitboard b) const {
+        if (is_constant_evaluated()) {
+            return software_pext_u64(b, mask);
+        } else {
+            return _pext_u64(b, mask);
+        }
+    }
+};
+#else
+struct Magic {
+    Bitboard mask;
+    Bitboard magic;
+    int index;
+    Bitboard shift;
+    constexpr Bitboard operator()(Bitboard b) const { return (((b & mask)) * magic) >> shift; }
+};
+#endif
 
-    /**
-     * @brief Returns the bishop attacks for a given square
-     * @param sq
-     * @param occupied
-     * @return
-     */
-    [[nodiscard]] constexpr Bitboard bishop(Square sq, Bitboard occupied) {
-        return BishopAttacks[BishopTable[(int)sq].index+BishopTable[(int)sq](occupied)];
-	}
+} // namespace chess::attacks
+namespace chess::attacks {
+extern const std::array<Magic, 64> RookTable;
+extern const std::array<Bitboard, 0x19000> RookAttacks;
+extern const std::array<Magic, 64> BishopTable;
+extern const std::array<Bitboard, 0x1480> BishopAttacks;
+/**
+ * @brief  Shifts a bitboard in a given direction
+ * @tparam direction
+ * @param b
+ * @return
+ */
+template <Direction direction> [[nodiscard]] static constexpr Bitboard shift(const Bitboard b) {
+    ASSUME(direction == NORTH || direction == EAST || direction == SOUTH || direction == WEST || direction == NORTH_EAST || direction == SOUTH_EAST || direction == SOUTH_WEST || direction == NORTH_WEST);
+    switch (direction) {
+    case Direction::NORTH:
+        return b << 8;
+    case Direction::SOUTH:
+        return b >> 8;
+    case Direction::NORTH_WEST:
+        return (b & ~MASK_FILE[0]) << 7;
+    case Direction::WEST:
+        return (b & ~MASK_FILE[0]) >> 1;
+    case Direction::SOUTH_WEST:
+        return (b & ~MASK_FILE[0]) >> 9;
+    case Direction::NORTH_EAST:
+        return (b & ~MASK_FILE[7]) << 9;
+    case Direction::EAST:
+        return (b & ~MASK_FILE[7]) << 1;
+    case Direction::SOUTH_EAST:
+        return (b & ~MASK_FILE[7]) >> 7;
+    default:
+        UNREACHABLE();
+    }
+}
 
-    /**
-     * @brief Returns the rook attacks for a given square
-     * @param sq
-     * @param occupied
-     * @return
-     */
-    [[nodiscard]] constexpr Bitboard rook(Square sq, Bitboard occupied) {
-		return RookAttacks[RookTable[(int)sq].index+RookTable[(int)sq](occupied)];
-	}
+/**
+ * @brief
+ * @tparam c
+ * @param pawns
+ * @return
+ */
+template <Color c> [[nodiscard]] constexpr Bitboard pawnLeftAttacks(const Bitboard pawns) {
+    ASSUME(c == WHITE || c == BLACK);
+    return c == WHITE ? (pawns << 7) & ~MASK_FILE[7] : (pawns >> 7) & ~MASK_FILE[0];
+}
 
-    /**
-     * @brief Returns the queen attacks for a given square
-     * @param sq
-     * @param occupied
-     * @return
-     */
-    [[nodiscard]] constexpr Bitboard queen(Square sq, Bitboard occupied) {
-		return bishop(sq, occupied) | rook(sq, occupied);
-	}
+/**
+ * @brief Generate the right side pawn attacks.
+ * @tparam c
+ * @param pawns
+ * @return
+ */
+template <Color c> [[nodiscard]] constexpr Bitboard pawnRightAttacks(const Bitboard pawns) {
+    ASSUME(c == WHITE || c == BLACK);
+    return c == WHITE ? (pawns << 9) & ~MASK_FILE[0] : (pawns >> 9) & ~MASK_FILE[7];
+}
 
-    /**
-     * @brief Returns the king attacks for a given square
-     * @param sq
-     * @return
-     */
-    [[nodiscard]] constexpr Bitboard king(Square sq) { return KingAttacks[(int)sq]; }
+/**
+ * @brief Generate the right side pawn attacks.
+ * @tparam c
+ * @param pawns
+ * @return
+ */
+template <Color c> [[nodiscard]] constexpr Bitboard pawn(const Bitboard pawns) {
+    ASSUME(c == WHITE || c == BLACK);
+    if constexpr (c == WHITE) {
+        return ((pawns & ~MASK_FILE[FILE_A]) << 7) | // left captures
+               ((pawns & ~MASK_FILE[FILE_H]) << 9);  // right captures
+    } else {
+        return ((pawns & ~MASK_FILE[FILE_H]) >> 7) | ((pawns & ~MASK_FILE[FILE_A]) >> 9);
+    }
+}
 
-    /**
-     * @brief Returns the slider attacks for a given square
-     * @param sq
-     * @param occupied
-     * @tparam pt
-     * @return
-     */
-	template<PieceType pt>
-	[[nodiscard]] constexpr Bitboard slider(Square sq, Bitboard occupied) {
-		static_assert(pt == PieceType::BISHOP || pt == PieceType::ROOK || pt == PieceType::QUEEN,
-					  "PieceType must be a slider!");
+/**
+ * @brief Returns the pawn attacks for a given color and square
+ * @param c
+ * @param sq
+ * @return
+ */
+[[nodiscard]] constexpr Bitboard pawn(Color c, Square sq) { return PawnAttacks[(int)c][(int)sq]; }
 
-		if constexpr (pt == PieceType::BISHOP)
-			return bishop(sq, occupied);
-		if constexpr (pt == PieceType::ROOK)
-			return rook(sq, occupied);
-		if constexpr (pt == PieceType::QUEEN)
-			return queen(sq, occupied);
-	}
+/**
+ * @brief Returns the knight attacks for a given square
+ * @param sq
+ * @return
+ */
+[[nodiscard]] constexpr Bitboard knight(Square sq) { return KnightAttacks[(int)sq]; }
+/**
+ * @brief Returns the knight attacks for given knights
+ * @param sq
+ * @return
+ */
+[[nodiscard]] constexpr Bitboard knight(Bitboard knights) {
+    Bitboard l1 = (knights >> 1) & 0x7f7f7f7f7f7f7f7fULL;   // shift left by 1, mask out file A
+    Bitboard l2 = (knights >> 2) & 0x3f3f3f3f3f3f3f3fULL;   // shift left by 2, mask out files A+B
+    Bitboard r1 = (knights << 1) & 0xfefefefefefefefeULL;   // shift right by 1, mask out file H
+    Bitboard r2 = (knights << 2) & 0xfcfcfcfcfcfcfcfcULL;   // shift right by 2, mask out files G+H
+    Bitboard h1 = l1 | r1;                                  // 1-square horizontal shifts
+    Bitboard h2 = l2 | r2;                                  // 2-square horizontal shifts
+    return (h1 << 16) | (h1 >> 16) | (h2 << 8) | (h2 >> 8); // vertical shifts: +2,+1,-2,-1
+}
+
+/**
+ * @brief Returns the bishop attacks for a given square
+ * @param sq
+ * @param occupied
+ * @return
+ */
+[[nodiscard]] constexpr Bitboard bishop(Square sq, Bitboard occupied) { return BishopAttacks[BishopTable[(int)sq].index + BishopTable[(int)sq](occupied)]; }
+
+/**
+ * @brief Returns the rook attacks for a given square
+ * @param sq
+ * @param occupied
+ * @return
+ */
+[[nodiscard]] constexpr Bitboard rook(Square sq, Bitboard occupied) { return RookAttacks[RookTable[(int)sq].index + RookTable[(int)sq](occupied)]; }
+
+/**
+ * @brief Returns the queen attacks for a given square
+ * @param sq
+ * @param occupied
+ * @return
+ */
+[[nodiscard]] constexpr Bitboard queen(Square sq, Bitboard occupied) { return bishop(sq, occupied) | rook(sq, occupied); }
+
+/**
+ * @brief Returns the king attacks for a given square
+ * @param sq
+ * @return
+ */
+[[nodiscard]] constexpr Bitboard king(Square sq) { return KingAttacks[(int)sq]; }
+
+/**
+ * @brief Returns the slider attacks for a given square
+ * @param sq
+ * @param occupied
+ * @tparam pt
+ * @return
+ */
+template <PieceType pt> [[nodiscard]] constexpr Bitboard slider(Square sq, Bitboard occupied) {
+    static_assert(pt == PieceType::BISHOP || pt == PieceType::ROOK || pt == PieceType::QUEEN, "PieceType must be a slider!");
+
+    if constexpr (pt == PieceType::BISHOP)
+        return bishop(sq, occupied);
+    if constexpr (pt == PieceType::ROOK)
+        return rook(sq, occupied);
+    if constexpr (pt == PieceType::QUEEN)
+        return queen(sq, occupied);
+}
 
 } // namespace chess::attacks
 
-namespace chess::movegen{
-    extern const std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB;
-    [[nodiscard]] inline Bitboard between(Square sq1, Square sq2) noexcept {
-        return SQUARES_BETWEEN_BB[sq1][sq2];
-    }
-}
+namespace chess::movegen {
+extern const std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB;
+[[nodiscard]] inline Bitboard between(Square sq1, Square sq2) noexcept { return SQUARES_BETWEEN_BB[sq1][sq2]; }
+} // namespace chess::movegen

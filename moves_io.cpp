@@ -115,10 +115,13 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
 #endif
     return move;
 }
-template Move uciToMove<EnginePiece, void>(const _Position<EnginePiece, void> &, std::string_view);
-template Move uciToMove<PolyglotPiece, void>(const _Position<PolyglotPiece, void> &, std::string_view);
-template Move uciToMove<EnginePiece, void>(const _Position<EnginePiece, void> &, std::string);
-template Move uciToMove<PolyglotPiece, void>(const _Position<PolyglotPiece, void> &, std::string);
+#define INSTANTITATE(PieceC)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
+    template Move uciToMove<PieceC, void>(const _Position<PieceC, void> &, std::string_view);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          \
+    template Move uciToMove<PieceC, void>(const _Position<PieceC, void> &, std::string);
+INSTANTITATE(PolyglotPiece)
+INSTANTITATE(EnginePiece)
+INSTANTITATE(ContiguousMappingPiece)
+#undef INSTANTITATE
 } // namespace uci
 std::string Move::uci() const { return uci::moveToUci(*this); }
 } // namespace chess

@@ -11,11 +11,11 @@ struct TTEntry {
     int depth;
 };
 std::vector<TTEntry> tt;
-template <int Depth, bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL> inline uint64_t perft(Position &p) {
+template <int Depth, typename T=EnginePiece, bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL> inline uint64_t perft(_Position<T> &p) {
     static_assert(Depth >= 0, "Negative depth in perft template!");
     if constexpr (Depth == 1) {
         Movelist moves;
-        p.legals<MGen>(moves);
+        p.template legals<MGen>(moves);
         if constexpr (EnableDiv)
             for (const Move &m : moves) {
                 std::cout << m << ": 1\n";
@@ -29,12 +29,12 @@ template <int Depth, bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL
         return entry.nodes;
 #endif
         Movelist moves;
-        p.legals<MGen>(moves);
+        p.template legals<MGen>(moves);
 
         uint64_t total = 0;
         for (const Move &m : moves) {
-            p.doMove<false>(m);
-            const uint64_t nodes = perft<Depth - 1, false, MGen>(p);
+            p.template doMove<false>(m);
+            const uint64_t nodes = perft<Depth - 1, T, false, MGen>(p);
             total += nodes;
             p.undoMove();
 
@@ -50,7 +50,7 @@ template <int Depth, bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL
         return total;
     }
 }
-template <bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL> inline uint64_t perft(Position &p, int Depth) {
+template <bool EnableDiv = false, typename T=EnginePiece, MoveGenType MGen = MoveGenType::ALL> inline uint64_t perft(_Position<T> &p, int Depth) {
     if (Depth != 1) {
 #ifdef TT_ENABLED
         const uint64_t hash = p.hash();
@@ -59,12 +59,12 @@ template <bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL> inline ui
             return entry.nodes;
 #endif
         Movelist moves;
-        p.legals<MGen>(moves);
+        p.template legals<MGen>(moves);
 
         uint64_t total = 0;
         for (const Move &m : moves) {
-            p.doMove<false>(m);
-            const uint64_t nodes = perft<false, MGen>(p, Depth - 1);
+            p.template doMove<false>(m);
+            const uint64_t nodes = perft<false, T, MGen>(p, Depth - 1);
             total += nodes;
             p.undoMove();
 
@@ -79,7 +79,7 @@ template <bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL> inline ui
         return total;
     } else {
         Movelist moves;
-        p.legals<MGen>(moves);
+        p.template legals<MGen>(moves);
         if constexpr (EnableDiv)
             for (const Move &m : moves) {
                 std::cout << m << ": 1\n";
@@ -87,24 +87,21 @@ template <bool EnableDiv = false, MoveGenType MGen = MoveGenType::ALL> inline ui
         return moves.size();
     }
 }
-template <int DEPTH> void benchmark(Position &pos) {
+template <int DEPTH, bool EnableDiv=false, typename T=EnginePiece> void benchmark(_Position<T> &pos) {
     using namespace std::chrono;
     #ifndef TT_ENABLED
-    constexpr int N_RUNS = 5;
+    constexpr int N_RUNS = EnableDiv?1:5;
     #else
     constexpr int N_RUNS=1;
     #endif
     uint64_t nodes = 0;
     double totalTime = 0.0;
 
-    // Warmup
-    perft<3, false>(pos);
-
     std::cout << "Running " << N_RUNS << " benchmark iterations:\n";
 
     for (int i = 0; i < N_RUNS; ++i) {
         auto start = high_resolution_clock::now();
-        nodes = perft<DEPTH, false>(pos);
+        nodes = perft<DEPTH, T, EnableDiv>(pos);
         auto end = high_resolution_clock::now();
         double elapsed = duration<double>(end - start).count();
         totalTime += elapsed;
@@ -121,11 +118,16 @@ template <int DEPTH> void benchmark(Position &pos) {
 
 
 int main() {
-    Position pos;
+    _Position<ContiguousMappingPiece> pos("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1");
 
 #ifdef TT_ENABLED
     tt.resize(1 << 28);
 #endif
+    benchmark<3, true, ContiguousMappingPiece>(pos);
 
-    benchmark<7>(pos);
+    // Movelist moves;
+    // pos.template legals(moves);
+    // for (const Move &m : moves) {
+    //     std::cout << m << ": 1\n";
+    // }
 }

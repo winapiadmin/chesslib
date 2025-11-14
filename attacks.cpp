@@ -115,7 +115,6 @@ _POSSIBLY_CONSTEXPR std::array<uint64_t, 64> BishopMagics = {
     0x00c0050824050c01ULL, 0x0850400420140100ULL, 0x4e42401016020040ULL, 0x0810a00812488021ULL
 };
 
-
 // clang-format on
 template <auto AttackFunc, size_t TableSize, bool IsBishop> _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, TableSize>> generate_magic_table() {
     std::array<Magic, 64> table{};
@@ -131,8 +130,10 @@ template <auto AttackFunc, size_t TableSize, bool IsBishop> _POSSIBLY_CONSTEXPR 
         int bits = popcount(mask);
         int shift = 64 - bits;
         Bitboard magic = 0;
-        if constexpr (IsBishop) magic = BishopMagics[sq];
-        else magic = RookMagics[sq];
+        if constexpr (IsBishop)
+            magic = BishopMagics[sq];
+        else
+            magic = RookMagics[sq];
 
         auto &entry = table[sq];
         entry.mask = mask;

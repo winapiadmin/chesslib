@@ -1,20 +1,20 @@
 #pragma once
 #include "attacks.h"
 #include "bitboard.h"
+#include "printers.h"
 #include "types.h"
 #include "zobrist.h"
+#include <cstdlib>
 #include <iostream>
 #include <string>
 #include <string_view>
 #include <utility>
-#include <cstdlib>
-#include "printers.h"
 #if defined(_MSC_VER)
 #include <malloc.h>
 #endif
 
 namespace chess {
-namespace _chess{
+namespace _chess {
 inline void *aligned_alloc(size_t alignment, size_t size) {
 #if defined(_MSC_VER)
     return _aligned_malloc(size, alignment);
@@ -41,7 +41,7 @@ template <typename Piece> struct alignas(64) HistoryEntry {
     // Bitboards for each piece type (white and black)
     Bitboard pieces[7];
     Bitboard occ[COLOR_NB];
-    Color turn;                    // true if white to move
+    Color turn; // true if white to move
     Move mv;
     Key hash;
     struct {
@@ -60,6 +60,7 @@ template <typename Piece> struct alignas(64) HistoryEntry {
 template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
   private:
     constexpr static int ALIGNMENT = 64;
+
   public:
     using size_type = std::size_t;
     inline HeapAllocatedValueList() {
@@ -69,6 +70,7 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
     inline ~HeapAllocatedValueList() { _chess::aligned_free(values_); }
 
     HeapAllocatedValueList(const HeapAllocatedValueList &other) : size_(other.size_) {
+        _chess::aligned_free(values_);
         values_ = reinterpret_cast<T *>(_chess::aligned_alloc(ALIGNMENT, MaxSize * sizeof(T)));
         assert(values_);
         std::copy(other.values_, other.values_ + size_, values_);
@@ -76,6 +78,7 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
 
     HeapAllocatedValueList &operator=(const HeapAllocatedValueList &other) {
         if (this != &other) {
+            _chess::aligned_free(values_);
             // Allocate new memory and copy
             T *new_values = reinterpret_cast<T *>(_chess::aligned_alloc(ALIGNMENT, MaxSize * sizeof(T)));
             assert(new_values);
@@ -92,6 +95,7 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
     }
 
     HeapAllocatedValueList(HeapAllocatedValueList &&other) noexcept : size_(other.size_) {
+        _chess::aligned_free(values_);
         values_ = reinterpret_cast<T *>(_chess::aligned_alloc(ALIGNMENT, MaxSize * sizeof(T)));
         assert(values_);
         std::copy(other.values_, other.values_ + size_, values_);
@@ -99,7 +103,7 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
 
     HeapAllocatedValueList &operator=(HeapAllocatedValueList &&other) noexcept {
         if (this != &other) {
-            free(values_);
+            _chess::aligned_free(values_);
             values_ = reinterpret_cast<T *>(_chess::aligned_alloc(ALIGNMENT, MaxSize * sizeof(T)));
             assert(values_);
             std::copy(other.values_, other.values_ + size_, values_);
@@ -114,14 +118,14 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
         values_[size_++] = value;
     }
     inline void clear() { size_ = 0; }
-    inline const T& pop() {
+    inline const T &pop() {
         assert(size_ > 0);
         return values_[--size_]; // always safe due to mask
     }
 
     inline void pop_back() { size_ -= (size_ > 0) ? 1 : 0; }
 
-    inline const T& front() const { return (size_ > 0) ? values_[0] : T{}; }
+    inline const T &front() const { return (size_ > 0) ? values_[0] : T{}; }
 
     inline T &operator[](int index) {
         assert(index < MaxSize); // relax the conditions, it's BRANCHLESS so forgive
@@ -129,8 +133,13 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
         return values_[i];
     }
 
+    inline T &operator[](int index) const {
+        assert(index < MaxSize); // relax the conditions, it's BRANCHLESS so forgive
+        size_type i = static_cast<size_type>(index);
+        return values_[i];
+    }
     inline const T *begin() const { return values_; }
-    inline T *data() const { return values_; }
+    inline T *data() { return values_; }
     inline const T *end() const { return values_ + size_; }
     size_type size_ = 0;
 
@@ -139,7 +148,7 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
 };
 
 enum class MoveGenType : uint8_t { ALL, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, CAPTURE };
-template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_same_v<PieceC, EnginePiece> || std::is_same_v<PieceC, PolyglotPiece>>> class _Position {
+template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_same_v<PieceC, EnginePiece> || std::is_same_v<PieceC, PolyglotPiece> || std::is_same_v<PieceC, ContiguousMappingPiece>>> class _Position {
   private:
     HistoryEntry<PieceC> current_state;
 
@@ -161,7 +170,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
     Bitboard _pin_mask;
     alignas(64) PieceC pieces_list[SQUARE_NB] = { PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE,
                                                   PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE };
-    
+
   public:
     // Legal move generation functions
     template <MoveGenType type = MoveGenType::ALL, Color c> inline void legals(Movelist &out) const {
@@ -210,72 +219,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
             return;
         }
     }
-    template <bool Strict=true>
-    void doMove(const Move &move);
-    template <bool RetAll = false>
-    inline auto undoMove() -> std::conditional_t<RetAll, HistoryEntry<PieceC> &, void> {
-        // Save only the move (we'll restore the full state next)
-        const Move move = current_state.mv;
-
-        // Make sure there's something to pop
-        assert(history.size_ > 0 && "undoMove called with empty history");
-
-        // Restore previous state from history
-        current_state = history.pop();
-
-        // After restore, sideToMove() is the mover
-        const Color mover = sideToMove();
-        // Squares to update
-        Square sqs[4];
-        int n_sqs = 0;
-        sqs[n_sqs++] = move.from_sq();
-        sqs[n_sqs++] = move.to_sq();
-        switch(auto type = move.type_of()){
-            case CASTLING: {
-                bool is_king_side = file_of(move.to_sq()) > file_of(move.from_sq());
-                sqs[n_sqs++] = relative_square(mover, is_king_side ? SQ_G1 : SQ_C1); // king to
-                sqs[n_sqs++] = relative_square(mover, is_king_side ? SQ_F1 : SQ_D1); // rook to
-                break;
-            }
-            case EN_PASSANT: {
-                sqs[n_sqs++] = static_cast<Square>(static_cast<int>(move.to_sq()) - pawn_push(mover));
-                break;
-            }
-            default:
-                break;
-        }
-        // Update all squares
-        ASSUME(n_sqs <= 4);
-        for (int i = 0; i < n_sqs; ++i) {
-
-            const Square sq = sqs[i];
-            Bitboard sq_bb = 1ULL << sq;
-
-            if ((occ()&sq_bb)==0) {
-                pieces_list[sq] = PieceC::NO_PIECE;
-                continue;
-            }
-
-            // Determine color first
-            Color pc = (current_state.occ[WHITE] & sq_bb) ? WHITE : BLACK;
-
-            const Bitboard *p = current_state.pieces;
-            // clang-format off
-            
-            PieceType pt = (p[PAWN] & sq_bb)   ? PAWN :
-                           (p[KNIGHT] & sq_bb) ? KNIGHT :
-                           (p[BISHOP] & sq_bb) ? BISHOP :
-                           (p[ROOK] & sq_bb)   ? ROOK :
-                           (p[QUEEN] & sq_bb)  ? QUEEN :
-                           (p[KING] & sq_bb)   ? KING : PAWN; // fallback, though should never happen
-            // clang-format on
-            pieces_list[sq] = make_piece<PieceC>(pt, pc);
-        }
-
-        if constexpr (RetAll) {
-            return current_state;
-        }
-    }
+    template <bool Strict = true> void doMove(const Move &move);
+    template <bool RetAll = false> auto undoMove() -> std::conditional_t<RetAll, HistoryEntry<PieceC> &, void>;
 
     inline void doNullMove() {
         history.push_back(current_state);
@@ -317,7 +262,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
         }
     }
     inline Bitboard pieces(PieceType pt) const {
-        switch(int(pt)){
+        switch (int(pt)) {
         case PIECE_TYPE_NB:
         case ALL_PIECES:
             return occ();
@@ -474,13 +419,15 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
     inline Bitboard pin_mask() const { return _pin_mask; }
     _Position(std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     inline bool isCapture(Move mv) const { return mv.type_of() == EN_PASSANT || (mv.type_of() != CASTLING && piece_on(mv.to_sq()) != PieceC::NO_PIECE); }
-
+    inline bool is_capture(Move mv) const { return isCapture(mv); }
+    inline bool is_zeroing(Move mv) const { return isCapture(mv) || type_of(at(mv.from_sq())) == PAWN; }
     std::string fen() const;
     inline uint8_t halfmoveClock() const { return current_state.halfMoveClock; }
     inline uint16_t fullmoveNumber() const { return current_state.fullMoveNumber; }
     inline uint8_t rule50_count() const { return current_state.halfMoveClock; }
     inline CastlingRights castlingRights(Color c) const { return current_state.castlingRights & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING); }
     inline CastlingRights castlingRights() const { return current_state.castlingRights; }
+    inline bool is_castling(Move mv) const { return (mv.type_of() & CASTLING) != 0; }
     inline const HistoryEntry<PieceC> &state() const { return current_state; }
     uint64_t zobrist() const;
     inline PieceC piece_at(Square sq) const { return piece_on(sq); }
@@ -492,13 +439,21 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
     Move parse_uci(std::string) const;
     Move push_uci(std::string);
     Square _valid_ep_square() const;
-    template<PieceType pt>
-    inline int count() const{ return popcount(pieces(pt));}
-    template<PieceType pt, Color c>
-    inline int count() const{ return popcount(pieces<pt, c>());}
-    template<PieceType pt>
-    inline int count(Color c) const{ return popcount(pieces<pt>(c));}
+    template <PieceType pt> inline int count() const { return popcount(pieces(pt)); }
+    template <PieceType pt, Color c> inline int count() const { return popcount(pieces<pt, c>()); }
+    template <PieceType pt> inline int count(Color c) const { return popcount(pieces<pt>(c)); }
     inline int count(PieceType pt, Color c) const { return popcount(pieces(pt, c)); }
+    inline int ply() const { return 2 * (current_state.fullMoveNumber - 1) + (sideToMove() == BLACK); }
+    bool is_insufficient_material(Color c) const;
+    inline bool isInsufficientMaterial(Color c) const { return is_insufficient_material(c); }
+    inline bool hasInsufficientMaterial(Color c) const { return is_insufficient_material(c); }
+    inline bool has_insufficient_material(Color c) const { return is_insufficient_material(c); }
+    inline bool is_insufficient_material() const {return has_insufficient_material(WHITE) && has_insufficient_material(BLACK); }
+    inline bool inCheck() const { return checkers() != 0; }
+    inline bool is_check() const { return checkers() != 0; }
+    inline bool has_castling_rights(Color c) const { return castlingRights(c) != 0; }
+    inline bool has_kingside_castling_rights(Color c) const { return (castlingRights(c) & KING_SIDE) != 0; }
+    inline bool has_queenside_castling_rights(Color c) const { return (castlingRights(c) & QUEEN_SIDE) != 0; }
     // Return true if a position repeats once earlier but strictly
     // after the root, or repeats twice before or at the root.
     inline bool is_repetition(int ply) const { return current_state.repetition && current_state.repetition < ply; }
@@ -506,18 +461,11 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
     inline bool is_draw(int ply) const { return rule50_count() > 99 || is_repetition(ply); }
     // Tests whether there has been at least one repetition
     // of positions since the last capture or pawn move.
-    inline bool has_repeated() const {
-        auto stc = &history[history.size()-1];
-        int end = std::min(rule50_count(), current_state.pliesFromNull);
-        while (end-- >= 4) {
-            if (stc->repetition)
-                return true;
-
-            stc--;
-        }
-        return false;
-    }
-
+    inline bool has_repeated() const;
+    inline bool _is_halfmoves(int n) { return rule50_count() >= n; }
+    inline bool is_seventyfive_moves(int n) { return _is_halfmoves(150); }
+    inline bool is_fifty_moves(int n) { return _is_halfmoves(150); }
+    inline bool is_fivefold_repetition() { return is_repetition(5); }
     inline bool is_attacked_by(Color color, Square sq, Bitboard occupied = 0) const {
         Bitboard occ_bb = occupied ? occupied : this->occ();
         return attackers_mask(color, sq, occ_bb) != 0;
@@ -529,7 +477,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
         while (!atk && bb) {
             atk |= isAttacked((Square)pop_lsb(bb), sideToMove());
         }
-        return atk;
+        return atk != 0;
     }
     inline Bitboard attackers_mask(Color color, Square square, Bitboard occupied) const {
         auto queens = pieces<QUEEN>(color);
@@ -548,7 +496,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
         while (!b && path) {
             b |= attackers_mask(~sideToMove(), static_cast<Square>(pop_lsb(path)), occupied);
         }
-        return !!b;
+        return b != 0;
     }
     template <bool Strict = false> bool is_valid() const;
 
@@ -588,9 +536,11 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
         current_state = state;
         refresh_attacks();
     }
-    _Position(const _Position &other)
+    inline _Position(const _Position &other)
         : current_state(other.current_state), history(other.history) // calls HeapAllocatedValueList's copy constructor
-    {}
+    {
+        refresh_attacks();
+    }
 
     template <typename T, std::enable_if_t<(std::is_same_v<T, PolyglotPiece> || std::is_same_v<T, EnginePiece>) && !std::is_same_v<T, PieceC>, int> = 0> [[deprecated("Incompatible piece method used, you shouldn't call this")]] inline _Position(HistoryEntry<T> state) {
         // incompatible!

@@ -23,6 +23,18 @@ static_assert(color_of(PolyglotPiece::WROOK) == WHITE, "WROOK should be WHITE");
 static_assert(color_of(PolyglotPiece::WQUEEN) == WHITE, "WQUEEN should be WHITE");
 static_assert(color_of(PolyglotPiece::WKING) == WHITE, "WKING should be WHITE");
 
+static_assert(color_of(ContiguousMappingPiece::WPAWN) == WHITE, "WPAWN should be WHITE");
+static_assert(color_of(ContiguousMappingPiece::WKNIGHT) == WHITE, "WKNIGHT should be WHITE");
+static_assert(color_of(ContiguousMappingPiece::WBISHOP) == WHITE, "WBISHOP should be WHITE");
+static_assert(color_of(ContiguousMappingPiece::WROOK) == WHITE, "WROOK should be WHITE");
+static_assert(color_of(ContiguousMappingPiece::WQUEEN) == WHITE, "WQUEEN should be WHITE");
+static_assert(color_of(ContiguousMappingPiece::WKING) == WHITE, "WKING should be WHITE");
+static_assert(color_of(ContiguousMappingPiece::BPAWN) == BLACK, "BPAWN should be WHITE");
+static_assert(color_of(ContiguousMappingPiece::BKNIGHT) == BLACK, "BKNIGHT should be BLACK");
+static_assert(color_of(ContiguousMappingPiece::BBISHOP) == BLACK, "BBISHOP should be BLACK");
+static_assert(color_of(ContiguousMappingPiece::BROOK) == BLACK, "BROOK should be BLACK");
+static_assert(color_of(ContiguousMappingPiece::BQUEEN) == BLACK, "BQUEEN should be BLACK");
+static_assert(color_of(ContiguousMappingPiece::BKING) == BLACK, "BKING should be BLACK");
 // --------- PieceType assertions ----------
 static_assert(piece_of(PolyglotPiece::BPAWN) == PAWN, "BPAWN -> PAWN");
 static_assert(piece_of(PolyglotPiece::BKNIGHT) == KNIGHT, "BKNIGHT -> KNIGHT");
@@ -39,6 +51,19 @@ static_assert(piece_of(PolyglotPiece::WQUEEN) == QUEEN, "WQUEEN -> QUEEN");
 static_assert(piece_of(PolyglotPiece::WKING) == KING, "WKING -> KING");
 
 static_assert(piece_of(PolyglotPiece::NO_PIECE) == NO_PIECE_TYPE, "NO_PIECE -> NO_PIECE_TYPE");
+static_assert(piece_of(ContiguousMappingPiece::WPAWN) == PAWN, "WPAWN should be PAWN");
+static_assert(piece_of(ContiguousMappingPiece::WKNIGHT) == KNIGHT, "WKNIGHT should be KNIGHT");
+static_assert(piece_of(ContiguousMappingPiece::WBISHOP) == BISHOP, "WBISHOP should be BISHOP");
+static_assert(piece_of(ContiguousMappingPiece::WROOK) == ROOK, "WROOK should be ROOK");
+static_assert(piece_of(ContiguousMappingPiece::WQUEEN) == QUEEN, "WQUEEN should be QUEEN");
+static_assert(piece_of(ContiguousMappingPiece::WKING) == KING, "WKING should be KING");
+static_assert(piece_of(ContiguousMappingPiece::BPAWN) == PAWN, "BPAWN should be PAWN");
+static_assert(piece_of(ContiguousMappingPiece::BKNIGHT) == KNIGHT, "BKNIGHT should be KNIGHT");
+static_assert(piece_of(ContiguousMappingPiece::BBISHOP) == BISHOP, "BBISHOP should be BISHOP");
+static_assert(piece_of(ContiguousMappingPiece::BROOK) == ROOK, "BROOK should be ROOK");
+static_assert(piece_of(ContiguousMappingPiece::BQUEEN) == QUEEN, "BQUEEN should be QUEEN");
+static_assert(piece_of(ContiguousMappingPiece::BKING) == KING, "BKING should be KING");
+static_assert(piece_of(ContiguousMappingPiece::NO_PIECE) == NO_PIECE_TYPE, "NO_PIECE -> NO_PIECE_TYPE");
 
 // --------- Round-trip make_piece assertions ----------
 static_assert(make_piece<PolyglotPiece>(PAWN, BLACK) == PolyglotPiece::BPAWN, "make_piece PAWN,BLACK -> BPAWN");
@@ -55,6 +80,19 @@ static_assert(make_piece<PolyglotPiece>(ROOK, WHITE) == PolyglotPiece::WROOK, "m
 static_assert(make_piece<PolyglotPiece>(QUEEN, WHITE) == PolyglotPiece::WQUEEN, "make_piece QUEEN,WHITE -> WQUEEN");
 static_assert(make_piece<PolyglotPiece>(KING, WHITE) == PolyglotPiece::WKING, "make_piece KING,WHITE -> WKING");
 
+static_assert(make_piece<ContiguousMappingPiece>(PAWN, BLACK) == ContiguousMappingPiece::BPAWN, "make_piece PAWN,BLACK -> BPAWN");
+static_assert(make_piece<ContiguousMappingPiece>(KNIGHT, BLACK) == ContiguousMappingPiece::BKNIGHT, "make_piece KNIGHT,BLACK -> BKNIGHT");
+static_assert(make_piece<ContiguousMappingPiece>(BISHOP, BLACK) == ContiguousMappingPiece::BBISHOP, "make_piece BISHOP,BLACK -> BBISHOP");
+static_assert(make_piece<ContiguousMappingPiece>(ROOK, BLACK) == ContiguousMappingPiece::BROOK, "make_piece ROOK,BLACK -> BROOK");
+static_assert(make_piece<ContiguousMappingPiece>(QUEEN, BLACK) == ContiguousMappingPiece::BQUEEN, "make_piece QUEEN,BLACK -> BQUEEN");
+static_assert(make_piece<ContiguousMappingPiece>(KING, BLACK) == ContiguousMappingPiece::BKING, "make_piece KING,BLACK -> BKING");
+
+static_assert(make_piece<ContiguousMappingPiece>(PAWN, WHITE) == ContiguousMappingPiece::WPAWN, "make_piece PAWN,WHITE -> WPAWN");
+static_assert(make_piece<ContiguousMappingPiece>(KNIGHT, WHITE) == ContiguousMappingPiece::WKNIGHT, "make_piece KNIGHT,WHITE -> WKNIGHT");
+static_assert(make_piece<ContiguousMappingPiece>(BISHOP, WHITE) == ContiguousMappingPiece::WBISHOP, "make_piece BISHOP,WHITE -> WBISHOP");
+static_assert(make_piece<ContiguousMappingPiece>(ROOK, WHITE) == ContiguousMappingPiece::WROOK, "make_piece ROOK,WHITE -> WROOK");
+static_assert(make_piece<ContiguousMappingPiece>(QUEEN, WHITE) == ContiguousMappingPiece::WQUEEN, "make_piece QUEEN,WHITE -> WQUEEN");
+static_assert(make_piece<ContiguousMappingPiece>(KING, WHITE) == ContiguousMappingPiece::WKING, "make_piece KING,WHITE -> WKING");
 // --------- Round-trip consistency ----------
 static_assert(piece_of(make_piece<PolyglotPiece>(PAWN, WHITE)) == PAWN, "Round-trip piece PAWN,WHITE");
 static_assert(piece_of(make_piece<PolyglotPiece>(KNIGHT, WHITE)) == KNIGHT, "Round-trip piece KNIGHT,WHITE");
@@ -202,6 +240,14 @@ template <MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false> void check_
         elapsed += duration<double>(end_time - start_time).count();
         nodes += entry.info.nodes;
     }
+    for (auto &entry : entries) {
+        _Position<ContiguousMappingPiece> pos(entry.input);
+        auto start_time = high_resolution_clock::now();
+        REQUIRE(perft<ContiguousMappingPiece, mt, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
+        auto end_time = high_resolution_clock::now();
+        elapsed += duration<double>(end_time - start_time).count();
+        nodes += entry.info.nodes;
+    }
 
     double mnps = (nodes / elapsed) / 1'000'000.0;
     std::cout << "Speed: " << mnps << "Mnps\n";
@@ -308,7 +354,7 @@ TEST_CASE("Perft startpos") {
         {     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 3,      8902 },
         {     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 4,    197281 },
         {     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 5,   4865609 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         {     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, 119060324 },
 #endif
         {   "rnbqkbnr/pppppppp/8/8/8/3P4/PPP1PPPP/RNBQKBNR b KQkq - 0 1", 4,    328511 },
@@ -340,7 +386,7 @@ TEST_CASE("Massive legal counts") {
         { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 2,       95 },
         { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 3,    18138 },
         { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 4,    80766 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         { "R6R/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q2/pp1Q4/kBNNK1B1 w - - 0 1", 5, 11649711 }
 #endif
     };
@@ -358,7 +404,7 @@ TEST_CASE("kiwipete") {
         {  "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 1,        48 },
         {  "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 2,      2039 },
         {  "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 3,     97862 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         {  "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 4,   4085603 },
         {  "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, 193690690 },
         { "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/P1N2Q1p/1PPBBPPP/R3K2R b KQkq - 0 1", 4,   4627439 },
@@ -375,12 +421,15 @@ TEST_CASE("kiwipete") {
 }
 TEST_CASE("P[3] (chessprogramming)") {
     std::vector<TestEntry<std::string, perft_t>> tests = {
-        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 1,       14 },
-        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 2,      191 },
-        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 3,     2812 },
-        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 4,    43238 },
-        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 5,   674624 },
-        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 6, 11030083 }
+        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 1,        14 },
+        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 2,       191 },
+        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 3,      2812 },
+        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 4,     43238 },
+        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 5,    674624 },
+#if IS_RELEASE == 1
+        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 6,  11030083 },
+        { "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1", 7, 178633661 }
+#endif
     };
     check_perfts(tests);
 }
@@ -390,7 +439,7 @@ TEST_CASE("P[4] (normal) (chessprogramming)") {
         { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 2,      264 },
         { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 3,     9467 },
         { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 4,   422333 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 5, 15833292 },
         //{ "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 6, 706045033 },
         { "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P1RPP/R2Q2K1 b kq - 1 1", 4,  2703427 },
@@ -408,7 +457,7 @@ TEST_CASE("P[4] (mirrored) (chessprogramming)") {
         { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 2,      264 },
         { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 3,     9467 },
         { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 4,   422333 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         { "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 5, 15833292 },
     //{ "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 6, 706045033 }
 #endif
@@ -420,7 +469,7 @@ TEST_CASE("P[5] (chessprogramming)") {
         { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 1,       44 },
         { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 2,     1486 },
         { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 3,    62379 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 4,  2103487 },
         { "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 5, 89941194 }
 #endif
@@ -432,7 +481,7 @@ TEST_CASE("P[6] (chessprogramming)") {
         { "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", 1,        46 },
         { "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", 2,      2079 },
         { "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", 3,     89890 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         { "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", 4,   3894594 },
         { "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10", 5, 164075551 }
 #endif
@@ -449,7 +498,7 @@ TEST_CASE("Promotion") {
         { "7K/5kP1/8/8/8/8/8/8 w - - 0 1", 6,     63994 },
         { "7K/5kP1/8/8/8/8/8/8 w - - 0 1", 7,   1109712 },
         { "7K/5kP1/8/8/8/8/8/8 w - - 0 1", 8,   5763773 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         { "7K/5kP1/8/8/8/8/8/8 w - - 0 1", 9, 109424670 }
 #endif
     };
@@ -458,50 +507,819 @@ TEST_CASE("Promotion") {
 TEST_CASE("Minor position test perft") {
     std::vector<TestEntry<std::string, perft_t>> tests = {
         // https://www.chessprogramming.net/perfect-perft/
-        {                                        "3k4/3p4/8/K1P4r/8/8/8/8 b - - 0 1",  6,   1134888 },
-        {                                       "8/8/4k3/8/2p5/8/B2P2K1/8 w - - 0 1",  6,   1015133 },
-        {                                      "8/8/1k6/2b5/2pP4/8/5K2/8 b - d3 0 1",  6,   1440467 },
-        {                                           "5k2/8/8/8/8/8/8/4K2R w K - 0 1",  6,    661072 },
-        {                                           "3k4/8/8/8/8/8/8/R3K3 w Q - 0 1",  6,    803711 },
-        {                                "r3k2r/1b4bq/8/8/8/8/7B/R3K2R w KQkq - 0 1",  4,   1274206 },
-        {                                 "r3k2r/8/3Q4/8/8/5q2/8/R3K2R b KQkq - 0 1",  4,   1720476 },
-        {                                      "8/8/1P2K3/8/2n5/1q6/8/5k2 b - - 0 1",  5,   1004658 },
-        {                                           "4k3/1P6/8/8/8/8/K7/8 w - - 0 1",  6,    217342 },
-        {                                            "8/P1k5/K7/8/8/8/8/8 w - - 0 1",  6,     92683 },
-        {                                            "K1k5/8/P7/8/8/8/8/8 w - - 0 1",  6,      2217 },
-        {                                           "8/k1P5/8/1K6/8/8/8/8 w - - 0 1",  7,    567584 },
-        {                                        "8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1",  4,     23527 },
+        {                                     "3k4/3p4/8/K1P4r/8/8/8/8 b - - 0 1",  6,   1134888 },
+        {                                    "8/8/4k3/8/2p5/8/B2P2K1/8 w - - 0 1",  6,   1015133 },
+        {                                   "8/8/1k6/2b5/2pP4/8/5K2/8 b - d3 0 1",  6,   1440467 },
+        {                                        "5k2/8/8/8/8/8/8/4K2R w K - 0 1",  6,    661072 },
+        {                                        "3k4/8/8/8/8/8/8/R3K3 w Q - 0 1",  6,    803711 },
+        {                             "r3k2r/1b4bq/8/8/8/8/7B/R3K2R w KQkq - 0 1",  4,   1274206 },
+        {                              "r3k2r/8/3Q4/8/8/5q2/8/R3K2R b KQkq - 0 1",  4,   1720476 },
+        {                                   "8/8/1P2K3/8/2n5/1q6/8/5k2 b - - 0 1",  5,   1004658 },
+        {                                        "4k3/1P6/8/8/8/8/K7/8 w - - 0 1",  6,    217342 },
+        {                                         "8/P1k5/K7/8/8/8/8/8 w - - 0 1",  6,     92683 },
+        {                                         "K1k5/8/P7/8/8/8/8/8 w - - 0 1",  6,      2217 },
+        {                                        "8/k1P5/8/1K6/8/8/8/8 w - - 0 1",  7,    567584 },
+        {                                     "8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1",  4,     23527 },
         // https://github.com/SebLague/Chess-Coding-Adventure/blob/Chess-V2-Unity/Assets/Scripts/Testing/Perft/Suites/Suite%20Full.txt converted to [fen, depth, nodes], deduped tests
-        {                        "2b1b3/1r1P4/3K3p/1p6/2p5/6k1/1P3p2/4B3 w - - 0 42",  5,   5617302 },
-#if IS_RELEASE==1
-        {                                    "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -",  6,  11030083 },
-        {           "r3k2r/pp3pp1/PN1pr1p1/4p1P1/4P3/3P4/P1P2PP1/R3K2R w KQkq - 4 4",  5,  15587335 },
-        {                "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",  5,  89941194 },
+        {                     "2b1b3/1r1P4/3K3p/1p6/2p5/6k1/1P3p2/4B3 w - - 0 42",  5,   5617302 },
+#if IS_RELEASE == 1
+        {                                 "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -",  6,  11030083 },
+        {        "r3k2r/pp3pp1/PN1pr1p1/4p1P1/4P3/3P4/P1P2PP1/R3K2R w KQkq - 4 4",  5,  15587335 },
+        {             "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",  5,  89941194 },
 #endif
-        { "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",  4,   3894594 },
-#if IS_RELEASE==1
-        {         "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",  5, 193690690 },
+#if IS_RELEASE == 1
+        {      "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",  5, 193690690 },
 #endif
-        {              "r3k1nr/p2pp1pp/b1n1P1P1/1BK1Pp1q/8/8/2PP1PPP/6N1 w kq - 0 1",  4,    497787 },
-#if IS_RELEASE==1
-        {                                           "3k4/8/8/8/8/8/8/R3K3 w Q - 0 1",  7,  15594314 },
-        {                                 "r3k2r/8/3Q4/8/8/5q2/8/R3K2R b KQkq - 0 1",  5,  58773923 },
+        {           "r3k1nr/p2pp1pp/b1n1P1P1/1BK1Pp1q/8/8/2PP1PPP/6N1 w kq - 0 1",  4,    497787 },
+#if IS_RELEASE == 1
+        {                                        "3k4/8/8/8/8/8/8/R3K3 w Q - 0 1",  7,  15594314 },
 #endif
-        {                                        "2K2r2/4P3/8/8/8/8/8/3k4 w - - 0 1",  6,   3821001 },
-        {                                            "K1k5/8/P7/8/8/8/8/8 w - - 0 1", 10,   5966690 },
-        {                                        "8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1",  6,   3114998 },
-        {                     "4k2r/1pp1n2p/6N1/K2P2r1/1P2P3/P5P1/3b3P/R7 w k - 1 8",  4,    380429 },
-#if IS_RELEASE==1
-        {        "r1bq2r1/1pppkppp/1b3n2/pP1PP3/2n5/2P5/P3QPPP/RNB1K2R w KQ a6 0 12",  5,  42761834 },
-        {                     "4k2r/1pp1n2p/6N1/1K1P2r1/4P3/P5P1/1Pp4P/R7 w k - 0 6",  5,  10574719 },
-        {                                  "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1",  6,  71179139 },
-        {                                        "8/PPPk4/8/8/8/8/4Kppp/8 b - - 0 1",  6,  28859283 },
+        {                                     "2K2r2/4P3/8/8/8/8/8/3k4 w - - 0 1",  6,   3821001 },
+        {                                         "K1k5/8/P7/8/8/8/8/8 w - - 0 1", 10,   5966690 },
+        {                                     "8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1",  6,   3114998 },
+        {                  "4k2r/1pp1n2p/6N1/K2P2r1/1P2P3/P5P1/3b3P/R7 w k - 1 8",  4,    380429 },
+#if IS_RELEASE == 1
+        {     "r1bq2r1/1pppkppp/1b3n2/pP1PP3/2n5/2P5/P3QPPP/RNB1K2R w KQ a6 0 12",  5,  42761834 },
+        {                  "4k2r/1pp1n2p/6N1/1K1P2r1/4P3/P5P1/1Pp4P/R7 w k - 0 6",  5,  10574719 },
 #endif
-        {    "r3k2r/pppqbppp/3p1n1B/1N2p3/1nB1P3/3P3b/PPPQNPPP/R3K2R w KQkq - 11 10",  4,   3050662 },
-        {                "1Bb3BN/R2Pk2r/1Q5B/4q2R/2bN4/4Q1BK/1p6/1bq1R1rb w - - 0 1",  4,   6871272 },
-        {                                     "8/2k1p3/3pP3/3P2K1/8/8/8/8 w - - 0 1",  9,   7618365 },
-        {                                "3r4/2p1p3/8/1P1P1P2/3K4/5k2/8/8 b - - 0 1",  4,     28181 },
-        {                             "8/1p4p1/8/q1PK1P1r/3p1k2/8/4P3/4Q3 b - - 0 1",  5,   6323457 }
+        { "r3k2r/pppqbppp/3p1n1B/1N2p3/1nB1P3/3P3b/PPPQNPPP/R3K2R w KQkq - 11 10",  4,   3050662 },
+        {             "1Bb3BN/R2Pk2r/1Q5B/4q2R/2bN4/4Q1BK/1p6/1bq1R1rb w - - 0 1",  4,   6871272 },
+        {                                  "8/2k1p3/3pP3/3P2K1/8/8/8/8 w - - 0 1",  9,   7618365 },
+        {                             "3r4/2p1p3/8/1P1P1P2/3K4/5k2/8/8 b - - 0 1",  4,     28181 },
+        {                          "8/1p4p1/8/q1PK1P1r/3p1k2/8/4P3/4Q3 b - - 0 1",  5,   6323457 },
+        // http://www.rocechess.ch/perft.html
+        {                                        "4k3/8/8/8/8/8/8/4K2R w K - 0 1",  1,        15 },
+        {                                        "4k3/8/8/8/8/8/8/4K2R w K - 0 1",  2,        66 },
+        {                                        "4k3/8/8/8/8/8/8/4K2R w K - 0 1",  3,      1197 },
+        {                                        "4k3/8/8/8/8/8/8/4K2R w K - 0 1",  4,      7059 },
+        {                                        "4k3/8/8/8/8/8/8/4K2R w K - 0 1",  5,    133987 },
+        {                                        "4k3/8/8/8/8/8/8/4K2R w K - 0 1",  6,    764643 },
+        {                                        "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1",  1,        16 },
+        {                                        "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1",  2,        71 },
+        {                                        "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1",  3,      1287 },
+        {                                        "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1",  4,      7626 },
+        {                                        "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1",  5,    145232 },
+        {                                        "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1",  6,    846648 },
+        {                                        "4k2r/8/8/8/8/8/8/4K3 w k - 0 1",  1,         5 },
+        {                                        "4k2r/8/8/8/8/8/8/4K3 w k - 0 1",  2,        75 },
+        {                                        "4k2r/8/8/8/8/8/8/4K3 w k - 0 1",  3,       459 },
+        {                                        "4k2r/8/8/8/8/8/8/4K3 w k - 0 1",  4,      8290 },
+        {                                        "4k2r/8/8/8/8/8/8/4K3 w k - 0 1",  5,     47635 },
+        {                                        "4k2r/8/8/8/8/8/8/4K3 w k - 0 1",  6,    899442 },
+        {                                        "r3k3/8/8/8/8/8/8/4K3 w q - 0 1",  1,         5 },
+        {                                        "r3k3/8/8/8/8/8/8/4K3 w q - 0 1",  2,        80 },
+        {                                        "r3k3/8/8/8/8/8/8/4K3 w q - 0 1",  3,       493 },
+        {                                        "r3k3/8/8/8/8/8/8/4K3 w q - 0 1",  4,      8897 },
+        {                                        "r3k3/8/8/8/8/8/8/4K3 w q - 0 1",  5,     52710 },
+        {                                        "r3k3/8/8/8/8/8/8/4K3 w q - 0 1",  6,   1001523 },
+        {                                      "4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1",  1,        26 },
+        {                                      "4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1",  2,       112 },
+        {                                      "4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1",  3,      3189 },
+        {                                      "4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1",  4,     17945 },
+        {                                      "4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1",  5,    532933 },
+        {                                      "4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1",  6,   2788982 },
+        {                                      "r3k2r/8/8/8/8/8/8/4K3 w kq - 0 1",  1,         5 },
+        {                                      "r3k2r/8/8/8/8/8/8/4K3 w kq - 0 1",  2,       130 },
+        {                                      "r3k2r/8/8/8/8/8/8/4K3 w kq - 0 1",  3,       782 },
+        {                                      "r3k2r/8/8/8/8/8/8/4K3 w kq - 0 1",  4,     22180 },
+        {                                      "r3k2r/8/8/8/8/8/8/4K3 w kq - 0 1",  5,    118882 },
+        {                                      "r3k2r/8/8/8/8/8/8/4K3 w kq - 0 1",  6,   3517770 },
+        {                                        "8/8/8/8/8/8/6k1/4K2R w K - 0 1",  1,        12 },
+        {                                        "8/8/8/8/8/8/6k1/4K2R w K - 0 1",  2,        38 },
+        {                                        "8/8/8/8/8/8/6k1/4K2R w K - 0 1",  3,       564 },
+        {                                        "8/8/8/8/8/8/6k1/4K2R w K - 0 1",  4,      2219 },
+        {                                        "8/8/8/8/8/8/6k1/4K2R w K - 0 1",  5,     37735 },
+        {                                        "8/8/8/8/8/8/6k1/4K2R w K - 0 1",  6,    185867 },
+        {                                        "8/8/8/8/8/8/1k6/R3K3 w Q - 0 1",  1,        15 },
+        {                                        "8/8/8/8/8/8/1k6/R3K3 w Q - 0 1",  2,        65 },
+        {                                        "8/8/8/8/8/8/1k6/R3K3 w Q - 0 1",  3,      1018 },
+        {                                        "8/8/8/8/8/8/1k6/R3K3 w Q - 0 1",  4,      4573 },
+        {                                        "8/8/8/8/8/8/1k6/R3K3 w Q - 0 1",  5,     80619 },
+        {                                        "8/8/8/8/8/8/1k6/R3K3 w Q - 0 1",  6,    413018 },
+        {                                        "4k2r/6K1/8/8/8/8/8/8 w k - 0 1",  1,         3 },
+        {                                        "4k2r/6K1/8/8/8/8/8/8 w k - 0 1",  2,        32 },
+        {                                        "4k2r/6K1/8/8/8/8/8/8 w k - 0 1",  3,       134 },
+        {                                        "4k2r/6K1/8/8/8/8/8/8 w k - 0 1",  4,      2073 },
+        {                                        "4k2r/6K1/8/8/8/8/8/8 w k - 0 1",  5,     10485 },
+        {                                        "4k2r/6K1/8/8/8/8/8/8 w k - 0 1",  6,    179869 },
+        {                                        "r3k3/1K6/8/8/8/8/8/8 w q - 0 1",  1,         4 },
+        {                                        "r3k3/1K6/8/8/8/8/8/8 w q - 0 1",  2,        49 },
+        {                                        "r3k3/1K6/8/8/8/8/8/8 w q - 0 1",  3,       243 },
+        {                                        "r3k3/1K6/8/8/8/8/8/8 w q - 0 1",  4,      3991 },
+        {                                        "r3k3/1K6/8/8/8/8/8/8 w q - 0 1",  5,     20780 },
+        {                                        "r3k3/1K6/8/8/8/8/8/8 w q - 0 1",  6,    367724 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",  1,        26 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",  2,       568 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",  3,     13744 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",  4,    314346 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",  5,   7594526 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",  6, 179862938 },
+        {                                  "r3k2r/8/8/8/8/8/8/1R2K2R w Kkq - 0 1",  1,        25 },
+        {                                  "r3k2r/8/8/8/8/8/8/1R2K2R w Kkq - 0 1",  2,       567 },
+        {                                  "r3k2r/8/8/8/8/8/8/1R2K2R w Kkq - 0 1",  3,     14095 },
+        {                                  "r3k2r/8/8/8/8/8/8/1R2K2R w Kkq - 0 1",  4,    328965 },
+        {                                  "r3k2r/8/8/8/8/8/8/1R2K2R w Kkq - 0 1",  5,   8153719 },
+        {                                  "r3k2r/8/8/8/8/8/8/1R2K2R w Kkq - 0 1",  6, 195629489 },
+        {                                  "r3k2r/8/8/8/8/8/8/2R1K2R w Kkq - 0 1",  1,        25 },
+        {                                  "r3k2r/8/8/8/8/8/8/2R1K2R w Kkq - 0 1",  2,       548 },
+        {                                  "r3k2r/8/8/8/8/8/8/2R1K2R w Kkq - 0 1",  3,     13502 },
+        {                                  "r3k2r/8/8/8/8/8/8/2R1K2R w Kkq - 0 1",  4,    312835 },
+        {                                  "r3k2r/8/8/8/8/8/8/2R1K2R w Kkq - 0 1",  5,   7736373 },
+        {                                  "r3k2r/8/8/8/8/8/8/2R1K2R w Kkq - 0 1",  6, 184411439 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 w Qkq - 0 1",  1,        25 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 w Qkq - 0 1",  2,       547 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 w Qkq - 0 1",  3,     13579 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 w Qkq - 0 1",  4,    316214 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 w Qkq - 0 1",  5,   7878456 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 w Qkq - 0 1",  6, 189224276 },
+        {                                  "1r2k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  1,        26 },
+        {                                  "1r2k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  2,       583 },
+        {                                  "1r2k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  3,     14252 },
+        {                                  "1r2k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  4,    334705 },
+        {                                  "1r2k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  5,   8198901 },
+        {                                  "1r2k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  6, 198328929 },
+        {                                  "2r1k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  1,        25 },
+        {                                  "2r1k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  2,       560 },
+        {                                  "2r1k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  3,     13592 },
+        {                                  "2r1k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  4,    317324 },
+        {                                  "2r1k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  5,   7710115 },
+        {                                  "2r1k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  6, 185959088 },
+        {                                  "r3k1r1/8/8/8/8/8/8/R3K2R w KQq - 0 1",  1,        25 },
+        {                                  "r3k1r1/8/8/8/8/8/8/R3K2R w KQq - 0 1",  2,       560 },
+        {                                  "r3k1r1/8/8/8/8/8/8/R3K2R w KQq - 0 1",  3,     13607 },
+        {                                  "r3k1r1/8/8/8/8/8/8/R3K2R w KQq - 0 1",  4,    320792 },
+        {                                  "r3k1r1/8/8/8/8/8/8/R3K2R w KQq - 0 1",  5,   7848606 },
+        {                                  "r3k1r1/8/8/8/8/8/8/R3K2R w KQq - 0 1",  6, 190755813 },
+        {                                        "4k3/8/8/8/8/8/8/4K2R b K - 0 1",  1,         5 },
+        {                                        "4k3/8/8/8/8/8/8/4K2R b K - 0 1",  2,        75 },
+        {                                        "4k3/8/8/8/8/8/8/4K2R b K - 0 1",  3,       459 },
+        {                                        "4k3/8/8/8/8/8/8/4K2R b K - 0 1",  4,      8290 },
+        {                                        "4k3/8/8/8/8/8/8/4K2R b K - 0 1",  5,     47635 },
+        {                                        "4k3/8/8/8/8/8/8/4K2R b K - 0 1",  6,    899442 },
+        {                                        "4k3/8/8/8/8/8/8/R3K3 b Q - 0 1",  1,         5 },
+        {                                        "4k3/8/8/8/8/8/8/R3K3 b Q - 0 1",  2,        80 },
+        {                                        "4k3/8/8/8/8/8/8/R3K3 b Q - 0 1",  3,       493 },
+        {                                        "4k3/8/8/8/8/8/8/R3K3 b Q - 0 1",  4,      8897 },
+        {                                        "4k3/8/8/8/8/8/8/R3K3 b Q - 0 1",  5,     52710 },
+        {                                        "4k3/8/8/8/8/8/8/R3K3 b Q - 0 1",  6,   1001523 },
+        {                                        "4k2r/8/8/8/8/8/8/4K3 b k - 0 1",  1,        15 },
+        {                                        "4k2r/8/8/8/8/8/8/4K3 b k - 0 1",  2,        66 },
+        {                                        "4k2r/8/8/8/8/8/8/4K3 b k - 0 1",  3,      1197 },
+        {                                        "4k2r/8/8/8/8/8/8/4K3 b k - 0 1",  4,      7059 },
+        {                                        "4k2r/8/8/8/8/8/8/4K3 b k - 0 1",  5,    133987 },
+        {                                        "4k2r/8/8/8/8/8/8/4K3 b k - 0 1",  6,    764643 },
+        {                                        "r3k3/8/8/8/8/8/8/4K3 b q - 0 1",  1,        16 },
+        {                                        "r3k3/8/8/8/8/8/8/4K3 b q - 0 1",  2,        71 },
+        {                                        "r3k3/8/8/8/8/8/8/4K3 b q - 0 1",  3,      1287 },
+        {                                        "r3k3/8/8/8/8/8/8/4K3 b q - 0 1",  4,      7626 },
+        {                                        "r3k3/8/8/8/8/8/8/4K3 b q - 0 1",  5,    145232 },
+        {                                        "r3k3/8/8/8/8/8/8/4K3 b q - 0 1",  6,    846648 },
+        {                                      "4k3/8/8/8/8/8/8/R3K2R b KQ - 0 1",  1,         5 },
+        {                                      "4k3/8/8/8/8/8/8/R3K2R b KQ - 0 1",  2,       130 },
+        {                                      "4k3/8/8/8/8/8/8/R3K2R b KQ - 0 1",  3,       782 },
+        {                                      "4k3/8/8/8/8/8/8/R3K2R b KQ - 0 1",  4,     22180 },
+        {                                      "4k3/8/8/8/8/8/8/R3K2R b KQ - 0 1",  5,    118882 },
+        {                                      "4k3/8/8/8/8/8/8/R3K2R b KQ - 0 1",  6,   3517770 },
+        {                                      "r3k2r/8/8/8/8/8/8/4K3 b kq - 0 1",  1,        26 },
+        {                                      "r3k2r/8/8/8/8/8/8/4K3 b kq - 0 1",  2,       112 },
+        {                                      "r3k2r/8/8/8/8/8/8/4K3 b kq - 0 1",  3,      3189 },
+        {                                      "r3k2r/8/8/8/8/8/8/4K3 b kq - 0 1",  4,     17945 },
+        {                                      "r3k2r/8/8/8/8/8/8/4K3 b kq - 0 1",  5,    532933 },
+        {                                      "r3k2r/8/8/8/8/8/8/4K3 b kq - 0 1",  6,   2788982 },
+        {                                        "8/8/8/8/8/8/6k1/4K2R b K - 0 1",  1,         3 },
+        {                                        "8/8/8/8/8/8/6k1/4K2R b K - 0 1",  2,        32 },
+        {                                        "8/8/8/8/8/8/6k1/4K2R b K - 0 1",  3,       134 },
+        {                                        "8/8/8/8/8/8/6k1/4K2R b K - 0 1",  4,      2073 },
+        {                                        "8/8/8/8/8/8/6k1/4K2R b K - 0 1",  5,     10485 },
+        {                                        "8/8/8/8/8/8/6k1/4K2R b K - 0 1",  6,    179869 },
+        {                                        "8/8/8/8/8/8/1k6/R3K3 b Q - 0 1",  1,         4 },
+        {                                        "8/8/8/8/8/8/1k6/R3K3 b Q - 0 1",  2,        49 },
+        {                                        "8/8/8/8/8/8/1k6/R3K3 b Q - 0 1",  3,       243 },
+        {                                        "8/8/8/8/8/8/1k6/R3K3 b Q - 0 1",  4,      3991 },
+        {                                        "8/8/8/8/8/8/1k6/R3K3 b Q - 0 1",  5,     20780 },
+        {                                        "8/8/8/8/8/8/1k6/R3K3 b Q - 0 1",  6,    367724 },
+        {                                        "4k2r/6K1/8/8/8/8/8/8 b k - 0 1",  1,        12 },
+        {                                        "4k2r/6K1/8/8/8/8/8/8 b k - 0 1",  2,        38 },
+        {                                        "4k2r/6K1/8/8/8/8/8/8 b k - 0 1",  3,       564 },
+        {                                        "4k2r/6K1/8/8/8/8/8/8 b k - 0 1",  4,      2219 },
+        {                                        "4k2r/6K1/8/8/8/8/8/8 b k - 0 1",  5,     37735 },
+        {                                        "4k2r/6K1/8/8/8/8/8/8 b k - 0 1",  6,    185867 },
+        {                                        "r3k3/1K6/8/8/8/8/8/8 b q - 0 1",  1,        15 },
+        {                                        "r3k3/1K6/8/8/8/8/8/8 b q - 0 1",  2,        65 },
+        {                                        "r3k3/1K6/8/8/8/8/8/8 b q - 0 1",  3,      1018 },
+        {                                        "r3k3/1K6/8/8/8/8/8/8 b q - 0 1",  4,      4573 },
+        {                                        "r3k3/1K6/8/8/8/8/8/8 b q - 0 1",  5,     80619 },
+        {                                        "r3k3/1K6/8/8/8/8/8/8 b q - 0 1",  6,    413018 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1",  1,        26 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1",  2,       568 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1",  3,     13744 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1",  4,    314346 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1",  5,   7594526 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1",  6, 179862938 },
+        {                                  "r3k2r/8/8/8/8/8/8/1R2K2R b Kkq - 0 1",  1,        26 },
+        {                                  "r3k2r/8/8/8/8/8/8/1R2K2R b Kkq - 0 1",  2,       583 },
+        {                                  "r3k2r/8/8/8/8/8/8/1R2K2R b Kkq - 0 1",  3,     14252 },
+        {                                  "r3k2r/8/8/8/8/8/8/1R2K2R b Kkq - 0 1",  4,    334705 },
+        {                                  "r3k2r/8/8/8/8/8/8/1R2K2R b Kkq - 0 1",  5,   8198901 },
+        {                                  "r3k2r/8/8/8/8/8/8/1R2K2R b Kkq - 0 1",  6, 198328929 },
+        {                                  "r3k2r/8/8/8/8/8/8/2R1K2R b Kkq - 0 1",  1,        25 },
+        {                                  "r3k2r/8/8/8/8/8/8/2R1K2R b Kkq - 0 1",  2,       560 },
+        {                                  "r3k2r/8/8/8/8/8/8/2R1K2R b Kkq - 0 1",  3,     13592 },
+        {                                  "r3k2r/8/8/8/8/8/8/2R1K2R b Kkq - 0 1",  4,    317324 },
+        {                                  "r3k2r/8/8/8/8/8/8/2R1K2R b Kkq - 0 1",  5,   7710115 },
+        {                                  "r3k2r/8/8/8/8/8/8/2R1K2R b Kkq - 0 1",  6, 185959088 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 b Qkq - 0 1",  1,        25 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 b Qkq - 0 1",  2,       560 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 b Qkq - 0 1",  3,     13607 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 b Qkq - 0 1",  4,    320792 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 b Qkq - 0 1",  5,   7848606 },
+        {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 b Qkq - 0 1",  6, 190755813 },
+        {                                  "1r2k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  1,        25 },
+        {                                  "1r2k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  2,       567 },
+        {                                  "1r2k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  3,     14095 },
+        {                                  "1r2k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  4,    328965 },
+        {                                  "1r2k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  5,   8153719 },
+        {                                  "1r2k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  6, 195629489 },
+        {                                  "2r1k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  1,        25 },
+        {                                  "2r1k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  2,       548 },
+        {                                  "2r1k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  3,     13502 },
+        {                                  "2r1k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  4,    312835 },
+        {                                  "2r1k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  5,   7736373 },
+        {                                  "2r1k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  6, 184411439 },
+        {                                  "r3k1r1/8/8/8/8/8/8/R3K2R b KQq - 0 1",  1,        25 },
+        {                                  "r3k1r1/8/8/8/8/8/8/R3K2R b KQq - 0 1",  2,       547 },
+        {                                  "r3k1r1/8/8/8/8/8/8/R3K2R b KQq - 0 1",  3,     13579 },
+        {                                  "r3k1r1/8/8/8/8/8/8/R3K2R b KQq - 0 1",  4,    316214 },
+        {                                  "r3k1r1/8/8/8/8/8/8/R3K2R b KQq - 0 1",  5,   7878456 },
+        {                                  "r3k1r1/8/8/8/8/8/8/R3K2R b KQq - 0 1",  6, 189224276 },
+        {                                 "8/1n4N1/2k5/8/8/5K2/1N4n1/8 w - - 0 1",  1,        14 },
+        {                                 "8/1n4N1/2k5/8/8/5K2/1N4n1/8 w - - 0 1",  2,       195 },
+        {                                 "8/1n4N1/2k5/8/8/5K2/1N4n1/8 w - - 0 1",  3,      2760 },
+        {                                 "8/1n4N1/2k5/8/8/5K2/1N4n1/8 w - - 0 1",  4,     38675 },
+        {                                 "8/1n4N1/2k5/8/8/5K2/1N4n1/8 w - - 0 1",  5,    570726 },
+        {                                 "8/1n4N1/2k5/8/8/5K2/1N4n1/8 w - - 0 1",  6,   8107539 },
+        {                                     "8/1k6/8/5N2/8/4n3/8/2K5 w - - 0 1",  1,        11 },
+        {                                     "8/1k6/8/5N2/8/4n3/8/2K5 w - - 0 1",  2,       156 },
+        {                                     "8/1k6/8/5N2/8/4n3/8/2K5 w - - 0 1",  3,      1636 },
+        {                                     "8/1k6/8/5N2/8/4n3/8/2K5 w - - 0 1",  4,     20534 },
+        {                                     "8/1k6/8/5N2/8/4n3/8/2K5 w - - 0 1",  5,    223507 },
+        {                                     "8/1k6/8/5N2/8/4n3/8/2K5 w - - 0 1",  6,   2594412 },
+        {                                   "8/8/4k3/3Nn3/3nN3/4K3/8/8 w - - 0 1",  1,        19 },
+        {                                   "8/8/4k3/3Nn3/3nN3/4K3/8/8 w - - 0 1",  2,       289 },
+        {                                   "8/8/4k3/3Nn3/3nN3/4K3/8/8 w - - 0 1",  3,      4442 },
+        {                                   "8/8/4k3/3Nn3/3nN3/4K3/8/8 w - - 0 1",  4,     73584 },
+        {                                   "8/8/4k3/3Nn3/3nN3/4K3/8/8 w - - 0 1",  5,   1198299 },
+#if IS_RELEASE == 1
+        {                                   "8/8/4k3/3Nn3/3nN3/4K3/8/8 w - - 0 1",  6,  19870403 },
+#endif
+        {                                      "K7/8/2n5/1n6/8/8/8/k6N w - - 0 1",  1,         3 },
+        {                                      "K7/8/2n5/1n6/8/8/8/k6N w - - 0 1",  2,        51 },
+        {                                      "K7/8/2n5/1n6/8/8/8/k6N w - - 0 1",  3,       345 },
+        {                                      "K7/8/2n5/1n6/8/8/8/k6N w - - 0 1",  4,      5301 },
+        {                                      "K7/8/2n5/1n6/8/8/8/k6N w - - 0 1",  5,     38348 },
+        {                                      "K7/8/2n5/1n6/8/8/8/k6N w - - 0 1",  6,    588695 },
+        {                                      "k7/8/2N5/1N6/8/8/8/K6n w - - 0 1",  1,        17 },
+        {                                      "k7/8/2N5/1N6/8/8/8/K6n w - - 0 1",  2,        54 },
+        {                                      "k7/8/2N5/1N6/8/8/8/K6n w - - 0 1",  3,       835 },
+        {                                      "k7/8/2N5/1N6/8/8/8/K6n w - - 0 1",  4,      5910 },
+        {                                      "k7/8/2N5/1N6/8/8/8/K6n w - - 0 1",  5,     92250 },
+        {                                      "k7/8/2N5/1N6/8/8/8/K6n w - - 0 1",  6,    688780 },
+        {                                 "8/1n4N1/2k5/8/8/5K2/1N4n1/8 b - - 0 1",  1,        15 },
+        {                                 "8/1n4N1/2k5/8/8/5K2/1N4n1/8 b - - 0 1",  2,       193 },
+        {                                 "8/1n4N1/2k5/8/8/5K2/1N4n1/8 b - - 0 1",  3,      2816 },
+        {                                 "8/1n4N1/2k5/8/8/5K2/1N4n1/8 b - - 0 1",  4,     40039 },
+        {                                 "8/1n4N1/2k5/8/8/5K2/1N4n1/8 b - - 0 1",  5,    582642 },
+        {                                 "8/1n4N1/2k5/8/8/5K2/1N4n1/8 b - - 0 1",  6,   8503277 },
+        {                                     "8/1k6/8/5N2/8/4n3/8/2K5 b - - 0 1",  1,        16 },
+        {                                     "8/1k6/8/5N2/8/4n3/8/2K5 b - - 0 1",  2,       180 },
+        {                                     "8/1k6/8/5N2/8/4n3/8/2K5 b - - 0 1",  3,      2290 },
+        {                                     "8/1k6/8/5N2/8/4n3/8/2K5 b - - 0 1",  4,     24640 },
+        {                                     "8/1k6/8/5N2/8/4n3/8/2K5 b - - 0 1",  5,    288141 },
+        {                                     "8/1k6/8/5N2/8/4n3/8/2K5 b - - 0 1",  6,   3147566 },
+        {                                   "8/8/3K4/3Nn3/3nN3/4k3/8/8 b - - 0 1",  1,         4 },
+        {                                   "8/8/3K4/3Nn3/3nN3/4k3/8/8 b - - 0 1",  2,        68 },
+        {                                   "8/8/3K4/3Nn3/3nN3/4k3/8/8 b - - 0 1",  3,      1118 },
+        {                                   "8/8/3K4/3Nn3/3nN3/4k3/8/8 b - - 0 1",  4,     16199 },
+        {                                   "8/8/3K4/3Nn3/3nN3/4k3/8/8 b - - 0 1",  5,    281190 },
+        {                                   "8/8/3K4/3Nn3/3nN3/4k3/8/8 b - - 0 1",  6,   4405103 },
+        {                                      "K7/8/2n5/1n6/8/8/8/k6N b - - 0 1",  1,        17 },
+        {                                      "K7/8/2n5/1n6/8/8/8/k6N b - - 0 1",  2,        54 },
+        {                                      "K7/8/2n5/1n6/8/8/8/k6N b - - 0 1",  3,       835 },
+        {                                      "K7/8/2n5/1n6/8/8/8/k6N b - - 0 1",  4,      5910 },
+        {                                      "K7/8/2n5/1n6/8/8/8/k6N b - - 0 1",  5,     92250 },
+        {                                      "K7/8/2n5/1n6/8/8/8/k6N b - - 0 1",  6,    688780 },
+        {                                      "k7/8/2N5/1N6/8/8/8/K6n b - - 0 1",  1,         3 },
+        {                                      "k7/8/2N5/1N6/8/8/8/K6n b - - 0 1",  2,        51 },
+        {                                      "k7/8/2N5/1N6/8/8/8/K6n b - - 0 1",  3,       345 },
+        {                                      "k7/8/2N5/1N6/8/8/8/K6n b - - 0 1",  4,      5301 },
+        {                                      "k7/8/2N5/1N6/8/8/8/K6n b - - 0 1",  5,     38348 },
+        {                                      "k7/8/2N5/1N6/8/8/8/K6n b - - 0 1",  6,    588695 },
+        {                                     "B6b/8/8/8/2K5/4k3/8/b6B w - - 0 1",  1,        17 },
+        {                                     "B6b/8/8/8/2K5/4k3/8/b6B w - - 0 1",  2,       278 },
+        {                                     "B6b/8/8/8/2K5/4k3/8/b6B w - - 0 1",  3,      4607 },
+        {                                     "B6b/8/8/8/2K5/4k3/8/b6B w - - 0 1",  4,     76778 },
+        {                                     "B6b/8/8/8/2K5/4k3/8/b6B w - - 0 1",  5,   1320507 },
+#if IS_RELEASE == 1
+        {                                     "B6b/8/8/8/2K5/4k3/8/b6B w - - 0 1",  6,  22823890 },
+#endif
+        {                                    "8/8/1B6/7b/7k/8/2B1b3/7K w - - 0 1",  1,        21 },
+        {                                    "8/8/1B6/7b/7k/8/2B1b3/7K w - - 0 1",  2,       316 },
+        {                                    "8/8/1B6/7b/7k/8/2B1b3/7K w - - 0 1",  3,      5744 },
+        {                                    "8/8/1B6/7b/7k/8/2B1b3/7K w - - 0 1",  4,     93338 },
+        {                                    "8/8/1B6/7b/7k/8/2B1b3/7K w - - 0 1",  5,   1713368 },
+#if IS_RELEASE == 1
+        {                                    "8/8/1B6/7b/7k/8/2B1b3/7K w - - 0 1",  6,  28861171 },
+#endif
+        {                                     "k7/B7/1B6/1B6/8/8/8/K6b w - - 0 1",  1,        21 },
+        {                                     "k7/B7/1B6/1B6/8/8/8/K6b w - - 0 1",  2,       144 },
+        {                                     "k7/B7/1B6/1B6/8/8/8/K6b w - - 0 1",  3,      3242 },
+        {                                     "k7/B7/1B6/1B6/8/8/8/K6b w - - 0 1",  4,     32955 },
+        {                                     "k7/B7/1B6/1B6/8/8/8/K6b w - - 0 1",  5,    787524 },
+        {                                     "k7/B7/1B6/1B6/8/8/8/K6b w - - 0 1",  6,   7881673 },
+        {                                     "K7/b7/1b6/1b6/8/8/8/k6B w - - 0 1",  1,         7 },
+        {                                     "K7/b7/1b6/1b6/8/8/8/k6B w - - 0 1",  2,       143 },
+        {                                     "K7/b7/1b6/1b6/8/8/8/k6B w - - 0 1",  3,      1416 },
+        {                                     "K7/b7/1b6/1b6/8/8/8/k6B w - - 0 1",  4,     31787 },
+        {                                     "K7/b7/1b6/1b6/8/8/8/k6B w - - 0 1",  5,    310862 },
+        {                                     "K7/b7/1b6/1b6/8/8/8/k6B w - - 0 1",  6,   7382896 },
+        {                                     "B6b/8/8/8/2K5/5k2/8/b6B b - - 0 1",  1,         6 },
+        {                                     "B6b/8/8/8/2K5/5k2/8/b6B b - - 0 1",  2,       106 },
+        {                                     "B6b/8/8/8/2K5/5k2/8/b6B b - - 0 1",  3,      1829 },
+        {                                     "B6b/8/8/8/2K5/5k2/8/b6B b - - 0 1",  4,     31151 },
+        {                                     "B6b/8/8/8/2K5/5k2/8/b6B b - - 0 1",  5,    530585 },
+        {                                     "B6b/8/8/8/2K5/5k2/8/b6B b - - 0 1",  6,   9250746 },
+        {                                    "8/8/1B6/7b/7k/8/2B1b3/7K b - - 0 1",  1,        17 },
+        {                                    "8/8/1B6/7b/7k/8/2B1b3/7K b - - 0 1",  2,       309 },
+        {                                    "8/8/1B6/7b/7k/8/2B1b3/7K b - - 0 1",  3,      5133 },
+        {                                    "8/8/1B6/7b/7k/8/2B1b3/7K b - - 0 1",  4,     93603 },
+        {                                    "8/8/1B6/7b/7k/8/2B1b3/7K b - - 0 1",  5,   1591064 },
+#if IS_RELEASE == 1
+        {                                    "8/8/1B6/7b/7k/8/2B1b3/7K b - - 0 1",  6,  29027891 },
+#endif
+        {                                     "k7/B7/1B6/1B6/8/8/8/K6b b - - 0 1",  1,         7 },
+        {                                     "k7/B7/1B6/1B6/8/8/8/K6b b - - 0 1",  2,       143 },
+        {                                     "k7/B7/1B6/1B6/8/8/8/K6b b - - 0 1",  3,      1416 },
+        {                                     "k7/B7/1B6/1B6/8/8/8/K6b b - - 0 1",  4,     31787 },
+        {                                     "k7/B7/1B6/1B6/8/8/8/K6b b - - 0 1",  5,    310862 },
+        {                                     "k7/B7/1B6/1B6/8/8/8/K6b b - - 0 1",  6,   7382896 },
+        {                                     "K7/b7/1b6/1b6/8/8/8/k6B b - - 0 1",  1,        21 },
+        {                                     "K7/b7/1b6/1b6/8/8/8/k6B b - - 0 1",  2,       144 },
+        {                                     "K7/b7/1b6/1b6/8/8/8/k6B b - - 0 1",  3,      3242 },
+        {                                     "K7/b7/1b6/1b6/8/8/8/k6B b - - 0 1",  4,     32955 },
+        {                                     "K7/b7/1b6/1b6/8/8/8/k6B b - - 0 1",  5,    787524 },
+        {                                     "K7/b7/1b6/1b6/8/8/8/k6B b - - 0 1",  6,   7881673 },
+        {                                       "7k/RR6/8/8/8/8/rr6/7K w - - 0 1",  1,        19 },
+        {                                       "7k/RR6/8/8/8/8/rr6/7K w - - 0 1",  2,       275 },
+        {                                       "7k/RR6/8/8/8/8/rr6/7K w - - 0 1",  3,      5300 },
+        {                                       "7k/RR6/8/8/8/8/rr6/7K w - - 0 1",  4,    104342 },
+        {                                       "7k/RR6/8/8/8/8/rr6/7K w - - 0 1",  5,   2161211 },
+#if IS_RELEASE == 1
+        {                                       "7k/RR6/8/8/8/8/rr6/7K w - - 0 1",  6,  44956585 },
+#endif
+        {                                     "R6r/8/8/2K5/5k2/8/8/r6R w - - 0 1",  1,        36 },
+        {                                     "R6r/8/8/2K5/5k2/8/8/r6R w - - 0 1",  2,      1027 },
+        {                                     "R6r/8/8/2K5/5k2/8/8/r6R w - - 0 1",  3,     29215 },
+        {                                     "R6r/8/8/2K5/5k2/8/8/r6R w - - 0 1",  4,    771461 },
+#if IS_RELEASE == 1
+        {                                     "R6r/8/8/2K5/5k2/8/8/r6R w - - 0 1",  5,  20506480 },
+        {                                     "R6r/8/8/2K5/5k2/8/8/r6R w - - 0 1",  6, 525169084 },
+#endif
+        {                                       "7k/RR6/8/8/8/8/rr6/7K b - - 0 1",  1,        19 },
+        {                                       "7k/RR6/8/8/8/8/rr6/7K b - - 0 1",  2,       275 },
+        {                                       "7k/RR6/8/8/8/8/rr6/7K b - - 0 1",  3,      5300 },
+        {                                       "7k/RR6/8/8/8/8/rr6/7K b - - 0 1",  4,    104342 },
+        {                                       "7k/RR6/8/8/8/8/rr6/7K b - - 0 1",  5,   2161211 },
+#if IS_RELEASE == 1
+        {                                       "7k/RR6/8/8/8/8/rr6/7K b - - 0 1",  6,  44956585 },
+#endif
+        {                                     "R6r/8/8/2K5/5k2/8/8/r6R b - - 0 1",  1,        36 },
+        {                                     "R6r/8/8/2K5/5k2/8/8/r6R b - - 0 1",  2,      1027 },
+        {                                     "R6r/8/8/2K5/5k2/8/8/r6R b - - 0 1",  3,     29227 },
+        {                                     "R6r/8/8/2K5/5k2/8/8/r6R b - - 0 1",  4,    771368 },
+#if IS_RELEASE == 1
+        {                                     "R6r/8/8/2K5/5k2/8/8/r6R b - - 0 1",  5,  20521342 },
+        {                                     "R6r/8/8/2K5/5k2/8/8/r6R b - - 0 1",  6, 524966748 },
+#endif
+        {                                          "6kq/8/8/8/8/8/8/7K w - - 0 1",  1,         2 },
+        {                                          "6kq/8/8/8/8/8/8/7K w - - 0 1",  2,        36 },
+        {                                          "6kq/8/8/8/8/8/8/7K w - - 0 1",  3,       143 },
+        {                                          "6kq/8/8/8/8/8/8/7K w - - 0 1",  4,      3637 },
+        {                                          "6kq/8/8/8/8/8/8/7K w - - 0 1",  5,     14893 },
+        {                                          "6kq/8/8/8/8/8/8/7K w - - 0 1",  6,    391507 },
+        {                                          "6KQ/8/8/8/8/8/8/7k b - - 0 1",  1,         2 },
+        {                                          "6KQ/8/8/8/8/8/8/7k b - - 0 1",  2,        36 },
+        {                                          "6KQ/8/8/8/8/8/8/7k b - - 0 1",  3,       143 },
+        {                                          "6KQ/8/8/8/8/8/8/7k b - - 0 1",  4,      3637 },
+        {                                          "6KQ/8/8/8/8/8/8/7k b - - 0 1",  5,     14893 },
+        {                                          "6KQ/8/8/8/8/8/8/7k b - - 0 1",  6,    391507 },
+        {                                       "K7/8/8/3Q4/4q3/8/8/7k w - - 0 1",  1,         6 },
+        {                                       "K7/8/8/3Q4/4q3/8/8/7k w - - 0 1",  2,        35 },
+        {                                       "K7/8/8/3Q4/4q3/8/8/7k w - - 0 1",  3,       495 },
+        {                                       "K7/8/8/3Q4/4q3/8/8/7k w - - 0 1",  4,      8349 },
+        {                                       "K7/8/8/3Q4/4q3/8/8/7k w - - 0 1",  5,    166741 },
+        {                                       "K7/8/8/3Q4/4q3/8/8/7k w - - 0 1",  6,   3370175 },
+        {                                          "6qk/8/8/8/8/8/8/7K b - - 0 1",  1,        22 },
+        {                                          "6qk/8/8/8/8/8/8/7K b - - 0 1",  2,        43 },
+        {                                          "6qk/8/8/8/8/8/8/7K b - - 0 1",  3,      1015 },
+        {                                          "6qk/8/8/8/8/8/8/7K b - - 0 1",  4,      4167 },
+        {                                          "6qk/8/8/8/8/8/8/7K b - - 0 1",  5,    105749 },
+        {                                          "6qk/8/8/8/8/8/8/7K b - - 0 1",  6,    419369 },
+        {                                          "6KQ/8/8/8/8/8/8/7k b - - 0 1",  1,         2 },
+        {                                          "6KQ/8/8/8/8/8/8/7k b - - 0 1",  2,        36 },
+        {                                          "6KQ/8/8/8/8/8/8/7k b - - 0 1",  3,       143 },
+        {                                          "6KQ/8/8/8/8/8/8/7k b - - 0 1",  4,      3637 },
+        {                                          "6KQ/8/8/8/8/8/8/7k b - - 0 1",  5,     14893 },
+        {                                          "6KQ/8/8/8/8/8/8/7k b - - 0 1",  6,    391507 },
+        {                                       "K7/8/8/3Q4/4q3/8/8/7k b - - 0 1",  1,         6 },
+        {                                       "K7/8/8/3Q4/4q3/8/8/7k b - - 0 1",  2,        35 },
+        {                                       "K7/8/8/3Q4/4q3/8/8/7k b - - 0 1",  3,       495 },
+        {                                       "K7/8/8/3Q4/4q3/8/8/7k b - - 0 1",  4,      8349 },
+        {                                       "K7/8/8/3Q4/4q3/8/8/7k b - - 0 1",  5,    166741 },
+        {                                       "K7/8/8/3Q4/4q3/8/8/7k b - - 0 1",  6,   3370175 },
+        {                                          "8/8/8/8/8/K7/P7/k7 w - - 0 1",  1,         3 },
+        {                                          "8/8/8/8/8/K7/P7/k7 w - - 0 1",  2,         7 },
+        {                                          "8/8/8/8/8/K7/P7/k7 w - - 0 1",  3,        43 },
+        {                                          "8/8/8/8/8/K7/P7/k7 w - - 0 1",  4,       199 },
+        {                                          "8/8/8/8/8/K7/P7/k7 w - - 0 1",  5,      1347 },
+        {                                          "8/8/8/8/8/K7/P7/k7 w - - 0 1",  6,      6249 },
+        {                                          "8/8/8/8/8/7K/7P/7k w - - 0 1",  1,         3 },
+        {                                          "8/8/8/8/8/7K/7P/7k w - - 0 1",  2,         7 },
+        {                                          "8/8/8/8/8/7K/7P/7k w - - 0 1",  3,        43 },
+        {                                          "8/8/8/8/8/7K/7P/7k w - - 0 1",  4,       199 },
+        {                                          "8/8/8/8/8/7K/7P/7k w - - 0 1",  5,      1347 },
+        {                                          "8/8/8/8/8/7K/7P/7k w - - 0 1",  6,      6249 },
+        {                                          "K7/p7/k7/8/8/8/8/8 w - - 0 1",  1,         1 },
+        {                                          "K7/p7/k7/8/8/8/8/8 w - - 0 1",  2,         3 },
+        {                                          "K7/p7/k7/8/8/8/8/8 w - - 0 1",  3,        12 },
+        {                                          "K7/p7/k7/8/8/8/8/8 w - - 0 1",  4,        80 },
+        {                                          "K7/p7/k7/8/8/8/8/8 w - - 0 1",  5,       342 },
+        {                                          "K7/p7/k7/8/8/8/8/8 w - - 0 1",  6,      2343 },
+        {                                          "7K/7p/7k/8/8/8/8/8 w - - 0 1",  1,         1 },
+        {                                          "7K/7p/7k/8/8/8/8/8 w - - 0 1",  2,         3 },
+        {                                          "7K/7p/7k/8/8/8/8/8 w - - 0 1",  3,        12 },
+        {                                          "7K/7p/7k/8/8/8/8/8 w - - 0 1",  4,        80 },
+        {                                          "7K/7p/7k/8/8/8/8/8 w - - 0 1",  5,       342 },
+        {                                          "7K/7p/7k/8/8/8/8/8 w - - 0 1",  6,      2343 },
+        {                                  "8/2k1p3/3pP3/3P2K1/8/8/8/8 w - - 0 1",  1,         7 },
+        {                                  "8/2k1p3/3pP3/3P2K1/8/8/8/8 w - - 0 1",  2,        35 },
+        {                                  "8/2k1p3/3pP3/3P2K1/8/8/8/8 w - - 0 1",  3,       210 },
+        {                                  "8/2k1p3/3pP3/3P2K1/8/8/8/8 w - - 0 1",  4,      1091 },
+        {                                  "8/2k1p3/3pP3/3P2K1/8/8/8/8 w - - 0 1",  5,      7028 },
+        {                                  "8/2k1p3/3pP3/3P2K1/8/8/8/8 w - - 0 1",  6,     34834 },
+        {                                          "8/8/8/8/8/K7/P7/k7 b - - 0 1",  1,         1 },
+        {                                          "8/8/8/8/8/K7/P7/k7 b - - 0 1",  2,         3 },
+        {                                          "8/8/8/8/8/K7/P7/k7 b - - 0 1",  3,        12 },
+        {                                          "8/8/8/8/8/K7/P7/k7 b - - 0 1",  4,        80 },
+        {                                          "8/8/8/8/8/K7/P7/k7 b - - 0 1",  5,       342 },
+        {                                          "8/8/8/8/8/K7/P7/k7 b - - 0 1",  6,      2343 },
+        {                                          "8/8/8/8/8/7K/7P/7k b - - 0 1",  1,         1 },
+        {                                          "8/8/8/8/8/7K/7P/7k b - - 0 1",  2,         3 },
+        {                                          "8/8/8/8/8/7K/7P/7k b - - 0 1",  3,        12 },
+        {                                          "8/8/8/8/8/7K/7P/7k b - - 0 1",  4,        80 },
+        {                                          "8/8/8/8/8/7K/7P/7k b - - 0 1",  5,       342 },
+        {                                          "8/8/8/8/8/7K/7P/7k b - - 0 1",  6,      2343 },
+        {                                          "K7/p7/k7/8/8/8/8/8 b - - 0 1",  1,         3 },
+        {                                          "K7/p7/k7/8/8/8/8/8 b - - 0 1",  2,         7 },
+        {                                          "K7/p7/k7/8/8/8/8/8 b - - 0 1",  3,        43 },
+        {                                          "K7/p7/k7/8/8/8/8/8 b - - 0 1",  4,       199 },
+        {                                          "K7/p7/k7/8/8/8/8/8 b - - 0 1",  5,      1347 },
+        {                                          "K7/p7/k7/8/8/8/8/8 b - - 0 1",  6,      6249 },
+        {                                          "7K/7p/7k/8/8/8/8/8 b - - 0 1",  1,         3 },
+        {                                          "7K/7p/7k/8/8/8/8/8 b - - 0 1",  2,         7 },
+        {                                          "7K/7p/7k/8/8/8/8/8 b - - 0 1",  3,        43 },
+        {                                          "7K/7p/7k/8/8/8/8/8 b - - 0 1",  4,       199 },
+        {                                          "7K/7p/7k/8/8/8/8/8 b - - 0 1",  5,      1347 },
+        {                                          "7K/7p/7k/8/8/8/8/8 b - - 0 1",  6,      6249 },
+        {                                  "8/2k1p3/3pP3/3P2K1/8/8/8/8 b - - 0 1",  1,         5 },
+        {                                  "8/2k1p3/3pP3/3P2K1/8/8/8/8 b - - 0 1",  2,        35 },
+        {                                  "8/2k1p3/3pP3/3P2K1/8/8/8/8 b - - 0 1",  3,       182 },
+        {                                  "8/2k1p3/3pP3/3P2K1/8/8/8/8 b - - 0 1",  4,      1091 },
+        {                                  "8/2k1p3/3pP3/3P2K1/8/8/8/8 b - - 0 1",  5,      5408 },
+        {                                  "8/2k1p3/3pP3/3P2K1/8/8/8/8 b - - 0 1",  6,     34822 },
+        {                                       "8/8/8/8/8/4k3/4P3/4K3 w - - 0 1",  1,         2 },
+        {                                       "8/8/8/8/8/4k3/4P3/4K3 w - - 0 1",  2,         8 },
+        {                                       "8/8/8/8/8/4k3/4P3/4K3 w - - 0 1",  3,        44 },
+        {                                       "8/8/8/8/8/4k3/4P3/4K3 w - - 0 1",  4,       282 },
+        {                                       "8/8/8/8/8/4k3/4P3/4K3 w - - 0 1",  5,      1814 },
+        {                                       "8/8/8/8/8/4k3/4P3/4K3 w - - 0 1",  6,     11848 },
+        {                                       "4k3/4p3/4K3/8/8/8/8/8 b - - 0 1",  1,         2 },
+        {                                       "4k3/4p3/4K3/8/8/8/8/8 b - - 0 1",  2,         8 },
+        {                                       "4k3/4p3/4K3/8/8/8/8/8 b - - 0 1",  3,        44 },
+        {                                       "4k3/4p3/4K3/8/8/8/8/8 b - - 0 1",  4,       282 },
+        {                                       "4k3/4p3/4K3/8/8/8/8/8 b - - 0 1",  5,      1814 },
+        {                                       "4k3/4p3/4K3/8/8/8/8/8 b - - 0 1",  6,     11848 },
+        {                                         "8/8/7k/7p/7P/7K/8/8 w - - 0 1",  1,         3 },
+        {                                         "8/8/7k/7p/7P/7K/8/8 w - - 0 1",  2,         9 },
+        {                                         "8/8/7k/7p/7P/7K/8/8 w - - 0 1",  3,        57 },
+        {                                         "8/8/7k/7p/7P/7K/8/8 w - - 0 1",  4,       360 },
+        {                                         "8/8/7k/7p/7P/7K/8/8 w - - 0 1",  5,      1969 },
+        {                                         "8/8/7k/7p/7P/7K/8/8 w - - 0 1",  6,     10724 },
+        {                                         "8/8/k7/p7/P7/K7/8/8 w - - 0 1",  1,         3 },
+        {                                         "8/8/k7/p7/P7/K7/8/8 w - - 0 1",  2,         9 },
+        {                                         "8/8/k7/p7/P7/K7/8/8 w - - 0 1",  3,        57 },
+        {                                         "8/8/k7/p7/P7/K7/8/8 w - - 0 1",  4,       360 },
+        {                                         "8/8/k7/p7/P7/K7/8/8 w - - 0 1",  5,      1969 },
+        {                                         "8/8/k7/p7/P7/K7/8/8 w - - 0 1",  6,     10724 },
+        {                                     "8/8/3k4/3p4/3P4/3K4/8/8 w - - 0 1",  1,         5 },
+        {                                     "8/8/3k4/3p4/3P4/3K4/8/8 w - - 0 1",  2,        25 },
+        {                                     "8/8/3k4/3p4/3P4/3K4/8/8 w - - 0 1",  3,       180 },
+        {                                     "8/8/3k4/3p4/3P4/3K4/8/8 w - - 0 1",  4,      1294 },
+        {                                     "8/8/3k4/3p4/3P4/3K4/8/8 w - - 0 1",  5,      8296 },
+        {                                     "8/8/3k4/3p4/3P4/3K4/8/8 w - - 0 1",  6,     53138 },
+        {                                     "8/3k4/3p4/8/3P4/3K4/8/8 w - - 0 1",  1,         8 },
+        {                                     "8/3k4/3p4/8/3P4/3K4/8/8 w - - 0 1",  2,        61 },
+        {                                     "8/3k4/3p4/8/3P4/3K4/8/8 w - - 0 1",  3,       483 },
+        {                                     "8/3k4/3p4/8/3P4/3K4/8/8 w - - 0 1",  4,      3213 },
+        {                                     "8/3k4/3p4/8/3P4/3K4/8/8 w - - 0 1",  5,     23599 },
+        {                                     "8/3k4/3p4/8/3P4/3K4/8/8 w - - 0 1",  6,    157093 },
+        {                                     "8/8/3k4/3p4/8/3P4/3K4/8 w - - 0 1",  1,         8 },
+        {                                     "8/8/3k4/3p4/8/3P4/3K4/8 w - - 0 1",  2,        61 },
+        {                                     "8/8/3k4/3p4/8/3P4/3K4/8 w - - 0 1",  3,       411 },
+        {                                     "8/8/3k4/3p4/8/3P4/3K4/8 w - - 0 1",  4,      3213 },
+        {                                     "8/8/3k4/3p4/8/3P4/3K4/8 w - - 0 1",  5,     21637 },
+        {                                     "8/8/3k4/3p4/8/3P4/3K4/8 w - - 0 1",  6,    158065 },
+        {                                       "k7/8/3p4/8/3P4/8/8/7K w - - 0 1",  1,         4 },
+        {                                       "k7/8/3p4/8/3P4/8/8/7K w - - 0 1",  2,        15 },
+        {                                       "k7/8/3p4/8/3P4/8/8/7K w - - 0 1",  3,        90 },
+        {                                       "k7/8/3p4/8/3P4/8/8/7K w - - 0 1",  4,       534 },
+        {                                       "k7/8/3p4/8/3P4/8/8/7K w - - 0 1",  5,      3450 },
+        {                                       "k7/8/3p4/8/3P4/8/8/7K w - - 0 1",  6,     20960 },
+        {                                         "8/8/7k/7p/7P/7K/8/8 b - - 0 1",  1,         3 },
+        {                                         "8/8/7k/7p/7P/7K/8/8 b - - 0 1",  2,         9 },
+        {                                         "8/8/7k/7p/7P/7K/8/8 b - - 0 1",  3,        57 },
+        {                                         "8/8/7k/7p/7P/7K/8/8 b - - 0 1",  4,       360 },
+        {                                         "8/8/7k/7p/7P/7K/8/8 b - - 0 1",  5,      1969 },
+        {                                         "8/8/7k/7p/7P/7K/8/8 b - - 0 1",  6,     10724 },
+        {                                         "8/8/k7/p7/P7/K7/8/8 b - - 0 1",  1,         3 },
+        {                                         "8/8/k7/p7/P7/K7/8/8 b - - 0 1",  2,         9 },
+        {                                         "8/8/k7/p7/P7/K7/8/8 b - - 0 1",  3,        57 },
+        {                                         "8/8/k7/p7/P7/K7/8/8 b - - 0 1",  4,       360 },
+        {                                         "8/8/k7/p7/P7/K7/8/8 b - - 0 1",  5,      1969 },
+        {                                         "8/8/k7/p7/P7/K7/8/8 b - - 0 1",  6,     10724 },
+        {                                     "8/8/3k4/3p4/3P4/3K4/8/8 b - - 0 1",  1,         5 },
+        {                                     "8/8/3k4/3p4/3P4/3K4/8/8 b - - 0 1",  2,        25 },
+        {                                     "8/8/3k4/3p4/3P4/3K4/8/8 b - - 0 1",  3,       180 },
+        {                                     "8/8/3k4/3p4/3P4/3K4/8/8 b - - 0 1",  4,      1294 },
+        {                                     "8/8/3k4/3p4/3P4/3K4/8/8 b - - 0 1",  5,      8296 },
+        {                                     "8/8/3k4/3p4/3P4/3K4/8/8 b - - 0 1",  6,     53138 },
+        {                                     "8/3k4/3p4/8/3P4/3K4/8/8 b - - 0 1",  1,         8 },
+        {                                     "8/3k4/3p4/8/3P4/3K4/8/8 b - - 0 1",  2,        61 },
+        {                                     "8/3k4/3p4/8/3P4/3K4/8/8 b - - 0 1",  3,       411 },
+        {                                     "8/3k4/3p4/8/3P4/3K4/8/8 b - - 0 1",  4,      3213 },
+        {                                     "8/3k4/3p4/8/3P4/3K4/8/8 b - - 0 1",  5,     21637 },
+        {                                     "8/3k4/3p4/8/3P4/3K4/8/8 b - - 0 1",  6,    158065 },
+        {                                     "8/8/3k4/3p4/8/3P4/3K4/8 b - - 0 1",  1,         8 },
+        {                                     "8/8/3k4/3p4/8/3P4/3K4/8 b - - 0 1",  2,        61 },
+        {                                     "8/8/3k4/3p4/8/3P4/3K4/8 b - - 0 1",  3,       483 },
+        {                                     "8/8/3k4/3p4/8/3P4/3K4/8 b - - 0 1",  4,      3213 },
+        {                                     "8/8/3k4/3p4/8/3P4/3K4/8 b - - 0 1",  5,     23599 },
+        {                                     "8/8/3k4/3p4/8/3P4/3K4/8 b - - 0 1",  6,    157093 },
+        {                                       "k7/8/3p4/8/3P4/8/8/7K b - - 0 1",  1,         4 },
+        {                                       "k7/8/3p4/8/3P4/8/8/7K b - - 0 1",  2,        15 },
+        {                                       "k7/8/3p4/8/3P4/8/8/7K b - - 0 1",  3,        89 },
+        {                                       "k7/8/3p4/8/3P4/8/8/7K b - - 0 1",  4,       537 },
+        {                                       "k7/8/3p4/8/3P4/8/8/7K b - - 0 1",  5,      3309 },
+        {                                       "k7/8/3p4/8/3P4/8/8/7K b - - 0 1",  6,     21104 },
+        {                                       "7k/3p4/8/8/3P4/8/8/K7 w - - 0 1",  1,         4 },
+        {                                       "7k/3p4/8/8/3P4/8/8/K7 w - - 0 1",  2,        19 },
+        {                                       "7k/3p4/8/8/3P4/8/8/K7 w - - 0 1",  3,       117 },
+        {                                       "7k/3p4/8/8/3P4/8/8/K7 w - - 0 1",  4,       720 },
+        {                                       "7k/3p4/8/8/3P4/8/8/K7 w - - 0 1",  5,      4661 },
+        {                                       "7k/3p4/8/8/3P4/8/8/K7 w - - 0 1",  6,     32191 },
+        {                                       "7k/8/8/3p4/8/8/3P4/K7 w - - 0 1",  1,         5 },
+        {                                       "7k/8/8/3p4/8/8/3P4/K7 w - - 0 1",  2,        19 },
+        {                                       "7k/8/8/3p4/8/8/3P4/K7 w - - 0 1",  3,       116 },
+        {                                       "7k/8/8/3p4/8/8/3P4/K7 w - - 0 1",  4,       716 },
+        {                                       "7k/8/8/3p4/8/8/3P4/K7 w - - 0 1",  5,      4786 },
+        {                                       "7k/8/8/3p4/8/8/3P4/K7 w - - 0 1",  6,     30980 },
+        {                                        "k7/8/8/7p/6P1/8/8/K7 w - - 0 1",  1,         5 },
+        {                                        "k7/8/8/7p/6P1/8/8/K7 w - - 0 1",  2,        22 },
+        {                                        "k7/8/8/7p/6P1/8/8/K7 w - - 0 1",  3,       139 },
+        {                                        "k7/8/8/7p/6P1/8/8/K7 w - - 0 1",  4,       877 },
+        {                                        "k7/8/8/7p/6P1/8/8/K7 w - - 0 1",  5,      6112 },
+        {                                        "k7/8/8/7p/6P1/8/8/K7 w - - 0 1",  6,     41874 },
+        {                                        "k7/8/7p/8/8/6P1/8/K7 w - - 0 1",  1,         4 },
+        {                                        "k7/8/7p/8/8/6P1/8/K7 w - - 0 1",  2,        16 },
+        {                                        "k7/8/7p/8/8/6P1/8/K7 w - - 0 1",  3,       101 },
+        {                                        "k7/8/7p/8/8/6P1/8/K7 w - - 0 1",  4,       637 },
+        {                                        "k7/8/7p/8/8/6P1/8/K7 w - - 0 1",  5,      4354 },
+        {                                        "k7/8/7p/8/8/6P1/8/K7 w - - 0 1",  6,     29679 },
+        {                                        "k7/8/8/6p1/7P/8/8/K7 w - - 0 1",  1,         5 },
+        {                                        "k7/8/8/6p1/7P/8/8/K7 w - - 0 1",  2,        22 },
+        {                                        "k7/8/8/6p1/7P/8/8/K7 w - - 0 1",  3,       139 },
+        {                                        "k7/8/8/6p1/7P/8/8/K7 w - - 0 1",  4,       877 },
+        {                                        "k7/8/8/6p1/7P/8/8/K7 w - - 0 1",  5,      6112 },
+        {                                        "k7/8/8/6p1/7P/8/8/K7 w - - 0 1",  6,     41874 },
+        {                                        "k7/8/6p1/8/8/7P/8/K7 w - - 0 1",  1,         4 },
+        {                                        "k7/8/6p1/8/8/7P/8/K7 w - - 0 1",  2,        16 },
+        {                                        "k7/8/6p1/8/8/7P/8/K7 w - - 0 1",  3,       101 },
+        {                                        "k7/8/6p1/8/8/7P/8/K7 w - - 0 1",  4,       637 },
+        {                                        "k7/8/6p1/8/8/7P/8/K7 w - - 0 1",  5,      4354 },
+        {                                        "k7/8/6p1/8/8/7P/8/K7 w - - 0 1",  6,     29679 },
+        {                                       "k7/8/8/3p4/4p3/8/8/7K w - - 0 1",  1,         3 },
+        {                                       "k7/8/8/3p4/4p3/8/8/7K w - - 0 1",  2,        15 },
+        {                                       "k7/8/8/3p4/4p3/8/8/7K w - - 0 1",  3,        84 },
+        {                                       "k7/8/8/3p4/4p3/8/8/7K w - - 0 1",  4,       573 },
+        {                                       "k7/8/8/3p4/4p3/8/8/7K w - - 0 1",  5,      3013 },
+        {                                       "k7/8/8/3p4/4p3/8/8/7K w - - 0 1",  6,     22886 },
+        {                                       "k7/8/3p4/8/8/4P3/8/7K w - - 0 1",  1,         4 },
+        {                                       "k7/8/3p4/8/8/4P3/8/7K w - - 0 1",  2,        16 },
+        {                                       "k7/8/3p4/8/8/4P3/8/7K w - - 0 1",  3,       101 },
+        {                                       "k7/8/3p4/8/8/4P3/8/7K w - - 0 1",  4,       637 },
+        {                                       "k7/8/3p4/8/8/4P3/8/7K w - - 0 1",  5,      4271 },
+        {                                       "k7/8/3p4/8/8/4P3/8/7K w - - 0 1",  6,     28662 },
+        {                                       "7k/3p4/8/8/3P4/8/8/K7 b - - 0 1",  1,         5 },
+        {                                       "7k/3p4/8/8/3P4/8/8/K7 b - - 0 1",  2,        19 },
+        {                                       "7k/3p4/8/8/3P4/8/8/K7 b - - 0 1",  3,       117 },
+        {                                       "7k/3p4/8/8/3P4/8/8/K7 b - - 0 1",  4,       720 },
+        {                                       "7k/3p4/8/8/3P4/8/8/K7 b - - 0 1",  5,      5014 },
+        {                                       "7k/3p4/8/8/3P4/8/8/K7 b - - 0 1",  6,     32167 },
+        {                                       "7k/8/8/3p4/8/8/3P4/K7 b - - 0 1",  1,         4 },
+        {                                       "7k/8/8/3p4/8/8/3P4/K7 b - - 0 1",  2,        19 },
+        {                                       "7k/8/8/3p4/8/8/3P4/K7 b - - 0 1",  3,       117 },
+        {                                       "7k/8/8/3p4/8/8/3P4/K7 b - - 0 1",  4,       712 },
+        {                                       "7k/8/8/3p4/8/8/3P4/K7 b - - 0 1",  5,      4658 },
+        {                                       "7k/8/8/3p4/8/8/3P4/K7 b - - 0 1",  6,     30749 },
+        {                                        "k7/8/8/7p/6P1/8/8/K7 b - - 0 1",  1,         5 },
+        {                                        "k7/8/8/7p/6P1/8/8/K7 b - - 0 1",  2,        22 },
+        {                                        "k7/8/8/7p/6P1/8/8/K7 b - - 0 1",  3,       139 },
+        {                                        "k7/8/8/7p/6P1/8/8/K7 b - - 0 1",  4,       877 },
+        {                                        "k7/8/8/7p/6P1/8/8/K7 b - - 0 1",  5,      6112 },
+        {                                        "k7/8/8/7p/6P1/8/8/K7 b - - 0 1",  6,     41874 },
+        {                                        "k7/8/7p/8/8/6P1/8/K7 b - - 0 1",  1,         4 },
+        {                                        "k7/8/7p/8/8/6P1/8/K7 b - - 0 1",  2,        16 },
+        {                                        "k7/8/7p/8/8/6P1/8/K7 b - - 0 1",  3,       101 },
+        {                                        "k7/8/7p/8/8/6P1/8/K7 b - - 0 1",  4,       637 },
+        {                                        "k7/8/7p/8/8/6P1/8/K7 b - - 0 1",  5,      4354 },
+        {                                        "k7/8/7p/8/8/6P1/8/K7 b - - 0 1",  6,     29679 },
+        {                                        "k7/8/8/6p1/7P/8/8/K7 b - - 0 1",  1,         5 },
+        {                                        "k7/8/8/6p1/7P/8/8/K7 b - - 0 1",  2,        22 },
+        {                                        "k7/8/8/6p1/7P/8/8/K7 b - - 0 1",  3,       139 },
+        {                                        "k7/8/8/6p1/7P/8/8/K7 b - - 0 1",  4,       877 },
+        {                                        "k7/8/8/6p1/7P/8/8/K7 b - - 0 1",  5,      6112 },
+        {                                        "k7/8/8/6p1/7P/8/8/K7 b - - 0 1",  6,     41874 },
+        {                                        "k7/8/6p1/8/8/7P/8/K7 b - - 0 1",  1,         4 },
+        {                                        "k7/8/6p1/8/8/7P/8/K7 b - - 0 1",  2,        16 },
+        {                                        "k7/8/6p1/8/8/7P/8/K7 b - - 0 1",  3,       101 },
+        {                                        "k7/8/6p1/8/8/7P/8/K7 b - - 0 1",  4,       637 },
+        {                                        "k7/8/6p1/8/8/7P/8/K7 b - - 0 1",  5,      4354 },
+        {                                        "k7/8/6p1/8/8/7P/8/K7 b - - 0 1",  6,     29679 },
+        {                                       "k7/8/8/3p4/4p3/8/8/7K b - - 0 1",  1,         5 },
+        {                                       "k7/8/8/3p4/4p3/8/8/7K b - - 0 1",  2,        15 },
+        {                                       "k7/8/8/3p4/4p3/8/8/7K b - - 0 1",  3,       102 },
+        {                                       "k7/8/8/3p4/4p3/8/8/7K b - - 0 1",  4,       569 },
+        {                                       "k7/8/8/3p4/4p3/8/8/7K b - - 0 1",  5,      4337 },
+        {                                       "k7/8/8/3p4/4p3/8/8/7K b - - 0 1",  6,     22579 },
+        {                                       "k7/8/3p4/8/8/4P3/8/7K b - - 0 1",  1,         4 },
+        {                                       "k7/8/3p4/8/8/4P3/8/7K b - - 0 1",  2,        16 },
+        {                                       "k7/8/3p4/8/8/4P3/8/7K b - - 0 1",  3,       101 },
+        {                                       "k7/8/3p4/8/8/4P3/8/7K b - - 0 1",  4,       637 },
+        {                                       "k7/8/3p4/8/8/4P3/8/7K b - - 0 1",  5,      4271 },
+        {                                       "k7/8/3p4/8/8/4P3/8/7K b - - 0 1",  6,     28662 },
+        {                                        "7k/8/8/p7/1P6/8/8/7K w - - 0 1",  1,         5 },
+        {                                        "7k/8/8/p7/1P6/8/8/7K w - - 0 1",  2,        22 },
+        {                                        "7k/8/8/p7/1P6/8/8/7K w - - 0 1",  3,       139 },
+        {                                        "7k/8/8/p7/1P6/8/8/7K w - - 0 1",  4,       877 },
+        {                                        "7k/8/8/p7/1P6/8/8/7K w - - 0 1",  5,      6112 },
+        {                                        "7k/8/8/p7/1P6/8/8/7K w - - 0 1",  6,     41874 },
+        {                                        "7k/8/p7/8/8/1P6/8/7K w - - 0 1",  1,         4 },
+        {                                        "7k/8/p7/8/8/1P6/8/7K w - - 0 1",  2,        16 },
+        {                                        "7k/8/p7/8/8/1P6/8/7K w - - 0 1",  3,       101 },
+        {                                        "7k/8/p7/8/8/1P6/8/7K w - - 0 1",  4,       637 },
+        {                                        "7k/8/p7/8/8/1P6/8/7K w - - 0 1",  5,      4354 },
+        {                                        "7k/8/p7/8/8/1P6/8/7K w - - 0 1",  6,     29679 },
+        {                                        "7k/8/8/1p6/P7/8/8/7K w - - 0 1",  1,         5 },
+        {                                        "7k/8/8/1p6/P7/8/8/7K w - - 0 1",  2,        22 },
+        {                                        "7k/8/8/1p6/P7/8/8/7K w - - 0 1",  3,       139 },
+        {                                        "7k/8/8/1p6/P7/8/8/7K w - - 0 1",  4,       877 },
+        {                                        "7k/8/8/1p6/P7/8/8/7K w - - 0 1",  5,      6112 },
+        {                                        "7k/8/8/1p6/P7/8/8/7K w - - 0 1",  6,     41874 },
+        {                                        "7k/8/1p6/8/8/P7/8/7K w - - 0 1",  1,         4 },
+        {                                        "7k/8/1p6/8/8/P7/8/7K w - - 0 1",  2,        16 },
+        {                                        "7k/8/1p6/8/8/P7/8/7K w - - 0 1",  3,       101 },
+        {                                        "7k/8/1p6/8/8/P7/8/7K w - - 0 1",  4,       637 },
+        {                                        "7k/8/1p6/8/8/P7/8/7K w - - 0 1",  5,      4354 },
+        {                                        "7k/8/1p6/8/8/P7/8/7K w - - 0 1",  6,     29679 },
+        {                                        "k7/7p/8/8/8/8/6P1/K7 w - - 0 1",  1,         5 },
+        {                                        "k7/7p/8/8/8/8/6P1/K7 w - - 0 1",  2,        25 },
+        {                                        "k7/7p/8/8/8/8/6P1/K7 w - - 0 1",  3,       161 },
+        {                                        "k7/7p/8/8/8/8/6P1/K7 w - - 0 1",  4,      1035 },
+        {                                        "k7/7p/8/8/8/8/6P1/K7 w - - 0 1",  5,      7574 },
+        {                                        "k7/7p/8/8/8/8/6P1/K7 w - - 0 1",  6,     55338 },
+        {                                        "k7/6p1/8/8/8/8/7P/K7 w - - 0 1",  1,         5 },
+        {                                        "k7/6p1/8/8/8/8/7P/K7 w - - 0 1",  2,        25 },
+        {                                        "k7/6p1/8/8/8/8/7P/K7 w - - 0 1",  3,       161 },
+        {                                        "k7/6p1/8/8/8/8/7P/K7 w - - 0 1",  4,      1035 },
+        {                                        "k7/6p1/8/8/8/8/7P/K7 w - - 0 1",  5,      7574 },
+        {                                        "k7/6p1/8/8/8/8/7P/K7 w - - 0 1",  6,     55338 },
+        {                                   "3k4/3pp3/8/8/8/8/3PP3/3K4 w - - 0 1",  1,         7 },
+        {                                   "3k4/3pp3/8/8/8/8/3PP3/3K4 w - - 0 1",  2,        49 },
+        {                                   "3k4/3pp3/8/8/8/8/3PP3/3K4 w - - 0 1",  3,       378 },
+        {                                   "3k4/3pp3/8/8/8/8/3PP3/3K4 w - - 0 1",  4,      2902 },
+        {                                   "3k4/3pp3/8/8/8/8/3PP3/3K4 w - - 0 1",  5,     24122 },
+        {                                   "3k4/3pp3/8/8/8/8/3PP3/3K4 w - - 0 1",  6,    199002 },
+        {                                        "7k/8/8/p7/1P6/8/8/7K b - - 0 1",  1,         5 },
+        {                                        "7k/8/8/p7/1P6/8/8/7K b - - 0 1",  2,        22 },
+        {                                        "7k/8/8/p7/1P6/8/8/7K b - - 0 1",  3,       139 },
+        {                                        "7k/8/8/p7/1P6/8/8/7K b - - 0 1",  4,       877 },
+        {                                        "7k/8/8/p7/1P6/8/8/7K b - - 0 1",  5,      6112 },
+        {                                        "7k/8/8/p7/1P6/8/8/7K b - - 0 1",  6,     41874 },
+        {                                        "7k/8/p7/8/8/1P6/8/7K b - - 0 1",  1,         4 },
+        {                                        "7k/8/p7/8/8/1P6/8/7K b - - 0 1",  2,        16 },
+        {                                        "7k/8/p7/8/8/1P6/8/7K b - - 0 1",  3,       101 },
+        {                                        "7k/8/p7/8/8/1P6/8/7K b - - 0 1",  4,       637 },
+        {                                        "7k/8/p7/8/8/1P6/8/7K b - - 0 1",  5,      4354 },
+        {                                        "7k/8/p7/8/8/1P6/8/7K b - - 0 1",  6,     29679 },
+        {                                        "7k/8/8/1p6/P7/8/8/7K b - - 0 1",  1,         5 },
+        {                                        "7k/8/8/1p6/P7/8/8/7K b - - 0 1",  2,        22 },
+        {                                        "7k/8/8/1p6/P7/8/8/7K b - - 0 1",  3,       139 },
+        {                                        "7k/8/8/1p6/P7/8/8/7K b - - 0 1",  4,       877 },
+        {                                        "7k/8/8/1p6/P7/8/8/7K b - - 0 1",  5,      6112 },
+        {                                        "7k/8/8/1p6/P7/8/8/7K b - - 0 1",  6,     41874 },
+        {                                        "7k/8/1p6/8/8/P7/8/7K b - - 0 1",  1,         4 },
+        {                                        "7k/8/1p6/8/8/P7/8/7K b - - 0 1",  2,        16 },
+        {                                        "7k/8/1p6/8/8/P7/8/7K b - - 0 1",  3,       101 },
+        {                                        "7k/8/1p6/8/8/P7/8/7K b - - 0 1",  4,       637 },
+        {                                        "7k/8/1p6/8/8/P7/8/7K b - - 0 1",  5,      4354 },
+        {                                        "7k/8/1p6/8/8/P7/8/7K b - - 0 1",  6,     29679 },
+        {                                        "k7/7p/8/8/8/8/6P1/K7 b - - 0 1",  1,         5 },
+        {                                        "k7/7p/8/8/8/8/6P1/K7 b - - 0 1",  2,        25 },
+        {                                        "k7/7p/8/8/8/8/6P1/K7 b - - 0 1",  3,       161 },
+        {                                        "k7/7p/8/8/8/8/6P1/K7 b - - 0 1",  4,      1035 },
+        {                                        "k7/7p/8/8/8/8/6P1/K7 b - - 0 1",  5,      7574 },
+        {                                        "k7/7p/8/8/8/8/6P1/K7 b - - 0 1",  6,     55338 },
+        {                                        "k7/6p1/8/8/8/8/7P/K7 b - - 0 1",  1,         5 },
+        {                                        "k7/6p1/8/8/8/8/7P/K7 b - - 0 1",  2,        25 },
+        {                                        "k7/6p1/8/8/8/8/7P/K7 b - - 0 1",  3,       161 },
+        {                                        "k7/6p1/8/8/8/8/7P/K7 b - - 0 1",  4,      1035 },
+        {                                        "k7/6p1/8/8/8/8/7P/K7 b - - 0 1",  5,      7574 },
+        {                                        "k7/6p1/8/8/8/8/7P/K7 b - - 0 1",  6,     55338 },
+        {                                   "3k4/3pp3/8/8/8/8/3PP3/3K4 b - - 0 1",  1,         7 },
+        {                                   "3k4/3pp3/8/8/8/8/3PP3/3K4 b - - 0 1",  2,        49 },
+        {                                   "3k4/3pp3/8/8/8/8/3PP3/3K4 b - - 0 1",  3,       378 },
+        {                                   "3k4/3pp3/8/8/8/8/3PP3/3K4 b - - 0 1",  4,      2902 },
+        {                                   "3k4/3pp3/8/8/8/8/3PP3/3K4 b - - 0 1",  5,     24122 },
+        {                                   "3k4/3pp3/8/8/8/8/3PP3/3K4 b - - 0 1",  6,    199002 },
+        {                                         "8/Pk6/8/8/8/8/6Kp/8 w - - 0 1",  1,        11 },
+        {                                         "8/Pk6/8/8/8/8/6Kp/8 w - - 0 1",  2,        97 },
+        {                                         "8/Pk6/8/8/8/8/6Kp/8 w - - 0 1",  3,       887 },
+        {                                         "8/Pk6/8/8/8/8/6Kp/8 w - - 0 1",  4,      8048 },
+        {                                         "8/Pk6/8/8/8/8/6Kp/8 w - - 0 1",  5,     90606 },
+        {                                         "8/Pk6/8/8/8/8/6Kp/8 w - - 0 1",  6,   1030499 },
+        {                                 "n1n5/1Pk5/8/8/8/8/5Kp1/5N1N w - - 0 1",  1,        24 },
+        {                                 "n1n5/1Pk5/8/8/8/8/5Kp1/5N1N w - - 0 1",  2,       421 },
+        {                                 "n1n5/1Pk5/8/8/8/8/5Kp1/5N1N w - - 0 1",  3,      7421 },
+        {                                 "n1n5/1Pk5/8/8/8/8/5Kp1/5N1N w - - 0 1",  4,    124608 },
+        {                                 "n1n5/1Pk5/8/8/8/8/5Kp1/5N1N w - - 0 1",  5,   2193768 },
+#if IS_RELEASE == 1
+        {                                 "n1n5/1Pk5/8/8/8/8/5Kp1/5N1N w - - 0 1",  6,  37665329 },
+#endif
+        {                                     "8/PPPk4/8/8/8/8/4Kppp/8 w - - 0 1",  1,        18 },
+        {                                     "8/PPPk4/8/8/8/8/4Kppp/8 w - - 0 1",  2,       270 },
+        {                                     "8/PPPk4/8/8/8/8/4Kppp/8 w - - 0 1",  3,      4699 },
+        {                                     "8/PPPk4/8/8/8/8/4Kppp/8 w - - 0 1",  4,     79355 },
+        {                                     "8/PPPk4/8/8/8/8/4Kppp/8 w - - 0 1",  5,   1533145 },
+#if IS_RELEASE == 1
+        {                                     "8/PPPk4/8/8/8/8/4Kppp/8 w - - 0 1",  6,  28859283 },
+#endif
+        {                               "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N w - - 0 1",  1,        24 },
+        {                               "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N w - - 0 1",  2,       496 },
+        {                               "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N w - - 0 1",  3,      9483 },
+        {                               "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N w - - 0 1",  4,    182838 },
+        {                               "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N w - - 0 1",  5,   3605103 },
+#if IS_RELEASE == 1
+        {                               "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N w - - 0 1",  6,  71179139 },
+#endif
+        {                                         "8/Pk6/8/8/8/8/6Kp/8 b - - 0 1",  1,        11 },
+        {                                         "8/Pk6/8/8/8/8/6Kp/8 b - - 0 1",  2,        97 },
+        {                                         "8/Pk6/8/8/8/8/6Kp/8 b - - 0 1",  3,       887 },
+        {                                         "8/Pk6/8/8/8/8/6Kp/8 b - - 0 1",  4,      8048 },
+        {                                         "8/Pk6/8/8/8/8/6Kp/8 b - - 0 1",  5,     90606 },
+#if IS_RELEASE == 1
+        {                                         "8/Pk6/8/8/8/8/6Kp/8 b - - 0 1",  6,   1030499 },
+#endif
+        {                                 "n1n5/1Pk5/8/8/8/8/5Kp1/5N1N b - - 0 1",  1,        24 },
+        {                                 "n1n5/1Pk5/8/8/8/8/5Kp1/5N1N b - - 0 1",  2,       421 },
+        {                                 "n1n5/1Pk5/8/8/8/8/5Kp1/5N1N b - - 0 1",  3,      7421 },
+        {                                 "n1n5/1Pk5/8/8/8/8/5Kp1/5N1N b - - 0 1",  4,    124608 },
+        {                                 "n1n5/1Pk5/8/8/8/8/5Kp1/5N1N b - - 0 1",  5,   2193768 },
+#if IS_RELEASE == 1
+        {                                 "n1n5/1Pk5/8/8/8/8/5Kp1/5N1N b - - 0 1",  6,  37665329 },
+#endif
+        {                                     "8/PPPk4/8/8/8/8/4Kppp/8 b - - 0 1",  1,        18 },
+        {                                     "8/PPPk4/8/8/8/8/4Kppp/8 b - - 0 1",  2,       270 },
+        {                                     "8/PPPk4/8/8/8/8/4Kppp/8 b - - 0 1",  3,      4699 },
+        {                                     "8/PPPk4/8/8/8/8/4Kppp/8 b - - 0 1",  4,     79355 },
+        {                                     "8/PPPk4/8/8/8/8/4Kppp/8 b - - 0 1",  5,   1533145 },
+#if IS_RELEASE == 1
+        {                                     "8/PPPk4/8/8/8/8/4Kppp/8 b - - 0 1",  6,  28859283 },
+#endif
+        {                               "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1",  1,        24 },
+        {                               "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1",  2,       496 },
+        {                               "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1",  3,      9483 },
+        {                               "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1",  4,    182838 },
+        {                               "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1",  5,   3605103 },
+        {                               "n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1",  6,  71179139 },
     };
     check_perfts(tests);
 }
@@ -510,7 +1328,7 @@ TEST_CASE("Random position perfts") {
         {       "6k1/2nNrq2/bb1P2NR/P2bqqN1/qpKQ3n/2Rn2B1/B1r1N3/1Q1Nb3 w - - 0 1", 5,        0 }, // checkmate
         {                                    "K7/3n3R/1r4k1/8/8/8/2p5/8 w - - 0 1", 5,  1056215 },
         { "1Qn2n1k/P1K2P2/1pr2nrP/1p2Q1b1/bPP2B2/p2B1q1N/2Rpp1pn/Q3Q1N1 w - - 0 1", 1,        2 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         { "1Qn2n1k/P1K2P2/1pr2nrP/1p2Q1b1/bPP2B2/p2B1q1N/2Rpp1pn/Q3Q1N1 w - - 0 1", 5, 11921325 },
 #endif
         {                                          "8/7K/8/8/8/5R2/8/k7 b - - 0 1", 1,        3 },
@@ -520,51 +1338,51 @@ TEST_CASE("Random position perfts") {
         {                                          "8/7K/8/8/8/5R2/8/k7 b - - 0 1", 5,    22176 },
         {                                          "8/7K/8/8/8/5R2/8/k7 b - - 0 1", 6,   413723 },
         {                                          "8/7K/8/8/8/5R2/8/k7 b - - 0 1", 7,  2109569 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         {                                          "8/7K/8/8/8/5R2/8/k7 b - - 0 1", 8, 39470570 },
 #endif
         {                                   "8/5K1p/r7/6q1/2p5/5qk1/8/8 w - - 0 1", 1,        1 },
         {                                   "8/5K1p/r7/6q1/2p5/5qk1/8/8 w - - 0 1", 5,    17218 },
         {          "3n2r1/2k2B1q/3B2Q1/N1n1P3/1r1R1NQ1/2brB1r1/PQB5/bK6 b - - 0 1", 1,        1 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         {          "3n2r1/2k2B1q/3B2Q1/N1n1P3/1r1R1NQ1/2brB1r1/PQB5/bK6 b - - 0 1", 5,  7037862 },
 #endif
         {                          "4q2R/BQ1Np2k/4pn2/bK1N4/4p3/1n6/8/8 b - - 0 1", 1,        4 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         {                          "4q2R/BQ1Np2k/4pn2/bK1N4/4p3/1n6/8/8 b - - 0 1", 5,  3945793 },
 #endif
         {                                   "1K6/6N1/5Q2/5p2/4Pk2/8/8/8 b - - 0 1", 1,        5 },
         {                                   "1K6/6N1/5Q2/5p2/4Pk2/8/8/8 b - - 0 1", 5,   188155 },
         {                                   "1K6/6N1/5Q2/5p2/4Pk2/8/8/8 b - - 0 1", 6,  5537444 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         {                                   "1K6/6N1/5Q2/5p2/4Pk2/8/8/8 b - - 0 1", 7, 33107724 },
 #endif
         {              "k2bR1B1/NR3B2/2BR4/1N1p1bN1/N3b3/7r/B2n1KN1/2Q5 w - - 0 1", 1,       64 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         {              "k2bR1B1/NR3B2/2BR4/1N1p1bN1/N3b3/7r/B2n1KN1/2Q5 w - - 0 1", 4,  2641743 },
 #endif
         {                                      "4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 1,        6 },
         {                                      "4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 5,    71831 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         {                                      "4B3/8/5K2/8/8/3k4/8/5N2 b - - 0 1", 6,  1376826 },
 #endif
         {                    "3q3B/3Q4/1k1N4/5Q2/6Q1/1B2N2Q/K4bB1/2q2N2 b - - 0 1", 1,       35 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         {                    "3q3B/3Q4/1k1N4/5Q2/6Q1/1B2N2Q/K4bB1/2q2N2 b - - 0 1", 4,  5855605 },
 #endif
         {                                        "8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 1,        8 },
         {                                        "8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 5,    50950 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         {                                        "8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 7,  3844295 },
 #endif
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         {                                        "8/1K6/8/8/6n1/1k6/8/8 w - - 0 1", 8, 47694794 },
 #endif
         {                               "8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 1,       63 },
         {                               "8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 2,      168 },
         {                               "8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 3,    10739 },
         {                               "8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 4,    28349 },
-#if IS_RELEASE==1
+#if IS_RELEASE == 1
         {                               "8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 5,  1804208 },
         {                               "8/5qk1/8/2Kb2r1/8/1b5r/2n5/1b6 b - - 0 1", 6,  5073106 },
 #endif
@@ -576,7 +1394,8 @@ TEST_CASE("Random position perfts") {
         {                    "2K2q1q/2n4n/3qb3/1r2qq2/5n2/k4n2/r5Q1/1q6 w - - 0 1", 1,        0 }, // checkmate
         // Pins (i noticed an desync of position.h that leaves pins unchanged)
         {                            "8/1Q1pkp1Q/3ppp2/8/1Q2Q2Q/4K3/8/8 w - - 0 1", 5,  6990511 },
-        {                                  "8/3pkp2/3ppp2/8/1Q6/4K3/8/8 w - - 0 1", 5,   617665 }
+        {                                  "8/3pkp2/3ppp2/8/1Q6/4K3/8/8 w - - 0 1", 5,   617665 },
+        {                                       "7k/4p3/8/2KP3r/8/8/8/8 b - - 0 1", 5,   197176 }
     };
     check_perfts(positions);
 }
@@ -872,7 +1691,7 @@ void check_repetitions(std::vector<TestEntry<repetitions_t, bool>> &tests) {
 }
 TEST_CASE("is_repetition") {
     std::vector<TestEntry<repetitions_t, bool>> tests = {
-        { "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", { Move(SQ_B1, SQ_C3), Move(SQ_B8, SQ_C6), Move(SQ_C3, SQ_B1), Move(SQ_C6, SQ_B8), Move(SQ_G1, SQ_F3), Move(SQ_G8, SQ_F6), Move(SQ_F3, SQ_G1), Move(SQ_F6, SQ_G8) }, 3 , true}
+        { "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", { Move(SQ_B1, SQ_C3), Move(SQ_B8, SQ_C6), Move(SQ_C3, SQ_B1), Move(SQ_C6, SQ_B8), Move(SQ_G1, SQ_F3), Move(SQ_G8, SQ_F6), Move(SQ_F3, SQ_G1), Move(SQ_F6, SQ_G8) }, 3, true }
     };
     check_repetitions(tests);
 }
