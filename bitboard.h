@@ -4,7 +4,7 @@
 #if defined(_MSC_VER)
 #include <intrin.h>
 #endif
-
+#include <immintrin.h>
 namespace chess {
 // -------------------------------
 // constexpr fallbacks
@@ -43,7 +43,7 @@ constexpr int msb_constexpr(Bitboard x) noexcept {
 #if defined(__GNUG__) || defined(__clang__)
 [[gnu::const]]
 #endif
-inline constexpr int popcount(Bitboard x) noexcept {
+__FORCEINLINE constexpr int popcount(Bitboard x) noexcept {
 #if defined(__GNUG__) || defined(__clang__)
     if (!is_constant_evaluated())
         return __builtin_popcountll(x);
@@ -57,7 +57,7 @@ inline constexpr int popcount(Bitboard x) noexcept {
 #if defined(__GNUG__) || defined(__clang__)
 [[gnu::const]]
 #endif
-inline constexpr int lsb(Bitboard x) noexcept {
+__FORCEINLINE constexpr int lsb(Bitboard x) noexcept {
 #if defined(__GNUG__) || defined(__clang__)
     if (!is_constant_evaluated())
         return __builtin_ctzll(x);
@@ -74,7 +74,7 @@ inline constexpr int lsb(Bitboard x) noexcept {
 #if defined(__GNUG__) || defined(__clang__)
 [[gnu::const]]
 #endif
-inline constexpr int msb(Bitboard x) noexcept {
+__FORCEINLINE constexpr int msb(Bitboard x) noexcept {
 #if defined(__GNUG__) || defined(__clang__)
     if (!is_constant_evaluated())
         return 63 - __builtin_clzll(x);
@@ -91,13 +91,17 @@ inline constexpr int msb(Bitboard x) noexcept {
 // -------------------------------
 // destructive variants
 // -------------------------------
-inline int pop_lsb(Bitboard &b) noexcept {
+__FORCEINLINE int pop_lsb(Bitboard &b) noexcept {
     int c = lsb(b);
+    #ifndef __BMI2__
     b &= b - 1;
+    #else
+    _blsr_u64(b);
+    #endif
     return c;
 }
 
-inline int pop_msb(Bitboard &b) noexcept {
+__FORCEINLINE int pop_msb(Bitboard &b) noexcept {
     int c = msb(b);
     b &= ~(1ULL << c);
     return c;

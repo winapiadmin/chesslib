@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # --- Compiler tuning ---
-set(ASAN_ENABLED OFF CACHE BOOL "Whether to enable ASan or not")
+set(SAN_ENABLED OFF CACHE BOOL "Whether to enable ASan or not")
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
     # clang-cl: forward GCC/Clang style constexpr flags via /clang:
@@ -24,24 +24,12 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       -march=native -mtune=native
       -ftemplate-backtrace-limit=0
     )
-    if (ASAN_ENABLED)
-    add_compile_options(-fsanitize=address)
-    add_link_options(-fsanitize=address)
-    endif()
   endif()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options(-fconstexpr-ops-limit=2000000000 -fconstexpr-depth=1024 -march=native -mtune=native -ftemplate-backtrace-limit=0)
-  if (ASAN_ENABLED)
-    add_compile_options(-fsanitize=address)
-    add_link_options(-fsanitize=address)
-  endif()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   set(ARCH_FLAG "/arch:AVX2" CACHE STRING "MSVC architecture flag (/arch:SSE2, /arch:AVX, /arch:AVX2, /arch:AVX512)")
   add_compile_options(/constexpr:steps2000000000 /constexpr:depth1024 ${ARCH_FLAG})
-  if (ASAN_ENABLED)
-    add_compile_options(/fsanitize=address)
-    add_link_options(/fsanitize=address)
-  endif()
 endif()
 
 add_compile_definitions(GENERATE_AT_RUNTIME)

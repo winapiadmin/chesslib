@@ -37,6 +37,14 @@
     } while (0)
 #endif
 
+
+#ifdef _MSC_VER
+#define __FORCEINLINE inline __forceinline
+#elif defined(__GNUC__) || defined(__clang__)
+#define __FORCEINLINE inline __attribute__((always_inline))
+#else
+#define __FORCEINLINE inline
+#endif
 constexpr bool is_constant_evaluated() {
 #if __cpp_if_consteval >= 202106L
     if consteval {

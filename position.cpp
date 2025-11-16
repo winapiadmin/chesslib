@@ -22,16 +22,16 @@ template <int Offset = 0> struct alignas(64) SplatTable {
     }
 };
 
-inline constexpr SplatTable<> SPLAT_TABLE{};
-template <int Offset> inline constexpr SplatTable<Offset> SPLAT_PAWN_TABLE{};
+__FORCEINLINE constexpr SplatTable<> SPLAT_TABLE{};
+template <int Offset> __FORCEINLINE constexpr SplatTable<Offset> SPLAT_PAWN_TABLE{};
 // AVX-512 (32 lanes of uint16_t)
-inline static Move *write_moves(Move *moveList, uint32_t mask, __m512i vector) {
+__FORCEINLINE static Move *write_moves(Move *moveList, uint32_t mask, __m512i vector) {
     // Avoid _mm512_mask_compressstoreu_epi16() as it's 256 uOps on Zen4
     _mm512_storeu_si512(reinterpret_cast<__m512i *>(moveList), _mm512_maskz_compress_epi16(mask, vector));
     return moveList + popcount(mask);
 }
 
-inline static Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
+__FORCEINLINE static Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
     const auto *table = reinterpret_cast<const __m512i *>(SPLAT_TABLE.data.data());
     __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
     // two 32-lane blocks (0..31, 32..63)
@@ -41,7 +41,7 @@ inline static Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
     return moveList;
 }
 
-template <int offset> inline static Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
+template <int offset> __FORCEINLINE static Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
     const auto *table = reinterpret_cast<const __m512i *>(SPLAT_PAWN_TABLE<offset>.data.data());
     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0), _mm512_load_si512(table + 0));
     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), _mm512_load_si512(table + 1));
@@ -62,8 +62,8 @@ template <int offset> inline static Move *splat_pawn_moves(Move *moveList, Bitbo
 //    }
 //};
 //
-// inline constexpr SplatTable<> SPLAT_TABLE{};
-// template <int Offset> inline constexpr SplatTable<Offset> SPLAT_PAWN_TABLE{};
+// __FORCEINLINE constexpr SplatTable<> SPLAT_TABLE{};
+// template <int Offset> __FORCEINLINE constexpr SplatTable<Offset> SPLAT_PAWN_TABLE{};
 //
 // constexpr std::array<std::array<uint8_t, 16>, 256> build_shuffle_lut() {
 //    std::array<std::array<uint8_t, 16>, 256> lut{};
@@ -99,7 +99,7 @@ template <int offset> inline static Move *splat_pawn_moves(Move *moveList, Bitbo
 // static ShuffleLutInitializer _shuffle_lut_init;
 //
 //// Compress 16×int16_t lanes from v according to mask, store contiguously, return #written
-// static inline int compressstore_epi16_avx2(int16_t* dst, __m256i v, uint16_t mask) {
+// static __FORCEINLINE int compressstore_epi16_avx2(int16_t* dst, __m256i v, uint16_t mask) {
 //     __m128i lo = _mm256_castsi256_si128(v);
 //     __m128i hi = _mm256_extracti128_si256(v, 1);
 //
@@ -122,12 +122,12 @@ template <int offset> inline static Move *splat_pawn_moves(Move *moveList, Bitbo
 // }
 //
 //// Same logical behavior as your AVX-512 write_moves()
-// inline Move* write_moves(Move* moveList, uint32_t mask, __m256i vector) {
+// __FORCEINLINE Move* write_moves(Move* moveList, uint32_t mask, __m256i vector) {
 //     int n = compressstore_epi16_avx2(reinterpret_cast<int16_t*>(moveList), vector,
 //                                      static_cast<uint16_t>(mask));
 //     return moveList + n;
 // }
-// inline Move *write_moves(Move *moveList, uint32_t mask, __m256i lo_vec, __m256i hi_vec) {
+// __FORCEINLINE Move *write_moves(Move *moveList, uint32_t mask, __m256i lo_vec, __m256i hi_vec) {
 //     uint16_t mask_lo = static_cast<uint16_t>(mask & 0xFFFF);
 //     uint16_t mask_hi = static_cast<uint16_t>(mask >> 16);
 //
@@ -138,7 +138,7 @@ template <int offset> inline static Move *splat_pawn_moves(Move *moveList, Bitbo
 // }
 //
 //// ----------------- splat_moves AVX2 -----------------
-// inline Move *splat_moves(Move *moveList, uint16_t from, uint64_t to_bb) {
+// __FORCEINLINE Move *splat_moves(Move *moveList, uint16_t from, uint64_t to_bb) {
 //     const uint16_t *base = SPLAT_TABLE.data.data();
 //
 //     // load 4 blocks: 0..15, 16..31, 32..47, 48..63
@@ -159,7 +159,7 @@ template <int offset> inline static Move *splat_pawn_moves(Move *moveList, Bitbo
 // }
 //
 //// ----------------- splat_pawn_moves AVX2 -----------------
-// template <int Offset> inline Move *splat_pawn_moves(Move *moveList, uint64_t to_bb) {
+// template <int Offset> __FORCEINLINE Move *splat_pawn_moves(Move *moveList, uint64_t to_bb) {
 //     const uint16_t *base = SPLAT_PAWN_TABLE<Offset>.data.data();
 //
 //     __m256i t0 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 0));
@@ -177,7 +177,7 @@ template <int offset> inline static Move *splat_pawn_moves(Move *moveList, Bitbo
 // }
 
 #else
-template <Direction offset> inline static Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
+template <Direction offset> __FORCEINLINE static Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
     while (to_bb) {
         Square to = (Square)pop_lsb(to_bb);
 #if defined(_DEBUG) || !defined(NDEBUG)
@@ -191,7 +191,7 @@ template <Direction offset> inline static Move *splat_pawn_moves(Move *moveList,
     return moveList;
 }
 
-inline static Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
+__FORCEINLINE static Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
     while (to_bb)
         *moveList++ = Move(from, (Square)pop_lsb(to_bb));
     return moveList;
@@ -250,7 +250,7 @@ template <typename PieceC, typename T> template <Color c> void _Position<PieceC,
         Bitboard occ_temp = occ();
         occ_temp ^= (1ULL << from) | ep_mask;
 
-        // inline attackers check
+        // __FORCEINLINE attackers check
         Bitboard atks = 0;
         // atks |= attacks::pawn(c, king_sq) & (pieces<PAWN, ~c>() &~ep_mask);
         // atks |= attacks::knight(king_sq) & pieces<KNIGHT, ~c>();
@@ -655,7 +655,7 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     }
 }
 
-template <typename PieceC, typename T> template <bool RetAll> inline auto _Position<PieceC, T>::undoMove() -> std::conditional_t<RetAll, HistoryEntry<PieceC> &, void> {
+template <typename PieceC, typename T> template <bool RetAll> auto _Position<PieceC, T>::undoMove() -> std::conditional_t<RetAll, HistoryEntry<PieceC> &, void> {
     // Save only the move (we'll restore the full state next)
     const Move move = current_state.mv;
 
@@ -1231,17 +1231,6 @@ template <typename PieceC, typename T> bool _Position<PieceC, T>::is_insufficien
 
     return false;
 }
-template <typename PieceC, typename T> inline bool _Position<PieceC, T>::has_repeated() const {
-    auto idx = history.size() - 1;
-    int end = std::min(rule50_count(), current_state.pliesFromNull);
-    while (end-- >= 4) {
-        if (history[idx].repetition)
-            return true;
-
-        idx--;
-    }
-    return false;
-}
 template <typename PieceC, typename T> CastlingRights _Position<PieceC, T>::clean_castling_rights() const {
     constexpr Bitboard cr_WOO = 1ULL << SQ_H1;
     constexpr Bitboard cr_WOOO = 1ULL << SQ_A1;
@@ -1317,7 +1306,6 @@ template void _Position<PieceC, void>::refresh_attacks(); \
 template uint64_t _Position<PieceC, void>::zobrist() const; \
 template Move _Position<PieceC, void>::parse_uci(std::string) const; \
 template Move _Position<PieceC, void>::push_uci(std::string); \
-template bool _Position<PieceC, void>::has_repeated() const; \
 template bool _Position<PieceC, void>::is_valid<false>() const; \
 template bool _Position<PieceC, void>::is_valid<true>() const; \
 template bool _Position<PieceC, void>::is_insufficient_material() const;
