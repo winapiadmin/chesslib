@@ -113,18 +113,17 @@ template <int DEPTH, bool EnableDiv=false, typename T=EnginePiece> void benchmar
     double avgTime = totalTime / N_RUNS;
     double avgMnps = (nodes / avgTime) / 1'000'000.0;
 
-    std::cout << "Average: " << avgTime << " s, " << avgMnps << " Mnps\n";
+    std::cout << "Average: " << avgTime << " s, " << avgMnps << " Mnps (nodes="<<(nodes/N_RUNS)<<")\n";
 }
 
 
 int main() {
-    _Position<ContiguousMappingPiece> pos("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1");
+    _Position<EnginePiece> pos;
 
 #ifdef TT_ENABLED
     tt.resize(1 << 28);
 #endif
-    benchmark<3, true, ContiguousMappingPiece>(pos);
-
+    benchmark<7, true, EnginePiece>(pos);
     // Movelist moves;
     // pos.template legals(moves);
     // for (const Move &m : moves) {

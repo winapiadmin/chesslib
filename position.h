@@ -447,7 +447,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
     __FORCEINLINE bool isInsufficientMaterial(Color c) const { return is_insufficient_material(c); }
     __FORCEINLINE bool hasInsufficientMaterial(Color c) const { return is_insufficient_material(c); }
     __FORCEINLINE bool has_insufficient_material(Color c) const { return is_insufficient_material(c); }
-    __FORCEINLINE bool is_insufficient_material() const {return has_insufficient_material(WHITE) && has_insufficient_material(BLACK); }
+    __FORCEINLINE bool is_insufficient_material() const { return has_insufficient_material(WHITE) && has_insufficient_material(BLACK); }
     __FORCEINLINE bool inCheck() const { return checkers() != 0; }
     __FORCEINLINE bool is_check() const { return checkers() != 0; }
     __FORCEINLINE bool has_castling_rights(Color c) const { return castlingRights(c) != 0; }
@@ -460,7 +460,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_sam
     __FORCEINLINE bool is_draw(int ply) const { return rule50_count() > 99 || is_repetition(ply); }
     // Tests whether there has been at least one repetition
     // of positions since the last capture or pawn move.
-    __FORCEINLINE bool has_repeated() const{
+    __FORCEINLINE bool has_repeated() const {
         auto idx = history.size() - 1;
         int end = std::min(rule50_count(), current_state.pliesFromNull);
         while (end-- >= 4) {

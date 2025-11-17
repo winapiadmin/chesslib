@@ -93,11 +93,11 @@ __FORCEINLINE constexpr int msb(Bitboard x) noexcept {
 // -------------------------------
 __FORCEINLINE int pop_lsb(Bitboard &b) noexcept {
     int c = lsb(b);
-    #ifndef __BMI2__
+#ifndef __BMI2__
     b &= b - 1;
-    #else
-    _blsr_u64(b);
-    #endif
+#else
+    b = _blsr_u64(b);
+#endif
     return c;
 }
 

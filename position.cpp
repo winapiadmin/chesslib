@@ -48,134 +48,6 @@ template <int offset> __FORCEINLINE static Move *splat_pawn_moves(Move *moveList
 
     return moveList;
 }
-// temp AVX2 solution, but apperantly it runs slower and fails the tests
-// #elif defined(__AVX2__)
-// template <int Offset = 0> struct alignas(64) SplatTable {
-//    alignas(32) std::array<uint16_t, 64> data;
-//    constexpr int clamp64(int x) { return (x < 0) ? 0 : (x > 63 ? 63 : x); }
-//
-//    constexpr SplatTable() : data{} {
-//        for (int i = 0; i < 64; ++i) {
-//            int from = clamp64(i - Offset);
-//            data[i] = Move((Square)from, (Square)i).raw();
-//        }
-//    }
-//};
-//
-// __FORCEINLINE constexpr SplatTable<> SPLAT_TABLE{};
-// template <int Offset> __FORCEINLINE constexpr SplatTable<Offset> SPLAT_PAWN_TABLE{};
-//
-// constexpr std::array<std::array<uint8_t, 16>, 256> build_shuffle_lut() {
-//    std::array<std::array<uint8_t, 16>, 256> lut{};
-//
-//    for (int m = 0; m < 256; ++m) {
-//        int pos = 0;
-//        for (int i = 0; i < 8; ++i) {
-//            if (m & (1 << i)) {
-//                lut[m][pos++] = 2 * i;
-//                lut[m][pos++] = 2 * i + 1;
-//            }
-//        }
-//        // fill remaining with 0x80
-//        while (pos < 16)
-//            lut[m][pos++] = 0x80;
-//    }
-//
-//    return lut;
-//}
-//
-// constexpr auto SHUFFLE_LUT_ARRAY = build_shuffle_lut();
-// alignas(16) static __m128i _pshufb_compress_lut[256];
-//
-// struct ShuffleLutInitializer {
-//    ShuffleLutInitializer() {
-//        for (int i = 0; i < 256; ++i) {
-//            std::memcpy(&_pshufb_compress_lut[i], SHUFFLE_LUT_ARRAY[i].data(), 16);
-//        }
-//    }
-//};
-//
-//// Guaranteed to run before main()
-// static ShuffleLutInitializer _shuffle_lut_init;
-//
-//// Compress 16×int16_t lanes from v according to mask, store contiguously, return #written
-// static __FORCEINLINE int compressstore_epi16_avx2(int16_t* dst, __m256i v, uint16_t mask) {
-//     __m128i lo = _mm256_castsi256_si128(v);
-//     __m128i hi = _mm256_extracti128_si256(v, 1);
-//
-//     uint8_t mask_lo = mask & 0xFF;
-//     uint8_t mask_hi = (mask >> 8) & 0xFF;
-//
-//     __m128i shuf_lo = _pshufb_compress_lut[mask_lo];
-//     __m128i shuf_hi = _pshufb_compress_lut[mask_hi];
-//
-//     __m128i cmp_lo = _mm_shuffle_epi8(lo, shuf_lo);
-//     __m128i cmp_hi = _mm_shuffle_epi8(hi, shuf_hi);
-//
-//     int count_lo = popcount(mask_lo);
-//     int count_hi = popcount(mask_hi);
-//
-//     _mm_storeu_si128(reinterpret_cast<__m128i*>(dst), cmp_lo);
-//     _mm_storeu_si128(reinterpret_cast<__m128i*>(dst + count_lo), cmp_hi);
-//
-//     return count_lo + count_hi;
-// }
-//
-//// Same logical behavior as your AVX-512 write_moves()
-// __FORCEINLINE Move* write_moves(Move* moveList, uint32_t mask, __m256i vector) {
-//     int n = compressstore_epi16_avx2(reinterpret_cast<int16_t*>(moveList), vector,
-//                                      static_cast<uint16_t>(mask));
-//     return moveList + n;
-// }
-// __FORCEINLINE Move *write_moves(Move *moveList, uint32_t mask, __m256i lo_vec, __m256i hi_vec) {
-//     uint16_t mask_lo = static_cast<uint16_t>(mask & 0xFFFF);
-//     uint16_t mask_hi = static_cast<uint16_t>(mask >> 16);
-//
-//     moveList = write_moves(moveList, mask_lo, lo_vec);
-//     moveList = write_moves(moveList, mask_hi, hi_vec);
-//
-//     return moveList;
-// }
-//
-//// ----------------- splat_moves AVX2 -----------------
-// __FORCEINLINE Move *splat_moves(Move *moveList, uint16_t from, uint64_t to_bb) {
-//     const uint16_t *base = SPLAT_TABLE.data.data();
-//
-//     // load 4 blocks: 0..15, 16..31, 32..47, 48..63
-//     __m256i t0 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 0));
-//     __m256i t1 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 16));
-//     __m256i t2 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 32));
-//     __m256i t3 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 48));
-//
-//     __m256i fromVec = _mm256_set1_epi16(from);
-//
-//     // lower 32-bit bitboard
-//     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0), _mm256_or_si256(t0, fromVec), _mm256_or_si256(t1, fromVec));
-//
-//     // upper 32-bit bitboard
-//     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), _mm256_or_si256(t2, fromVec), _mm256_or_si256(t3, fromVec));
-//
-//     return moveList;
-// }
-//
-//// ----------------- splat_pawn_moves AVX2 -----------------
-// template <int Offset> __FORCEINLINE Move *splat_pawn_moves(Move *moveList, uint64_t to_bb) {
-//     const uint16_t *base = SPLAT_PAWN_TABLE<Offset>.data.data();
-//
-//     __m256i t0 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 0));
-//     __m256i t1 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 16));
-//     __m256i t2 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 32));
-//     __m256i t3 = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(base + 48));
-//
-//     // lower 32-bit bitboard
-//     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0), t0, t1);
-//
-//     // upper 32-bit bitboard
-//     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), t2, t3);
-//
-//     return moveList;
-// }
-
 #else
 template <Direction offset> __FORCEINLINE static Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
     while (to_bb) {
@@ -243,6 +115,7 @@ template <typename PieceC, typename T> template <Color c> void _Position<PieceC,
     const Bitboard ep_mask = (1ULL << ep_pawn_sq) | (1ULL << ep_sq);
     // Bitboard _ir_1 = occ() & ~ep_mask;
     // ASSUME(popcount(candidates) <= 32);
+    if (popcount(candidates)>2) throw std::invalid_argument("Too many ep candidates??? i think there's only 2?");
     while (candidates) {
         Square from = static_cast<Square>(pop_lsb(candidates));
 
@@ -250,7 +123,7 @@ template <typename PieceC, typename T> template <Color c> void _Position<PieceC,
         Bitboard occ_temp = occ();
         occ_temp ^= (1ULL << from) | ep_mask;
 
-        // __FORCEINLINE attackers check
+        // inline attackers check
         Bitboard atks = 0;
         // atks |= attacks::pawn(c, king_sq) & (pieces<PAWN, ~c>() &~ep_mask);
         // atks |= attacks::knight(king_sq) & pieces<KNIGHT, ~c>();
@@ -264,164 +137,92 @@ template <typename PieceC, typename T> template <Color c> void _Position<PieceC,
     }
 }
 template <typename PieceC, typename T> template <Color c, bool capturesOnly> void _Position<PieceC, T>::genPawnSingleMoves(Movelist &moves) const {
-    constexpr Direction UP = pawn_push(c);
-    // constexpr Bitboard PROMO_RANK = (c == WHITE) ? attacks::MASK_RANK[6] : attacks::MASK_RANK[1];
-    constexpr Bitboard PROMO_NEXT = (c == WHITE) ? attacks::MASK_RANK[7] : attacks::MASK_RANK[0];
-    constexpr Bitboard NOT_FILE_A = 0xfefefefefefefefeULL;
-    constexpr Bitboard NOT_FILE_H = 0x7f7f7f7f7f7f7f7fULL;
+    constexpr auto UP         = relative_direction(c, NORTH);
+    constexpr auto DOWN       = relative_direction(c, SOUTH);
+    constexpr auto DOWN_LEFT  = relative_direction(c, SOUTH_WEST);
+    constexpr auto DOWN_RIGHT = relative_direction(c, SOUTH_EAST);
+    constexpr auto UP_LEFT    = relative_direction(c, NORTH_WEST);
+    constexpr auto UP_RIGHT   = relative_direction(c, NORTH_EAST);
+    constexpr auto RANK_B_PROMO     = attacks::MASK_RANK[relative_rank(c, RANK_7)];
+    constexpr auto RANK_PROMO       = attacks::MASK_RANK[relative_rank(c, RANK_8)];
+    constexpr auto DOUBLE_PUSH_RANK = attacks::MASK_RANK[relative_rank(c, RANK_3)];
 
-    const Bitboard pawns = pieces<PAWN, c>();
-    const Bitboard enemy_occ = occ(~c);
-    const Bitboard all_occ = occ();
-    const Bitboard bishopPin = this->_bishop_pin;
-    const Bitboard rookPin = this->_rook_pin;
-    const Bitboard check_mask = this->_check_mask;
-    const Bitboard pinned = pawns & _pin_mask;
-    Move *moveList; // no chance
+    const auto pawns = pieces<PAWN, c>();
+    const auto occ_opp=occ(~c);
+    const auto occ_all=occ();
+    // These pawns can maybe take Left or Right
+    const Bitboard pawns_lr          = pawns & ~_rook_pin;
+    const Bitboard unpinned_pawns_lr = pawns_lr & ~_bishop_pin;
+    const Bitboard pinned_pawns_lr   = pawns_lr & _bishop_pin;
+    
+    auto l_pawns = attacks::shift<UP_LEFT>(unpinned_pawns_lr) | (attacks::shift<UP_LEFT>(pinned_pawns_lr) & _bishop_pin);
+    auto r_pawns = attacks::shift<UP_RIGHT>(unpinned_pawns_lr) | (attacks::shift<UP_RIGHT>(pinned_pawns_lr) & _bishop_pin);
+    // Prune moves that don't capture a piece and are not on the checkmask.
+    l_pawns &= occ_opp & _check_mask;
+    r_pawns &= occ_opp & _check_mask;
 
-    // ---------- 1. Single forward pushes ----------
+    // These pawns can walk Forward
+    const auto pawns_hv = pawns & ~_bishop_pin;
 
-    if constexpr (!capturesOnly) {
-        const Bitboard unpinned = pawns &~_pin_mask;
-        Bitboard one_push = (c == WHITE ? unpinned << 8 : unpinned >> 8) & ~all_occ;
-        one_push &= check_mask;
-        Bitboard _pinned = pinned & ~bishopPin;
-        Bitboard pinned_push = (c == WHITE ? _pinned << 8 : _pinned >> 8) & ~all_occ;
-        pinned_push &= rookPin & check_mask;
-        Bitboard push_targets = one_push | pinned_push;
-        Bitboard promo_targets = push_targets & PROMO_NEXT;
-        Bitboard non_promo_targets = push_targets & ~promo_targets; // NAND
-        while (promo_targets) {
-            Square to = Square(pop_lsb(promo_targets));
-            Square from = Square(to - UP);
+    const auto pawns_pinned_hv   = pawns_hv & _rook_pin;
+    const auto pawns_unpinned_hv = pawns_hv & ~_rook_pin;
 
-            moves.push_back(Move::make<PROMOTION>(from, to, KNIGHT));
-            moves.push_back(Move::make<PROMOTION>(from, to, BISHOP));
-            moves.push_back(Move::make<PROMOTION>(from, to, ROOK));
-            moves.push_back(Move::make<PROMOTION>(from, to, QUEEN));
-        }
-        // while (non_promo_targets) {
-        //     Square to = Square(pop_lsb(non_promo_targets));
-        //     Square from = Square(to - UP);
-        //     moves.push_back(Move(from, to));
-        // }
-        moveList = moves.data() + moves.size();
-        Move *moveEnd = _chess::splat_pawn_moves<UP>(moveList, non_promo_targets);
-        moves.size_ += std::distance(moveList, moveEnd);
-        moveList = moveEnd;
-    }
-    // ---------- 2. Left captures ----------
-    Bitboard left = (pawns & NOT_FILE_A);
-    Bitboard left_tgt = (c == WHITE ? (left << 7) : (left >> 9)) & enemy_occ & check_mask;
-    Bitboard promo_left_targets = left_tgt & PROMO_NEXT;
-    Bitboard non_promo_left_targets = left_tgt & ~promo_left_targets; // NAND
+    // Prune moves that are blocked by a piece
+    const auto single_push_unpinned = attacks::shift<UP>(pawns_unpinned_hv) & ~occ_all;
+    const auto single_push_pinned   = attacks::shift<UP>(pawns_pinned_hv) & _rook_pin & ~occ_all;
 
-    const Bitboard pinnedSet = pinned;
-    while (promo_left_targets) {
-        Square to = Square(pop_lsb(promo_left_targets));
-        Square from = Square(to - ((c == WHITE) ? 7 : -9));
-        Bitboard from_bb = 1ULL << from;
-        Bitboard move_bb = from_bb | (1ULL << to);
-
-        Bitboard pinMatch = ((move_bb & bishopPin) == move_bb) | ((move_bb & rookPin) == move_bb);
-        bool legal = !((pinnedSet >> from) & 1ULL) || pinMatch;
-        if (legal) {
-            moves.push_back(Move::make<PROMOTION>(from, to, KNIGHT));
-            moves.push_back(Move::make<PROMOTION>(from, to, BISHOP));
-            moves.push_back(Move::make<PROMOTION>(from, to, ROOK));
-            moves.push_back(Move::make<PROMOTION>(from, to, QUEEN));
-        }
-    }
+    // Prune moves that are not on the checkmask.
+    Bitboard single_push = (single_push_unpinned | single_push_pinned) & _check_mask;
     {
-        // while (non_promo_left_targets) {
-        //     Square to = Square(pop_lsb(non_promo_left_targets));
-        //     Square from = Square(to - ((c == WHITE) ? 7 : -9));
-        //     Bitboard from_bb = 1ULL << from;
-        //     Bitboard move_bb = from_bb | (1ULL << to);
+        Bitboard promo_left  = l_pawns & RANK_PROMO;
+        Bitboard promo_right = r_pawns & RANK_PROMO;
+        Bitboard promo_push  = single_push & RANK_PROMO;
 
-        //     // skip if pinned but capture not along pin ray
-        //     if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb || (move_bb & current_state._rook_pin) == move_bb)))
-        //         moves.push_back(Move(from, to));
-        //     }
-        // }
-        Bitboard legal_sources = 0;
-        Bitboard targets = non_promo_left_targets;
-
-        constexpr int shift = (c == WHITE) ? 7 : -9; // pawn left capture delta
-
-        while (targets) {
-            int to = pop_lsb(targets);
-            int from = to - shift;
-            Bitboard to_bb = (1ULL << to);
-            Bitboard move_bb = (1ULL << from) | to_bb;
-
-            // Determine legality using bitwise logic instead of branch
-            Bitboard pinMatch = ((move_bb & bishopPin) == move_bb) | ((move_bb & rookPin) == move_bb);
-            bool legal = !((pinnedSet >> from) & 1ULL) || pinMatch;
-
-            // branchless combine
-            legal_sources |= legal ? to_bb : 0;
+        if constexpr (!capturesOnly){
+            while (promo_push){
+                Square to = static_cast<Square>(pop_lsb(promo_push));
+                Square from = static_cast<Square>(to - UP);
+                moves[moves.size_]=Move::make<PROMOTION>(from, to, KNIGHT);
+                moves[moves.size_+1]=Move::make<PROMOTION>(from, to, BISHOP);
+                moves[moves.size_+2]=Move::make<PROMOTION>(from, to, ROOK);
+                moves[moves.size_+3]=Move::make<PROMOTION>(from, to, QUEEN);
+                moves.size_+=4;
+            }
         }
 
-        // generate pawn moves
-        Move *moveList = moves.data() + moves.size();
-        constexpr Direction dir = (c == WHITE) ? NORTH_WEST : SOUTH_WEST;
-        Move *moveEnd = _chess::splat_pawn_moves<dir>(moveList, legal_sources);
-        moves.size_ += moveEnd - moveList;
-    }
-    // ---------- 3. Right captures ----------
-    Bitboard right = (pawns & NOT_FILE_H);
-    Bitboard right_tgt = (c == WHITE ? (right << 9) : (right >> 7)) & enemy_occ & check_mask;
-    Bitboard promo_right_targets = right_tgt & PROMO_NEXT;
-    Bitboard non_promo_right_targets = right_tgt & ~promo_right_targets; // NAND
+        while (promo_left){
+            Square to = static_cast<Square>(pop_lsb(promo_left));
+            Square from = static_cast<Square>(to - UP_LEFT);   // correct
+            moves[moves.size_]=Move::make<PROMOTION>(from, to, KNIGHT);
+            moves[moves.size_+1]=Move::make<PROMOTION>(from, to, BISHOP);
+            moves[moves.size_+2]=Move::make<PROMOTION>(from, to, ROOK);
+            moves[moves.size_+3]=Move::make<PROMOTION>(from, to, QUEEN);
+            moves.size_+=4;
+        }
 
-    while (promo_right_targets) {
-        Square to = Square(pop_lsb(promo_right_targets));
-        Square from = Square(to - ((c == WHITE) ? 9 : -7));
-        Bitboard from_bb = 1ULL << from;
-        Bitboard move_bb = from_bb | (1ULL << to);
-
-        Bitboard pinMatch = ((move_bb & bishopPin) == move_bb) | ((move_bb & rookPin) == move_bb);
-        bool legal = !((pinnedSet >> from) & 1ULL) || pinMatch;
-        if (legal) {
-            moves.push_back(Move::make<PROMOTION>(from, to, KNIGHT));
-            moves.push_back(Move::make<PROMOTION>(from, to, BISHOP));
-            moves.push_back(Move::make<PROMOTION>(from, to, ROOK));
-            moves.push_back(Move::make<PROMOTION>(from, to, QUEEN));
+        while (promo_right){
+            Square to = static_cast<Square>(pop_lsb(promo_right));
+            Square from = static_cast<Square>(to - UP_RIGHT);  // correct
+            moves[moves.size_]=Move::make<PROMOTION>(from, to, KNIGHT);
+            moves[moves.size_+1]=Move::make<PROMOTION>(from, to, BISHOP);
+            moves[moves.size_+2]=Move::make<PROMOTION>(from, to, ROOK);
+            moves[moves.size_+3]=Move::make<PROMOTION>(from, to, QUEEN);
+            moves.size_+=4;
         }
     }
-    {
-        // while (non_promo_right_targets) {
-        //     Square to = Square(pop_lsb(non_promo_right_targets));
-        //     Square from = Square(to - ((c == WHITE) ? 9 : -7));
-        //     Bitboard from_bb = 1ULL << from;
-        //     Bitboard move_bb = from_bb | (1ULL << to);
 
-        //     if (!((pinned & from_bb) && !((move_bb & current_state._bishop_pin) == move_bb || (move_bb & current_state._rook_pin) == move_bb)))
-        //         moves.push_back(Move(from, to));
-        // }
-        Bitboard legal_sources = 0;
-        while (non_promo_right_targets) {
-            Square to = Square(pop_lsb(non_promo_right_targets));
-            Square from = Square(to - ((c == WHITE) ? 9 : -7));
-            Bitboard from_bb = 1ULL << from, to_bb = 1ULL << to;
-            Bitboard move_bb = from_bb | to_bb;
-
-            // skip if pinned but capture not along pin ray
-            Bitboard pinMatch = ((move_bb & bishopPin) == move_bb) | ((move_bb & rookPin) == move_bb);
-            bool legal = !((pinnedSet >> from) & 1ULL) || pinMatch;
-
-            // branchless combine
-            legal_sources |= legal ? to_bb : 0;
-        }
-        moveList = moves.data() + moves.size();
-        constexpr Direction dir = c == WHITE ? NORTH_EAST : SOUTH_EAST;
-        Move *moveEnd = _chess::splat_pawn_moves<dir>(moveList, legal_sources);
-        moves.size_ += std::distance(moveList, moveEnd);
-        moveList = moveEnd;
+    single_push &= ~RANK_PROMO;
+    l_pawns &= ~RANK_PROMO;
+    r_pawns &= ~RANK_PROMO;
+    if constexpr (!capturesOnly){
+        _chess::splat_pawn_moves<UP>(moves.data() + moves.size_, single_push);
+        moves.size_ += popcount(single_push);
     }
+    _chess::splat_pawn_moves<UP_LEFT>(moves.data() + moves.size_, l_pawns);
+    moves.size_ += popcount(l_pawns);
+    _chess::splat_pawn_moves<UP_RIGHT>(moves.data() + moves.size_, r_pawns);
+    moves.size_ += popcount(r_pawns);
 }
-
 template <typename PieceC, typename T> template <Color c> void _Position<PieceC, T>::genPawnDoubleMoves(Movelist &moves) const {
     constexpr Bitboard RANK_2 = (c == WHITE) ? attacks::MASK_RANK[1] : attacks::MASK_RANK[6];
     constexpr Direction UP = pawn_push(c);
@@ -493,43 +294,35 @@ template <typename PieceC, typename T> template <Color c, bool capturesOnly> voi
     out.size_ += popcount(moves);
     // clang-format off
     if constexpr (!capturesOnly) {
-        const auto &st = current_state;
-        if (checkers())
-            return;
+        if (checkers()) return;
 
         if constexpr (c == WHITE) {
             // Kingside
-            if ((st.castlingRights & WHITE_OO)
-                && piece_on(SQ_F1) == PieceC::NO_PIECE
-                && piece_on(SQ_G1) == PieceC::NO_PIECE
+            if ((current_state.castlingRights & WHITE_OO)
+                && !(occ() & ((1ULL << SQ_F1) | (1ULL << SQ_G1)))
                 && !(enemyAttacks & ((1ULL << SQ_F1) | (1ULL << SQ_G1))))
             {
                 out.push_back(Move::make<CASTLING>(SQ_E1, SQ_H1));
             }
             // Queenside
-            if ((st.castlingRights & WHITE_OOO)
-                && piece_on(SQ_D1) == PieceC::NO_PIECE
-                && piece_on(SQ_C1) == PieceC::NO_PIECE
-                && piece_on(SQ_B1) == PieceC::NO_PIECE
-                && !(enemyAttacks & ((1ULL << SQ_D1) | (1ULL << SQ_C1))))
+            if ((current_state.castlingRights & WHITE_OOO)
+                && !(occ() & ((1ULL << SQ_B1) | (1ULL << SQ_C1) | (1ULL << SQ_D1)))
+                && !(enemyAttacks & ((1ULL << SQ_C1) | (1ULL << SQ_D1))))
             {
                 out.push_back(Move::make<CASTLING>(SQ_E1, SQ_A1));
             }
-        } else {
+        } else { // BLACK
             // Kingside
-            if ((st.castlingRights & BLACK_OO)
-                && piece_on(SQ_F8) == PieceC::NO_PIECE
-                && piece_on(SQ_G8) == PieceC::NO_PIECE
+            if ((current_state.castlingRights & BLACK_OO)
+                && !(occ() & ((1ULL << SQ_F8) | (1ULL << SQ_G8)))
                 && !(enemyAttacks & ((1ULL << SQ_F8) | (1ULL << SQ_G8))))
             {
                 out.push_back(Move::make<CASTLING>(SQ_E8, SQ_H8));
             }
             // Queenside
-            if ((st.castlingRights & BLACK_OOO)
-                && piece_on(SQ_D8) == PieceC::NO_PIECE
-                && piece_on(SQ_C8) == PieceC::NO_PIECE
-                && piece_on(SQ_B8) == PieceC::NO_PIECE
-                && !(enemyAttacks & ((1ULL << SQ_D8) | (1ULL << SQ_C8))))
+            if ((current_state.castlingRights & BLACK_OOO)
+                && !(occ() & ((1ULL << SQ_B8) | (1ULL << SQ_C8) | (1ULL << SQ_D8)))
+                && !(enemyAttacks & ((1ULL << SQ_C8) | (1ULL << SQ_D8))))
             {
                 out.push_back(Move::make<CASTLING>(SQ_E8, SQ_A8));
             }
@@ -709,7 +502,7 @@ template <typename PieceC, typename T> template <bool RetAll> auto _Position<Pie
                         (p[BISHOP] & sq_bb) ? BISHOP :
                         (p[ROOK] & sq_bb)   ? ROOK :
                         (p[QUEEN] & sq_bb)  ? QUEEN :
-                        (p[KING] & sq_bb)   ? KING : PAWN; // fallback, though should never happen
+                        (p[KING] & sq_bb)   ? KING : NO_PIECE_TYPE; // fallback, though should never happen
         // clang-format on
         pieces_list[sq] = make_piece<PieceC>(pt, pc);
     }
