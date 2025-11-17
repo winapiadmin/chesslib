@@ -308,8 +308,9 @@ TEST_CASE("Move making and unmaking") {
 TEST_CASE("Perft pawn-only startpos") {
     std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     Position position(fen);
-    REQUIRE(perft<EnginePiece, MoveGenType::PAWN>(position, 6) == 11515584);
+    REQUIRE(perft<EnginePiece, MoveGenType::PAWN>(position, 1) == 16);
     REQUIRE(perft<EnginePiece, MoveGenType::PAWN>(position, 5) == 815968);
+    REQUIRE(perft<EnginePiece, MoveGenType::PAWN>(position, 6) == 11515584);
 }
 TEST_CASE("King walk empty board wking e4 bking f8 depth 6") {
     std::string fen = "5k2/8/8/8/3K4/8/8/8 w - - 0 1";

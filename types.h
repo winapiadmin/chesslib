@@ -37,6 +37,13 @@
     } while (0)
 #endif
 
+#ifdef _MSC_VER
+#define __FORCEINLINE inline __forceinline
+#elif defined(__GNUC__) || defined(__clang__)
+#define __FORCEINLINE inline __attribute__((always_inline))
+#else
+#define __FORCEINLINE inline
+#endif
 constexpr bool is_constant_evaluated() {
 #if __cpp_if_consteval >= 202106L
     if consteval {
@@ -169,15 +176,9 @@ template <typename T> size_t enum_idx() {
     return -1;
 }
 // clang-format on
-constexpr PieceType piece_of(PolyglotPiece p) {
-    return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>(static_cast<int>(p) / 2 + 1);
-}
-constexpr PieceType piece_of(EnginePiece p) {
-    return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>((static_cast<int>(p) - 1) % 8 + 1);
-}
-constexpr PieceType piece_of(ContiguousMappingPiece p) {
-    return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>(static_cast<int>(p) % 6+1);
-}
+constexpr PieceType piece_of(PolyglotPiece p) { return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>(static_cast<int>(p) / 2 + 1); }
+constexpr PieceType piece_of(EnginePiece p) { return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>((static_cast<int>(p) - 1) % 8 + 1); }
+constexpr PieceType piece_of(ContiguousMappingPiece p) { return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>(static_cast<int>(p) % 6 + 1); }
 constexpr PieceType type_of(PolyglotPiece p) { return piece_of(p); }
 constexpr PieceType type_of(EnginePiece p) { return piece_of(p); }
 constexpr PieceType type_of(ContiguousMappingPiece p) { return piece_of(p); }
