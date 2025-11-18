@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <type_traits>
+#include <cctype>
 #if defined(_MSC_VER)
 #define UNREACHABLE() __assume(false)
 #elif defined(__clang__) || defined(__GNUC__)
@@ -337,14 +338,16 @@ template <typename T, std::size_t MaxSize> class ValueList {
 using Movelist = ValueList<Move, 256>;
 constexpr int square_distance(Square a, Square b) { return std::max(std::abs(file_of(a) - file_of(b)), std::abs(rank_of(a) - rank_of(b))); }
 constexpr Square parse_square(std::string_view sv) { return make_sq(File(sv[0] - 'a'), Rank(sv[1] - '1')); }
-constexpr PieceType parse_pt(std::string_view sv) {
+constexpr PieceType parse_pt(unsigned char c) {
     const char a[] = "pnbrqk";
     int p = 0;
+    c = tolower(c);
     for (size_t i = 0; i < sizeof(a); i++) {
-        if (sv[0] == a[i])
+        if (c == a[i])
             p = i;
     }
     return static_cast<PieceType>(p + 1);
 }
 
 } // namespace chess
+
