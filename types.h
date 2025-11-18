@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <string>
 #include <type_traits>
-#include <cctype>
 #if defined(_MSC_VER)
 #define UNREACHABLE() __assume(false)
 #elif defined(__clang__) || defined(__GNUC__)
@@ -340,8 +339,8 @@ constexpr int square_distance(Square a, Square b) { return std::max(std::abs(fil
 constexpr Square parse_square(std::string_view sv) { return make_sq(File(sv[0] - 'a'), Rank(sv[1] - '1')); }
 constexpr PieceType parse_pt(unsigned char c) {
     const char a[] = "pnbrqk";
-    int p = 0;
-    c = tolower(c);
+    int p = -1;
+    (c >='A' && c<='Z') ? (c += 32) : (c); // tolower
     for (size_t i = 0; i < sizeof(a); i++) {
         if (c == a[i])
             p = i;
@@ -350,4 +349,5 @@ constexpr PieceType parse_pt(unsigned char c) {
 }
 
 } // namespace chess
+
 
