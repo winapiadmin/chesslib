@@ -101,7 +101,7 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
             return Move::NO_MOVE;
         }
 
-        return Move::make<PROMOTION>(source, target, parse_pt(uci.substr(4, 1)));
+        return Move::make<PROMOTION>(source, target, parse_pt(uci[4]));
     }
     auto move = (uci.length() == 4) ? Move::make(source, target) : Move::NO_MOVE;
     Movelist moves;
