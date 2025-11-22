@@ -40,13 +40,9 @@ endif()
 set(SOURCES
     position.cpp
     attacks.cpp "zobrist.cpp"
- "moves_io.cpp" "printers.cpp" "repetition.h")
+ "moves_io.cpp" "printers.cpp" "repetition.h" "fwd_decl.h")
 add_library(chesslib STATIC ${SOURCES})
 target_include_directories(chesslib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-add_executable(perft_tt examples/perft_with_tt.cpp)
-target_link_libraries(perft_tt PRIVATE chesslib "${ASAN_RUNTIME_LIBS}")
-add_executable(debug_efficiency examples/dbg_efficiency.cpp)
-target_link_libraries(debug_efficiency PRIVATE chesslib)
 # --- Enable CTest integration ---
 enable_testing()
 include(FetchContent)
