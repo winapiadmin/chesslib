@@ -3,7 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <string>
-#include <type_traits>
+#include "fwd_decl.h"
 #if defined(_MSC_VER)
 #define UNREACHABLE() __assume(false)
 #elif defined(__clang__) || defined(__GNUC__)
@@ -166,7 +166,7 @@ enum class PolyglotPiece : uint8_t { WPAWN = 1, WKNIGHT = 3, WBISHOP = 5, WROOK 
 // Normal board, you can use ANY! (but comfortable for certain chess engines such as Stockfish)
 enum class EnginePiece : uint8_t { NO_PIECE, WPAWN = PAWN + 0, WKNIGHT, WBISHOP, WROOK, WQUEEN, WKING, BPAWN = PAWN + 8, BKNIGHT, BBISHOP, BROOK, BQUEEN, BKING, PIECE_NB = 16 };
 enum class ContiguousMappingPiece : uint8_t { WPAWN = 0, WKNIGHT = 1, WBISHOP = 2, WROOK = 3, WQUEEN = 4, WKING = 5, BPAWN = 6, BKNIGHT = 7, BBISHOP = 8, BROOK = 9, BQUEEN = 10, BKING = 11, NO_PIECE = 12, PIECE_NB = 12 };
-template <typename T> size_t enum_idx() {
+template <typename T> constexpr size_t enum_idx() {
     if constexpr (std::is_same_v<T, PolyglotPiece>)
         return 0;
     else if constexpr (std::is_same_v<T, EnginePiece>)
@@ -179,15 +179,14 @@ template <typename T> size_t enum_idx() {
 constexpr PieceType piece_of(PolyglotPiece p) { return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>(static_cast<int>(p) / 2 + 1); }
 constexpr PieceType piece_of(EnginePiece p) { return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>((static_cast<int>(p) - 1) % 8 + 1); }
 constexpr PieceType piece_of(ContiguousMappingPiece p) { return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>(static_cast<int>(p) % 6 + 1); }
-constexpr PieceType type_of(PolyglotPiece p) { return piece_of(p); }
-constexpr PieceType type_of(EnginePiece p) { return piece_of(p); }
-constexpr PieceType type_of(ContiguousMappingPiece p) { return piece_of(p); }
 constexpr Color color_of(PolyglotPiece pt) { return static_cast<Color>((static_cast<int>(pt) + 1) % 2); }
 constexpr Color color_of(EnginePiece pt) { return static_cast<Color>(static_cast<int>(pt) / static_cast<int>(EnginePiece::BPAWN)); }
 constexpr Color color_of(ContiguousMappingPiece pt) { return static_cast<Color>(static_cast<uint8_t>(pt) / 6); }
 template <typename T, std::enable_if_t<std::is_same_v<T, EnginePiece>, bool> = 0> constexpr EnginePiece make_piece(PieceType pt, Color c) { return static_cast<EnginePiece>((c << 3) + pt); }
 template <typename T, std::enable_if_t<std::is_same_v<T, PolyglotPiece>, bool> = 0> constexpr PolyglotPiece make_piece(PieceType pt, Color c) { return static_cast<PolyglotPiece>(~c + 2 * (pt - 1)); }
 template <typename T, std::enable_if_t<std::is_same_v<T, ContiguousMappingPiece>, bool> = 0> constexpr ContiguousMappingPiece make_piece(PieceType pt, Color c) { return static_cast<ContiguousMappingPiece>((static_cast<uint8_t>(pt) - 1) + 6 * static_cast<uint8_t>(c)); }
+template <typename T, typename = std::enable_if_t<is_piece_enum<T>::value>> constexpr PieceType type_of(T p) { return piece_of(p); }
+
 enum CastlingRights : int8_t {
     NO_CASTLING,
     WHITE_OO,
@@ -219,7 +218,7 @@ inline CastlingRights &operator&=(CastlingRights &a, CastlingRights b) {
 }
 inline CastlingRights operator~(CastlingRights a) { return static_cast<CastlingRights>(static_cast<uint8_t>(a) ^ ANY_CASTLING); }
 
-enum MoveType { NORMAL, PROMOTION = 1 << 14, EN_PASSANT = 2 << 14, CASTLING = 3 << 14 };
+enum MoveType : uint16_t { NORMAL, PROMOTION = 1 << 14, EN_PASSANT = 2 << 14, CASTLING = 3 << 14 };
 // A move needs 16 bits to be stored
 //
 // bit  0- 5: destination square (from 0 to 63)

@@ -113,9 +113,8 @@ template <typename PieceC, typename T> template <Color c> void _Position<PieceC,
 
     const Square ep_pawn_sq = static_cast<Square>(ep_sq - pawn_push(c));
     const Bitboard ep_mask = (1ULL << ep_pawn_sq) | (1ULL << ep_sq);
-    // Bitboard _ir_1 = occ() & ~ep_mask;
     // ASSUME(popcount(candidates) <= 32);
-    if (popcount(candidates)>2) throw std::invalid_argument("Too many ep candidates??? i think there's only 2?");
+    
     while (candidates) {
         Square from = static_cast<Square>(pop_lsb(candidates));
 
@@ -125,11 +124,8 @@ template <typename PieceC, typename T> template <Color c> void _Position<PieceC,
 
         // inline attackers check
         Bitboard atks = 0;
-        // atks |= attacks::pawn(c, king_sq) & (pieces<PAWN, ~c>() &~ep_mask);
-        // atks |= attacks::knight(king_sq) & pieces<KNIGHT, ~c>();
         atks |= attacks::bishop(king_sq, occ_temp) & (pieces<BISHOP, ~c>() | pieces<QUEEN, ~c>());
         atks |= attacks::rook(king_sq, occ_temp) & (pieces<ROOK, ~c>() | pieces<QUEEN, ~c>());
-        // atks |= attacks::king(king_sq) & pieces<KING, ~c>();
         atks &= occ(~c);
         if (!atks) {
             ep_moves.push_back(Move::make<EN_PASSANT>(from, ep_sq));
@@ -292,46 +288,43 @@ template <typename PieceC, typename T> template <Color c, bool capturesOnly> voi
         moves &= occ(~c);
     _chess::splat_moves(out.data() + out.size(), kingSq, moves);
     out.size_ += popcount(moves);
-    // clang-format off
     if constexpr (!capturesOnly) {
-        if (checkers()) return;
+        if (checkers())
+            return;
+
+        // Precompute all castling masks
+        constexpr Bitboard WHITE_OO_EMPTY = (1ULL << SQ_F1) | (1ULL << SQ_G1);
+        constexpr Bitboard WHITE_OO_SAFE = (1ULL << SQ_F1) | (1ULL << SQ_G1);
+        constexpr Bitboard WHITE_OOO_EMPTY = (1ULL << SQ_B1) | (1ULL << SQ_C1) | (1ULL << SQ_D1);
+        constexpr Bitboard WHITE_OOO_SAFE = (1ULL << SQ_C1) | (1ULL << SQ_D1);
+
+        constexpr Bitboard BLACK_OO_EMPTY = (1ULL << SQ_F8) | (1ULL << SQ_G8);
+        constexpr Bitboard BLACK_OO_SAFE = (1ULL << SQ_F8) | (1ULL << SQ_G8);
+        constexpr Bitboard BLACK_OOO_EMPTY = (1ULL << SQ_B8) | (1ULL << SQ_C8) | (1ULL << SQ_D8);
+        constexpr Bitboard BLACK_OOO_SAFE = (1ULL << SQ_C8) | (1ULL << SQ_D8);
+
+        Bitboard occupancy = occ();
+        Bitboard enemy_attacks = enemyAttacks;
 
         if constexpr (c == WHITE) {
-            // Kingside
-            if ((current_state.castlingRights & WHITE_OO)
-                && !(occ() & ((1ULL << SQ_F1) | (1ULL << SQ_G1)))
-                && !(enemyAttacks & ((1ULL << SQ_F1) | (1ULL << SQ_G1))))
-            {
+            if ((current_state.castlingRights & WHITE_OO) && !(occupancy & WHITE_OO_EMPTY) && !(enemy_attacks & WHITE_OO_SAFE)) {
                 out.push_back(Move::make<CASTLING>(SQ_E1, SQ_H1));
             }
-            // Queenside
-            if ((current_state.castlingRights & WHITE_OOO)
-                && !(occ() & ((1ULL << SQ_B1) | (1ULL << SQ_C1) | (1ULL << SQ_D1)))
-                && !(enemyAttacks & ((1ULL << SQ_C1) | (1ULL << SQ_D1))))
-            {
+            if ((current_state.castlingRights & WHITE_OOO) && !(occupancy & WHITE_OOO_EMPTY) && !(enemy_attacks & WHITE_OOO_SAFE)) {
                 out.push_back(Move::make<CASTLING>(SQ_E1, SQ_A1));
             }
-        } else { // BLACK
-            // Kingside
-            if ((current_state.castlingRights & BLACK_OO)
-                && !(occ() & ((1ULL << SQ_F8) | (1ULL << SQ_G8)))
-                && !(enemyAttacks & ((1ULL << SQ_F8) | (1ULL << SQ_G8))))
-            {
+        } else {
+            if ((current_state.castlingRights & BLACK_OO) && !(occupancy & BLACK_OO_EMPTY) && !(enemy_attacks & BLACK_OO_SAFE)) {
                 out.push_back(Move::make<CASTLING>(SQ_E8, SQ_H8));
             }
-            // Queenside
-            if ((current_state.castlingRights & BLACK_OOO)
-                && !(occ() & ((1ULL << SQ_B8) | (1ULL << SQ_C8) | (1ULL << SQ_D8)))
-                && !(enemyAttacks & ((1ULL << SQ_C8) | (1ULL << SQ_D8))))
-            {
+            if ((current_state.castlingRights & BLACK_OOO) && !(occupancy & BLACK_OOO_EMPTY) && !(enemy_attacks & BLACK_OOO_SAFE)) {
                 out.push_back(Move::make<CASTLING>(SQ_E8, SQ_A8));
             }
         }
     }
-    // clang-format on
 }
 template <typename PieceC, typename T> template <bool Strict> void _Position<PieceC, T>::doMove(const Move &move) {
-
+    assert(move.is_ok() && "doMove called with invalid move");
     Square from_sq = move.from_sq(), to_sq = move.to_sq();
     Color us = side_to_move(), them = ~us;
     MoveType move_type = move.type_of();
@@ -342,10 +335,14 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     Color target_color = color_of(target_piece);
     bool is_capture = isCapture(move);
     history.push_back(current_state);
+    current_state.incr_sqs[0] = current_state.incr_sqs[1] = current_state.incr_sqs[2] = current_state.incr_sqs[3] = SQ_NONE;
+    current_state.incr_pc[0] = current_state.incr_pc[1] = current_state.incr_pc[2] = current_state.incr_pc[3] = PieceC::NO_PIECE;
     current_state.mv = move; // Update the move in the current state
 #if defined(_DEBUG) || !defined(NDEBUG)
-    assert(target_piecetype != KING && "No captures");
-    assert(moving_piecetype != NO_PIECE_TYPE && "Expected a piece to move.");
+    if (target_piecetype == KING)
+        assert(target_piecetype != KING && "No captures");
+    if (moving_piecetype == NO_PIECE_TYPE)
+        assert(moving_piecetype != NO_PIECE_TYPE && "Expected a piece to move.");
 #elif defined(__EXCEPTIONS) && (defined(_DEBUG) || !defined(NDEBUG))
 
     if (target_piecetype == KING)
@@ -360,15 +357,29 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
         case NORMAL:
             removePiece(target_piecetype, to_sq, target_color);
             placePiece(moving_piecetype, to_sq, us);
+            current_state.incr_sqs[0] = from_sq;
+            current_state.incr_pc[0] = moving_piece;
+            current_state.incr_sqs[1] = to_sq;
+            current_state.incr_pc[1] = target_piece;
             break;
         case PROMOTION:
             removePiece(target_piecetype, to_sq, target_color);
             placePiece(move.promotion_type(), to_sq, us);
+            current_state.incr_sqs[0] = from_sq;
+            current_state.incr_pc[0] = moving_piece;
+            current_state.incr_sqs[1] = to_sq;
+            current_state.incr_pc[1] = target_piece;
             break;
         case EN_PASSANT: {
             Square ep_capture_sq = to_sq + pawn_push(them);
             removePiece<PAWN>(ep_capture_sq, them);
             placePiece<PAWN>(to_sq, us);
+            current_state.incr_sqs[0] = from_sq;
+            current_state.incr_pc[0] = moving_piece;
+            current_state.incr_sqs[1] = ep_capture_sq;
+            current_state.incr_pc[1] = make_piece<PieceC>(PAWN, them);
+            current_state.incr_sqs[2] = to_sq;
+            current_state.incr_pc[2] = PieceC::NO_PIECE;
             break;
         }
         case CASTLING: {
@@ -377,6 +388,14 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
             Square rook_dest = relative_square(us, is_king_side ? SQ_F1 : Square::SQ_D1), king_dest = relative_square(us, is_king_side ? SQ_G1 : Square::SQ_C1);
             placePiece<ROOK>(rook_dest, us);
             placePiece<KING>(king_dest, us);
+            current_state.incr_sqs[0] = from_sq;
+            current_state.incr_pc[0] = moving_piece;
+            current_state.incr_sqs[1] = to_sq;
+            current_state.incr_pc[1] = target_piece;
+            current_state.incr_sqs[2] = king_dest;
+            current_state.incr_pc[2] = PieceC::NO_PIECE;
+            current_state.incr_sqs[3] = rook_dest;
+            current_state.incr_pc[3] = PieceC::NO_PIECE;
             break;
         }
         default:
@@ -445,70 +464,6 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
                 }
             }
         }
-    }
-}
-
-template <typename PieceC, typename T> template <bool RetAll> auto _Position<PieceC, T>::undoMove() -> std::conditional_t<RetAll, HistoryEntry<PieceC> &, void> {
-    // Save only the move (we'll restore the full state next)
-    const Move move = current_state.mv;
-
-    // Make sure there's something to pop
-    assert(history.size_ > 0 && "undoMove called with empty history");
-
-    // Restore previous state from history
-    current_state = history.pop();
-
-    // After restore, sideToMove() is the mover
-    const Color mover = sideToMove();
-    // Squares to update
-    Square sqs[4];
-    int n_sqs = 0;
-    sqs[n_sqs++] = move.from_sq();
-    sqs[n_sqs++] = move.to_sq();
-    switch (auto type = move.type_of()) {
-    case CASTLING: {
-        bool is_king_side = file_of(move.to_sq()) > file_of(move.from_sq());
-        sqs[n_sqs++] = relative_square(mover, is_king_side ? SQ_G1 : SQ_C1); // king to
-        sqs[n_sqs++] = relative_square(mover, is_king_side ? SQ_F1 : SQ_D1); // rook to
-        break;
-    }
-    case EN_PASSANT: {
-        sqs[n_sqs++] = static_cast<Square>(static_cast<int>(move.to_sq()) - pawn_push(mover));
-        break;
-    }
-    default:
-        break;
-    }
-    // Update all squares
-    ASSUME(n_sqs <= 4);
-    for (int i = 0; i < n_sqs; ++i) {
-
-        const Square sq = sqs[i];
-        Bitboard sq_bb = 1ULL << sq;
-
-        if ((occ() & sq_bb) == 0) {
-            pieces_list[sq] = PieceC::NO_PIECE;
-            continue;
-        }
-
-        // Determine color first
-        Color pc = (current_state.occ[WHITE] & sq_bb) ? WHITE : BLACK;
-
-        const Bitboard *p = current_state.pieces;
-        // clang-format off
-        
-        PieceType pt = (p[PAWN] & sq_bb)   ? PAWN :
-                        (p[KNIGHT] & sq_bb) ? KNIGHT :
-                        (p[BISHOP] & sq_bb) ? BISHOP :
-                        (p[ROOK] & sq_bb)   ? ROOK :
-                        (p[QUEEN] & sq_bb)  ? QUEEN :
-                        (p[KING] & sq_bb)   ? KING : NO_PIECE_TYPE; // fallback, though should never happen
-        // clang-format on
-        pieces_list[sq] = make_piece<PieceC>(pt, pc);
-    }
-
-    if constexpr (RetAll) {
-        return current_state;
     }
 }
 
@@ -1090,8 +1045,6 @@ template void _Position<PieceC, void>::genSlidingMoves<Color::WHITE, QUEEN, true
 template void _Position<PieceC, void>::genSlidingMoves<Color::BLACK, QUEEN, true>(Movelist &) const; \
 template _Position<PieceC, void>::_Position(std::string); \
 template void _Position<PieceC, void>::setFEN(const std::string &); \
-template void _Position<PieceC, void>::undoMove<false>(); \
-template HistoryEntry<PieceC> &_Position<PieceC, void>::undoMove<true>(); \
 template std::string _Position<PieceC, void>::fen() const; \
 template void _Position<PieceC, void>::doMove<false>(const Move &move); \
 template void _Position<PieceC, void>::doMove<true>(const Move &move); \

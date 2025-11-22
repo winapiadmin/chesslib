@@ -614,43 +614,57 @@ TEST_CASE("Minor position test perft") {
         {                                  "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",  3,     13744 },
         {                                  "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",  4,    314346 },
         {                                  "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",  5,   7594526 },
+#if IS_RELEASE == 1
         {                                  "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",  6, 179862938 },
+#endif
         {                                  "r3k2r/8/8/8/8/8/8/1R2K2R w Kkq - 0 1",  1,        25 },
         {                                  "r3k2r/8/8/8/8/8/8/1R2K2R w Kkq - 0 1",  2,       567 },
         {                                  "r3k2r/8/8/8/8/8/8/1R2K2R w Kkq - 0 1",  3,     14095 },
         {                                  "r3k2r/8/8/8/8/8/8/1R2K2R w Kkq - 0 1",  4,    328965 },
         {                                  "r3k2r/8/8/8/8/8/8/1R2K2R w Kkq - 0 1",  5,   8153719 },
+#if IS_RELEASE == 1
         {                                  "r3k2r/8/8/8/8/8/8/1R2K2R w Kkq - 0 1",  6, 195629489 },
+#endif
         {                                  "r3k2r/8/8/8/8/8/8/2R1K2R w Kkq - 0 1",  1,        25 },
         {                                  "r3k2r/8/8/8/8/8/8/2R1K2R w Kkq - 0 1",  2,       548 },
         {                                  "r3k2r/8/8/8/8/8/8/2R1K2R w Kkq - 0 1",  3,     13502 },
         {                                  "r3k2r/8/8/8/8/8/8/2R1K2R w Kkq - 0 1",  4,    312835 },
         {                                  "r3k2r/8/8/8/8/8/8/2R1K2R w Kkq - 0 1",  5,   7736373 },
+#if IS_RELEASE == 1
         {                                  "r3k2r/8/8/8/8/8/8/2R1K2R w Kkq - 0 1",  6, 184411439 },
+#endif
         {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 w Qkq - 0 1",  1,        25 },
         {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 w Qkq - 0 1",  2,       547 },
         {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 w Qkq - 0 1",  3,     13579 },
         {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 w Qkq - 0 1",  4,    316214 },
         {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 w Qkq - 0 1",  5,   7878456 },
+#if IS_RELEASE == 1
         {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 w Qkq - 0 1",  6, 189224276 },
+#endif
         {                                  "1r2k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  1,        26 },
         {                                  "1r2k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  2,       583 },
         {                                  "1r2k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  3,     14252 },
         {                                  "1r2k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  4,    334705 },
         {                                  "1r2k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  5,   8198901 },
+#if IS_RELEASE == 1
         {                                  "1r2k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  6, 198328929 },
+#endif
         {                                  "2r1k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  1,        25 },
         {                                  "2r1k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  2,       560 },
         {                                  "2r1k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  3,     13592 },
         {                                  "2r1k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  4,    317324 },
         {                                  "2r1k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  5,   7710115 },
+#if IS_RELEASE == 1
         {                                  "2r1k2r/8/8/8/8/8/8/R3K2R w KQk - 0 1",  6, 185959088 },
+#endif
         {                                  "r3k1r1/8/8/8/8/8/8/R3K2R w KQq - 0 1",  1,        25 },
         {                                  "r3k1r1/8/8/8/8/8/8/R3K2R w KQq - 0 1",  2,       560 },
         {                                  "r3k1r1/8/8/8/8/8/8/R3K2R w KQq - 0 1",  3,     13607 },
         {                                  "r3k1r1/8/8/8/8/8/8/R3K2R w KQq - 0 1",  4,    320792 },
         {                                  "r3k1r1/8/8/8/8/8/8/R3K2R w KQq - 0 1",  5,   7848606 },
+#if IS_RELEASE == 1
         {                                  "r3k1r1/8/8/8/8/8/8/R3K2R w KQq - 0 1",  6, 190755813 },
+#endif
         {                                        "4k3/8/8/8/8/8/8/4K2R b K - 0 1",  1,         5 },
         {                                        "4k3/8/8/8/8/8/8/4K2R b K - 0 1",  2,        75 },
         {                                        "4k3/8/8/8/8/8/8/4K2R b K - 0 1",  3,       459 },
@@ -716,43 +730,57 @@ TEST_CASE("Minor position test perft") {
         {                                  "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1",  3,     13744 },
         {                                  "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1",  4,    314346 },
         {                                  "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1",  5,   7594526 },
+#if IS_RELEASE == 1
         {                                  "r3k2r/8/8/8/8/8/8/R3K2R b KQkq - 0 1",  6, 179862938 },
+#endif
         {                                  "r3k2r/8/8/8/8/8/8/1R2K2R b Kkq - 0 1",  1,        26 },
         {                                  "r3k2r/8/8/8/8/8/8/1R2K2R b Kkq - 0 1",  2,       583 },
         {                                  "r3k2r/8/8/8/8/8/8/1R2K2R b Kkq - 0 1",  3,     14252 },
         {                                  "r3k2r/8/8/8/8/8/8/1R2K2R b Kkq - 0 1",  4,    334705 },
         {                                  "r3k2r/8/8/8/8/8/8/1R2K2R b Kkq - 0 1",  5,   8198901 },
+#if IS_RELEASE == 1
         {                                  "r3k2r/8/8/8/8/8/8/1R2K2R b Kkq - 0 1",  6, 198328929 },
+#endif
         {                                  "r3k2r/8/8/8/8/8/8/2R1K2R b Kkq - 0 1",  1,        25 },
         {                                  "r3k2r/8/8/8/8/8/8/2R1K2R b Kkq - 0 1",  2,       560 },
         {                                  "r3k2r/8/8/8/8/8/8/2R1K2R b Kkq - 0 1",  3,     13592 },
         {                                  "r3k2r/8/8/8/8/8/8/2R1K2R b Kkq - 0 1",  4,    317324 },
         {                                  "r3k2r/8/8/8/8/8/8/2R1K2R b Kkq - 0 1",  5,   7710115 },
+#if IS_RELEASE == 1
         {                                  "r3k2r/8/8/8/8/8/8/2R1K2R b Kkq - 0 1",  6, 185959088 },
+#endif
         {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 b Qkq - 0 1",  1,        25 },
         {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 b Qkq - 0 1",  2,       560 },
         {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 b Qkq - 0 1",  3,     13607 },
         {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 b Qkq - 0 1",  4,    320792 },
         {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 b Qkq - 0 1",  5,   7848606 },
+#if IS_RELEASE == 1
         {                                  "r3k2r/8/8/8/8/8/8/R3K1R1 b Qkq - 0 1",  6, 190755813 },
+#endif
         {                                  "1r2k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  1,        25 },
         {                                  "1r2k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  2,       567 },
         {                                  "1r2k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  3,     14095 },
         {                                  "1r2k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  4,    328965 },
         {                                  "1r2k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  5,   8153719 },
+#if IS_RELEASE == 1
         {                                  "1r2k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  6, 195629489 },
+#endif
         {                                  "2r1k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  1,        25 },
         {                                  "2r1k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  2,       548 },
         {                                  "2r1k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  3,     13502 },
         {                                  "2r1k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  4,    312835 },
         {                                  "2r1k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  5,   7736373 },
+#if IS_RELEASE == 1
         {                                  "2r1k2r/8/8/8/8/8/8/R3K2R b KQk - 0 1",  6, 184411439 },
+#endif
         {                                  "r3k1r1/8/8/8/8/8/8/R3K2R b KQq - 0 1",  1,        25 },
         {                                  "r3k1r1/8/8/8/8/8/8/R3K2R b KQq - 0 1",  2,       547 },
         {                                  "r3k1r1/8/8/8/8/8/8/R3K2R b KQq - 0 1",  3,     13579 },
         {                                  "r3k1r1/8/8/8/8/8/8/R3K2R b KQq - 0 1",  4,    316214 },
         {                                  "r3k1r1/8/8/8/8/8/8/R3K2R b KQq - 0 1",  5,   7878456 },
+#if IS_RELEASE == 1
         {                                  "r3k1r1/8/8/8/8/8/8/R3K2R b KQq - 0 1",  6, 189224276 },
+#endif
         {                                 "8/1n4N1/2k5/8/8/5K2/1N4n1/8 w - - 0 1",  1,        14 },
         {                                 "8/1n4N1/2k5/8/8/5K2/1N4n1/8 w - - 0 1",  2,       195 },
         {                                 "8/1n4N1/2k5/8/8/5K2/1N4n1/8 w - - 0 1",  3,      2760 },
@@ -1421,6 +1449,18 @@ TEST_CASE("Experienced bugs in this repo") {
         Position p("r4rk1/2p1qpp1/p1np1n1p/1pb1p1B1/P1B1P1b1/1PNP1N2/2P1QPPP/R4RK1 w - - 0 12");
         REQUIRE(p.zobrist() == p.hash());
         REQUIRE(p.hash() == 221975837765752100ULL);
+    }
+    {
+        Position p("rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3");
+        REQUIRE(p.zobrist() == p.hash());
+        p.push_uci("e5d6");
+        REQUIRE(p.zobrist() == p.hash());
+    }
+    {
+        Position p("rnbqkbnr/ppppp1pp/8/4Pp2/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2");
+        REQUIRE(p.zobrist() == p.hash());
+        p.push_uci("d7d5");
+        REQUIRE(p.zobrist() == p.hash());
     }
     {
         Position p;

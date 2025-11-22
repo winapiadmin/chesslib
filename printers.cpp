@@ -8,7 +8,7 @@
 namespace chess {
 template <typename T> using DescriptiveNameNotation = std::unordered_map<T, std::string>;
 
-template <typename PieceC> std::ostream &operator<<(std::ostream &os, const _Position<PieceC, void> &pos) {
+template <typename PieceC, typename> std::ostream &operator<<(std::ostream &os, const _Position<PieceC, void> &pos) {
     // RAII guard to save/restore stream state
     struct ios_guard {
         std::ostream &strm;
@@ -23,15 +23,11 @@ template <typename PieceC> std::ostream &operator<<(std::ostream &os, const _Pos
         }
     } guard(os);
 
-    constexpr std::string_view EnginePieceToChar(" PNBRQK  pnbrqk ");
-    constexpr std::string_view PolyglotPieceToChar("PNBRQKpnbrqk ");
-    constexpr std::string_view PieceToChar = std::is_same_v<PieceC, EnginePiece> ? EnginePieceToChar : PolyglotPieceToChar;
-
     os << "\n +---+---+---+---+---+---+---+---+\n";
 
     for (Rank r = RANK_8; r >= RANK_1; --r) {
         for (File f = FILE_A; f <= FILE_H; ++f)
-            os << " | " << PieceToChar[static_cast<size_t>(pos.piece_on(make_sq(r, f)))];
+            os << " | " << pos.piece_on(make_sq(r, f));
 
         os << " | " << (1 + r) << "\n +---+---+---+---+---+---+---+---+\n";
     }
@@ -77,32 +73,22 @@ std::ostream &operator<<(std::ostream &os, const CastlingRights &cr) {
     return os << castlingFlags[cr];
 }
 static std::string str_toupper(std::string s) {
-    std::transform(s.begin(),
-                   s.end(),
-                   s.begin(),
-                   // static_cast<int(*)(int)>(std::toupper)         // wrong
-                   // [](int c){ return std::toupper(c); }           // wrong
-                   // [](char c){ return std::toupper(c); }          // wrong
-                   [](unsigned char c) { return std::toupper(c); } // correct
-    );
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::toupper(c); });
     return s;
 }
 std::ostream &operator<<(std::ostream &os, const Square &sq) {
     os << "SQ_" << str_toupper(chess::uci::squareToString(sq));
     return os;
 }
-std::ostream &operator<<(std::ostream &os, const PolyglotPiece &p) {
-    constexpr std::string_view EnginePieceToChar(".PNBRQK'/pnbrqk,");
-    constexpr std::string_view PolyglotPieceToChar("PNBRQKpnbrqk.");
-    constexpr std::string_view PieceToChar = std::is_same_v<decltype(p), EnginePiece> ? EnginePieceToChar : PolyglotPieceToChar;
-    return os << PieceToChar[(int)p];
+template <typename PieceC, typename> std::ostream & operator<<(std::ostream &os, PieceC p) {
+    constexpr std::string_view mapping = " PNBRQK..pnbrqk.";
+    return os << mapping[static_cast<int>(make_piece<EnginePiece>(piece_of(p), color_of(p)))];
 }
-std::ostream &operator<<(std::ostream &os, const EnginePiece &p) {
-    constexpr std::string_view EnginePieceToChar(".PNBRQK'/pnbrqk,");
-    constexpr std::string_view PolyglotPieceToChar("PNBRQKpnbrqk.");
-    constexpr std::string_view PieceToChar = std::is_same_v<decltype(p), EnginePiece> ? EnginePieceToChar : PolyglotPieceToChar;
-    return os << PieceToChar[(int)p];
-}
-template std::ostream &operator<<(std::ostream &, const _Position<EnginePiece> &);
-template std::ostream &operator<<(std::ostream &, const _Position<PolyglotPiece> &);
+
+#define INSTANTITATE(PieceC) \
+template std::ostream &operator<<(std::ostream &, const _Position<PieceC, void> &);
+
+INSTANTITATE(EnginePiece)
+INSTANTITATE(PolyglotPiece)
+INSTANTITATE(ContiguousMappingPiece)
 } // namespace chess
