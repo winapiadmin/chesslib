@@ -524,6 +524,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         }
         return b != 0;
     }
+    // Material-only key (note: Zobrist=Zpieces^Zep^Zcastling^Zturn, we just XORs the remaining, it's trivial)
+    __FORCEINLINE Key material_key() const { return hash() ^ (zobrist::RandomTurn * ~sideToMove()) ^ (zobrist::RandomCastle[castlingRights()]) ^ (zobrist::RandomEP[ep_square() == SQ_NONE ? file_of(ep_square()) : FILE_NB]); }
     template <bool Strict = false> bool is_valid() const;
 
   private:
