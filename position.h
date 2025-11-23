@@ -149,7 +149,7 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
 };
 
 enum class MoveGenType : uint8_t { ALL, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, CAPTURE };
-template <typename PieceC = EnginePiece, typename = std::enable_if_t<std::is_same_v<PieceC, EnginePiece> || std::is_same_v<PieceC, PolyglotPiece> || std::is_same_v<PieceC, ContiguousMappingPiece>>> class _Position {
+template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_enum<PieceC>::value>> class _Position {
   private:
     HistoryEntry<PieceC> current_state;
 
