@@ -40,7 +40,7 @@ endif()
 set(SOURCES
     position.cpp
     attacks.cpp "zobrist.cpp"
- "moves_io.cpp" "printers.cpp" "repetition.h" "fwd_decl.h")
+ "moves_io.cpp" "printers.cpp" "movegen.cpp")
 add_library(chesslib STATIC ${SOURCES})
 target_include_directories(chesslib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # --- Enable CTest integration ---

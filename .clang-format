@@ -1,7 +1,7 @@
 BasedOnStyle: LLVM
 IndentWidth: 4
 ContinuationIndentWidth: 4
-ColumnLimit: 1000
+ColumnLimit: 128
 AllowAllArgumentsOnNextLine: false
 AllowAllConstructorInitializersOnNextLine: false
 BinPackParameters: false
