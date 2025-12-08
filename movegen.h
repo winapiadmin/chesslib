@@ -1,3 +1,4 @@
+#pragma once
 #include "fwd_decl.h"
 #include <array>
 namespace chess::_chess{

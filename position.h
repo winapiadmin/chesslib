@@ -9,9 +9,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#if defined(WIN32)
-#include <malloc.h>
-#endif
+#include "movegen.h"
 namespace chess {
 
 template <typename Piece> struct alignas(64) HistoryEntry {
