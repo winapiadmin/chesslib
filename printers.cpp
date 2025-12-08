@@ -34,7 +34,8 @@ template <typename PieceC, typename> std::ostream &operator<<(std::ostream &os, 
     os << "   a   b   c   d   e   f   g   h\n";
 
     // Ensure key is printed in hex, but restores after this function
-    os << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase << std::setfill('0') << std::setw(16) << pos.key() << '\n';
+    os << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase << std::setfill('0') << std::setw(16) << pos.key()
+       << '\n';
 
     return os;
 }
@@ -80,13 +81,12 @@ std::ostream &operator<<(std::ostream &os, const Square &sq) {
     os << "SQ_" << str_toupper(chess::uci::squareToString(sq));
     return os;
 }
-template <typename PieceC, typename> std::ostream & operator<<(std::ostream &os, PieceC p) {
+template <typename PieceC, typename> std::ostream &operator<<(std::ostream &os, PieceC p) {
     constexpr std::string_view mapping = " PNBRQK..pnbrqk.";
     return os << mapping[static_cast<int>(make_piece<EnginePiece>(piece_of(p), color_of(p)))];
 }
 
-#define INSTANTITATE(PieceC) \
-template std::ostream &operator<<(std::ostream &, const _Position<PieceC, void> &);
+#define INSTANTITATE(PieceC) template std::ostream &operator<<(std::ostream &, const _Position<PieceC, void> &);
 
 INSTANTITATE(EnginePiece)
 INSTANTITATE(PolyglotPiece)

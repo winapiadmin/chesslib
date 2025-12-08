@@ -9,32 +9,10 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#if defined(_MSC_VER)
+#if defined(WIN32)
 #include <malloc.h>
 #endif
 namespace chess {
-namespace _chess {
-inline void *aligned_alloc(size_t alignment, size_t size) {
-#if defined(_MSC_VER)
-    return _aligned_malloc(size, alignment);
-#elif defined(__APPLE__) || defined(__linux__)
-    void *ptr = nullptr;
-    if (posix_memalign(&ptr, alignment, size) != 0)
-        return nullptr;
-    return ptr;
-#else
-    return std::aligned_alloc(alignment, size);
-#endif
-}
-
-inline void aligned_free(void *ptr) {
-#if defined(_MSC_VER)
-    _aligned_free(ptr);
-#else
-    free(ptr);
-#endif
-}
-} // namespace _chess
 
 template <typename Piece> struct alignas(64) HistoryEntry {
     // Bitboards for each piece type (white and black)
@@ -65,23 +43,23 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
   public:
     using size_type = std::size_t;
     inline HeapAllocatedValueList() {
-        values_ = reinterpret_cast<T *>(_chess::aligned_alloc(ALIGNMENT, MaxSize * sizeof(T)));
+        values_ = reinterpret_cast<T *>(::operator new(MaxSize*sizeof(T), std::align_val_t{ALIGNMENT}));
         assert(values_);
     }
-    inline ~HeapAllocatedValueList() { _chess::aligned_free(values_); }
+    inline ~HeapAllocatedValueList() { ::operator delete(values_, std::align_val_t{ALIGNMENT}); }
 
     HeapAllocatedValueList(const HeapAllocatedValueList &other) : size_(other.size_) {
-        _chess::aligned_free(values_);
-        values_ = reinterpret_cast<T *>(_chess::aligned_alloc(ALIGNMENT, MaxSize * sizeof(T)));
+        ::operator delete(values_, std::align_val_t{ALIGNMENT});
+        values_ = reinterpret_cast<T *>(::operator new(MaxSize*sizeof(T), std::align_val_t{ALIGNMENT}));
         assert(values_);
         std::copy(other.values_, other.values_ + size_, values_);
     }
 
     HeapAllocatedValueList &operator=(const HeapAllocatedValueList &other) {
         if (this != &other) {
-            _chess::aligned_free(values_);
+            ::operator delete(values_, std::align_val_t{ALIGNMENT});
             // Allocate new memory and copy
-            T *new_values = reinterpret_cast<T *>(_chess::aligned_alloc(ALIGNMENT, MaxSize * sizeof(T)));
+            T *new_values = reinterpret_cast<T *>(::operator new(MaxSize*sizeof(T), std::align_val_t{ALIGNMENT}));
             assert(new_values);
             std::copy(other.values_, other.values_ + other.size_, new_values);
 
@@ -96,16 +74,16 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
     }
 
     HeapAllocatedValueList(HeapAllocatedValueList &&other) noexcept : size_(other.size_) {
-        _chess::aligned_free(values_);
-        values_ = reinterpret_cast<T *>(_chess::aligned_alloc(ALIGNMENT, MaxSize * sizeof(T)));
+        ::operator delete(values_, std::align_val_t{ALIGNMENT});
+        values_ = reinterpret_cast<T *>(::operator new(MaxSize*sizeof(T), std::align_val_t{ALIGNMENT}));
         assert(values_);
         std::copy(other.values_, other.values_ + size_, values_);
     }
 
     HeapAllocatedValueList &operator=(HeapAllocatedValueList &&other) noexcept {
         if (this != &other) {
-            _chess::aligned_free(values_);
-            values_ = reinterpret_cast<T *>(_chess::aligned_alloc(ALIGNMENT, MaxSize * sizeof(T)));
+            ::operator delete(values_, std::align_val_t{ALIGNMENT});
+            values_ = reinterpret_cast<T *>(::operator new(MaxSize*sizeof(T), std::align_val_t{ALIGNMENT}));
             assert(values_);
             std::copy(other.values_, other.values_ + size_, values_);
         }

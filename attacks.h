@@ -284,8 +284,3 @@ template <PieceType pt> [[nodiscard]] constexpr Bitboard slider(Square sq, Bitbo
 }
 
 } // namespace chess::attacks
-
-namespace chess::movegen {
-extern const std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB;
-[[nodiscard]] inline Bitboard between(Square sq1, Square sq2) noexcept { return SQUARES_BETWEEN_BB[sq1][sq2]; }
-} // namespace chess::movegen

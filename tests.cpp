@@ -80,19 +80,31 @@ static_assert(make_piece<PolyglotPiece>(ROOK, WHITE) == PolyglotPiece::WROOK, "m
 static_assert(make_piece<PolyglotPiece>(QUEEN, WHITE) == PolyglotPiece::WQUEEN, "make_piece QUEEN,WHITE -> WQUEEN");
 static_assert(make_piece<PolyglotPiece>(KING, WHITE) == PolyglotPiece::WKING, "make_piece KING,WHITE -> WKING");
 
-static_assert(make_piece<ContiguousMappingPiece>(PAWN, BLACK) == ContiguousMappingPiece::BPAWN, "make_piece PAWN,BLACK -> BPAWN");
-static_assert(make_piece<ContiguousMappingPiece>(KNIGHT, BLACK) == ContiguousMappingPiece::BKNIGHT, "make_piece KNIGHT,BLACK -> BKNIGHT");
-static_assert(make_piece<ContiguousMappingPiece>(BISHOP, BLACK) == ContiguousMappingPiece::BBISHOP, "make_piece BISHOP,BLACK -> BBISHOP");
-static_assert(make_piece<ContiguousMappingPiece>(ROOK, BLACK) == ContiguousMappingPiece::BROOK, "make_piece ROOK,BLACK -> BROOK");
-static_assert(make_piece<ContiguousMappingPiece>(QUEEN, BLACK) == ContiguousMappingPiece::BQUEEN, "make_piece QUEEN,BLACK -> BQUEEN");
-static_assert(make_piece<ContiguousMappingPiece>(KING, BLACK) == ContiguousMappingPiece::BKING, "make_piece KING,BLACK -> BKING");
+static_assert(make_piece<ContiguousMappingPiece>(PAWN, BLACK) == ContiguousMappingPiece::BPAWN,
+              "make_piece PAWN,BLACK -> BPAWN");
+static_assert(make_piece<ContiguousMappingPiece>(KNIGHT, BLACK) == ContiguousMappingPiece::BKNIGHT,
+              "make_piece KNIGHT,BLACK -> BKNIGHT");
+static_assert(make_piece<ContiguousMappingPiece>(BISHOP, BLACK) == ContiguousMappingPiece::BBISHOP,
+              "make_piece BISHOP,BLACK -> BBISHOP");
+static_assert(make_piece<ContiguousMappingPiece>(ROOK, BLACK) == ContiguousMappingPiece::BROOK,
+              "make_piece ROOK,BLACK -> BROOK");
+static_assert(make_piece<ContiguousMappingPiece>(QUEEN, BLACK) == ContiguousMappingPiece::BQUEEN,
+              "make_piece QUEEN,BLACK -> BQUEEN");
+static_assert(make_piece<ContiguousMappingPiece>(KING, BLACK) == ContiguousMappingPiece::BKING,
+              "make_piece KING,BLACK -> BKING");
 
-static_assert(make_piece<ContiguousMappingPiece>(PAWN, WHITE) == ContiguousMappingPiece::WPAWN, "make_piece PAWN,WHITE -> WPAWN");
-static_assert(make_piece<ContiguousMappingPiece>(KNIGHT, WHITE) == ContiguousMappingPiece::WKNIGHT, "make_piece KNIGHT,WHITE -> WKNIGHT");
-static_assert(make_piece<ContiguousMappingPiece>(BISHOP, WHITE) == ContiguousMappingPiece::WBISHOP, "make_piece BISHOP,WHITE -> WBISHOP");
-static_assert(make_piece<ContiguousMappingPiece>(ROOK, WHITE) == ContiguousMappingPiece::WROOK, "make_piece ROOK,WHITE -> WROOK");
-static_assert(make_piece<ContiguousMappingPiece>(QUEEN, WHITE) == ContiguousMappingPiece::WQUEEN, "make_piece QUEEN,WHITE -> WQUEEN");
-static_assert(make_piece<ContiguousMappingPiece>(KING, WHITE) == ContiguousMappingPiece::WKING, "make_piece KING,WHITE -> WKING");
+static_assert(make_piece<ContiguousMappingPiece>(PAWN, WHITE) == ContiguousMappingPiece::WPAWN,
+              "make_piece PAWN,WHITE -> WPAWN");
+static_assert(make_piece<ContiguousMappingPiece>(KNIGHT, WHITE) == ContiguousMappingPiece::WKNIGHT,
+              "make_piece KNIGHT,WHITE -> WKNIGHT");
+static_assert(make_piece<ContiguousMappingPiece>(BISHOP, WHITE) == ContiguousMappingPiece::WBISHOP,
+              "make_piece BISHOP,WHITE -> WBISHOP");
+static_assert(make_piece<ContiguousMappingPiece>(ROOK, WHITE) == ContiguousMappingPiece::WROOK,
+              "make_piece ROOK,WHITE -> WROOK");
+static_assert(make_piece<ContiguousMappingPiece>(QUEEN, WHITE) == ContiguousMappingPiece::WQUEEN,
+              "make_piece QUEEN,WHITE -> WQUEEN");
+static_assert(make_piece<ContiguousMappingPiece>(KING, WHITE) == ContiguousMappingPiece::WKING,
+              "make_piece KING,WHITE -> WKING");
 // --------- Round-trip consistency ----------
 static_assert(piece_of(make_piece<PolyglotPiece>(PAWN, WHITE)) == PAWN, "Round-trip piece PAWN,WHITE");
 static_assert(piece_of(make_piece<PolyglotPiece>(KNIGHT, WHITE)) == KNIGHT, "Round-trip piece KNIGHT,WHITE");
@@ -220,7 +232,8 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
         return total;
     }
 }
-template <MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false> void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
+template <MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false>
+void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
     uint64_t nodes = 0;
     double elapsed = 0;
     using namespace std::chrono;
@@ -521,7 +534,8 @@ TEST_CASE("Minor position test perft") {
         {                                         "K1k5/8/P7/8/8/8/8/8 w - - 0 1",  6,      2217 },
         {                                        "8/k1P5/8/1K6/8/8/8/8 w - - 0 1",  7,    567584 },
         {                                     "8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1",  4,     23527 },
-        // https://github.com/SebLague/Chess-Coding-Adventure/blob/Chess-V2-Unity/Assets/Scripts/Testing/Perft/Suites/Suite%20Full.txt converted to [fen, depth, nodes], deduped tests
+        // https://github.com/SebLague/Chess-Coding-Adventure/blob/Chess-V2-Unity/Assets/Scripts/Testing/Perft/Suites/Suite%20Full.txt
+        // converted to [fen, depth, nodes], deduped tests
         {                     "2b1b3/1r1P4/3K3p/1p6/2p5/6k1/1P3p2/4B3 w - - 0 42",  5,   5617302 },
 #if IS_RELEASE == 1
         {                                 "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -",  6,  11030083 },
@@ -1710,7 +1724,9 @@ TEST_CASE("was_into_check") {
     check_was_into_check<PolyglotPiece>(tests);
     check_was_into_check<EnginePiece>(tests);
 }
-TEST_CASE("Zobrist mapping?") { REQUIRE(zobrist::RandomPiece[enum_idx<PolyglotPiece>()][(int)PolyglotPiece::BPAWN][0] == 0x9D39247E33776D41); }
+TEST_CASE("Zobrist mapping?") {
+    REQUIRE(zobrist::RandomPiece[enum_idx<PolyglotPiece>()][(int)PolyglotPiece::BPAWN][0] == 0x9D39247E33776D41);
+}
 struct repetitions_t {
     std::string FEN;
     std::vector<Move> moves;
@@ -1732,7 +1748,16 @@ void check_repetitions(std::vector<TestEntry<repetitions_t, bool>> &tests) {
 }
 TEST_CASE("is_repetition") {
     std::vector<TestEntry<repetitions_t, bool>> tests = {
-        { "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", { Move(SQ_B1, SQ_C3), Move(SQ_B8, SQ_C6), Move(SQ_C3, SQ_B1), Move(SQ_C6, SQ_B8), Move(SQ_G1, SQ_F3), Move(SQ_G8, SQ_F6), Move(SQ_F3, SQ_G1), Move(SQ_F6, SQ_G8) }, 3, true }
+        { "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+         { Move(SQ_B1, SQ_C3),
+            Move(SQ_B8, SQ_C6),
+            Move(SQ_C3, SQ_B1),
+            Move(SQ_C6, SQ_B8),
+            Move(SQ_G1, SQ_F3),
+            Move(SQ_G8, SQ_F6),
+            Move(SQ_F3, SQ_G1),
+            Move(SQ_F6, SQ_G8) },
+         3, true }
     };
     check_repetitions(tests);
 }

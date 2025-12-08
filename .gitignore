@@ -10,3 +10,4 @@ build/
 CMakePresets.json
 CMakeSettings.json
 *.s
+.vscode
