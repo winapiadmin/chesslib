@@ -520,7 +520,7 @@ template <typename PieceC, typename T> template <bool Strict> bool _Position<Pie
         return false;
     return false;
 }
-template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesCheck(Move move) const {
+template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesCheck(Move m) const {
     const static auto getSniper = [&](Square ksq, Bitboard oc) {
         const auto us_occ = this->us(board->sideToMove());
         const auto bishop = attacks::bishop(ksq, oc) & this->pieces(PieceType::BISHOP, PieceType::QUEEN) & us_occ;
@@ -534,7 +534,7 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
     const Square to     = m.to();
     const Square ksq    = kingSq(~sideToMove());
     const Bitboard toBB = 1ULL<<(to);
-    const PieceType pt  = at(from).type();
+    const PieceType pt  = piece_of(at(from));
 
     Bitboard fromKing = 0ull;
 
@@ -553,13 +553,13 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
     if (fromKing & toBB) return CheckType::DIRECT_CHECK;
 
     // Discovery check
-    const Bitboard fromBB = Bitboard::fromSquare(from);
+    const Bitboard fromBB = 1ULL<<(from);
     const Bitboard oc     = occ() ^ fromBB;
 
     Bitboard sniper = getSniper(this, ksq, oc);
 
     while (sniper) {
-        Square sq = sniper.pop();
+        Square sq = pop_lsb(sniper);
         return (!(movegen::between(ksq, sq) & toBB) || m.typeOf() == Move::CASTLING) ? CheckType::DISCOVERY_CHECK
                                                                                      : CheckType::NO_CHECK;
     }
@@ -589,14 +589,14 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
         }
 
         case Move::ENPASSANT: {
-            Square capSq(to.file(), from.rank());
-            return (getSniper(this, ksq, (oc ^ Bitboard::fromSquare(capSq)) | toBB)) ? CheckType::DISCOVERY_CHECK
+            Square capSq=make_sq(file_of(to), rank_of(from));
+            return (getSniper(this, ksq, (oc ^ (1ULL<<capSq)) | toBB)) ? CheckType::DISCOVERY_CHECK
                                                                                      : CheckType::NO_CHECK;
         }
 
         case Move::CASTLING: {
-            Square rookTo = Square::castling_rook_square(to > from, stm_);
-            return (attacks::rook(ksq, occ()) & Bitboard::fromSquare(rookTo)) ? CheckType::DISCOVERY_CHECK
+            Square rookTo = relative_square(side_to_move(), to > from ? SQ_F1 : SQ_D1);
+            return (attacks::rook(ksq, occ()) & (1ULL<<rookTo)) ? CheckType::DISCOVERY_CHECK
                                                                               : CheckType::NO_CHECK;
         }
     }
@@ -785,6 +785,7 @@ template Move _Position<PieceC, void>::parse_uci(std::string) const; \
 template Move _Position<PieceC, void>::push_uci(std::string); \
 template bool _Position<PieceC, void>::is_valid<false>() const; \
 template bool _Position<PieceC, void>::is_valid<true>() const; \
+template CheckType _Position<PieceC, void>::givesCheck(Move) const; \
 template bool _Position<PieceC, void>::is_insufficient_material() const;
 // clang-format off
 INSTANTIATE(PolyglotPiece)
