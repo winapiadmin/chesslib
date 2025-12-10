@@ -481,6 +481,7 @@ __FORCEINLINE void legals(Movelist &out) const {
         return p;
 #endif
     }
+    __FORCEINLINE Bitboard us(Color c) const { return occ(c); }
     __FORCEINLINE Color sideToMove() const { return current_state.turn; }
     __FORCEINLINE uint64_t hash() const { return current_state.hash; }
     __FORCEINLINE uint64_t key() const { return current_state.hash; }
