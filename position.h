@@ -324,12 +324,14 @@ __FORCEINLINE void legals(Movelist &out) const {
             return current_state.pieces[pt];
         }
     }
-    template <typename... PTypes, typename = std::enable_if_t<(std::is_integral_v<PTypes> && ...)>>
+    template <typename... PTypes,
+            typename = std::enable_if_t<(std::is_same_v<PTypes, PieceType> && ...)>>
     [[nodiscard]] __FORCEINLINE Bitboard pieces(PTypes... ptypes) const {
-        return (current_state.pieces[ptypes] | ...);
+        return (current_state.pieces[static_cast<int>(ptypes)] | ...);
     }
 
-    template <typename... PTypes, typename = std::enable_if_t<(std::is_integral_v<PTypes> && ...)>>
+    template <typename... PTypes,
+            typename = std::enable_if_t<(std::is_same_v<PTypes, PieceType> && ...)>>
     [[nodiscard]] __FORCEINLINE Bitboard pieces(Color c, PTypes... ptypes) const {
         return (pieces(ptypes, c) | ...);
     }
