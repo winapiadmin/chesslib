@@ -521,10 +521,10 @@ template <typename PieceC, typename T> template <bool Strict> bool _Position<Pie
     return false;
 }
 template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesCheck(Move m) const {
-    const static auto getSniper = [&](Square ksq, Bitboard oc) {
-        const auto us_occ = us(sideToMove());
-        const auto bishop = attacks::bishop(ksq, oc) & pieces(PieceType::BISHOP, PieceType::QUEEN) & us_occ;
-        const auto rook   = attacks::rook(ksq, oc) & pieces(PieceType::ROOK, PieceType::QUEEN) & us_occ;
+    const static auto getSniper = [](const _Position<PieceC>* p, Square ksq, Bitboard oc) {
+        const auto us_occ = p.us(p.sideToMove());
+        const auto bishop = attacks::bishop(ksq, oc) & p.pieces(PieceType::BISHOP, PieceType::QUEEN) & us_occ;
+        const auto rook   = attacks::rook(ksq, oc) & p.pieces(PieceType::ROOK, PieceType::QUEEN) & us_occ;
         return (bishop | rook);
     };
 
