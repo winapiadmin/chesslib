@@ -148,10 +148,10 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
             THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal O-O-O"));
             return Move::none();
         }
-        // 2) Strip trailing annotations (+, #, !, ?). Repeated occurrences too.
+        // 2) Strip trailing annotations (+, #) that aren't required in the standard (except "e.p. "). Repeated occurrences too.
         while (!san.empty()) {
             char c = san.back();
-            if (c == '+' || c == '#' || c == '!' || c == '?')
+            if (c == '+' || c == '#')
                 san.pop_back();
             else
                 break;
