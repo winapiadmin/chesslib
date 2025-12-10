@@ -207,7 +207,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
         std::string prefix;
         prefix.reserve(san.size());
         for (char c : san)
-            if (c != 'x' && c != 'X' && c != '-')
+            if (c != 'x' && c != 'X')
                 prefix.push_back(c);
         // prefix now holds the pre-destination token (e.g. "Nbd" from "Nbd2" or "Pe2" from "Pe2e4")
 
