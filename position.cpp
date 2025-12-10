@@ -539,7 +539,7 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
     Bitboard fromKing = 0ull;
 
     if (pt == PieceType::PAWN) {
-        fromKing = attacks::pawn(~stm_, ksq);
+        fromKing = attacks::pawn(~side_to_move(), ksq);
     } else if (pt == PieceType::KNIGHT) {
         fromKing = attacks::knight(ksq);
     } else if (pt == PieceType::BISHOP) {
@@ -572,20 +572,23 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
             Bitboard attacks = 0ull;
 
             switch (m.promotionType()) {
-                case static_cast<int>(PieceType::KNIGHT):
+                case KNIGHT:
                     attacks = attacks::knight(to);
                     break;
-                case static_cast<int>(PieceType::BISHOP):
+                case BISHOP:
                     attacks = attacks::bishop(to, oc);
                     break;
-                case static_cast<int>(PieceType::ROOK):
+                case ROOK:
                     attacks = attacks::rook(to, oc);
                     break;
-                case static_cast<int>(PieceType::QUEEN):
+                case QUEEN:
                     attacks = attacks::queen(to, oc);
+                    break;
+                default:
+                    break;
             }
 
-            return (attacks & pieces(PieceType::KING, ~stm_)) ? CheckType::DIRECT_CHECK : CheckType::NO_CHECK;
+            return (attacks & pieces(PieceType::KING, ~sideToMove())) ? CheckType::DIRECT_CHECK : CheckType::NO_CHECK;
         }
 
         case Move::ENPASSANT: {
