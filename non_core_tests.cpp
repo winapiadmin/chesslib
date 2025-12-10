@@ -884,6 +884,18 @@ TEST_SUITE("SAN Parser") {
         REQUIRE(uci::parseSan(b, "O-O+") == m);
     }
 }
+TEST_CASE("Reconstruction of Position from history entry"){{
+    Position p;
+    Position p2(p.state());
+    REQUIRE(p.fen()==p2.fen());}
+    {
+    _Position<PolyglotPiece> p;
+    Position p2(p.state());
+    _Position<PolyglotPiece> p3(p2.state());
+    REQUIRE(p.fen()==p3.fen());
+    REQUIRE(p.fen()==p2.fen());
+    }
+}
 int main(int argc, char **argv) {
     doctest::Context ctx;
     ctx.setOption("success", true);

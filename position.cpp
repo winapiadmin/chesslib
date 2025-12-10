@@ -46,22 +46,6 @@ static _POSSIBLY_CONSTEXPR auto make_castle_masks() {
 }
 static _POSSIBLY_CONSTEXPR auto clearCastleMask = make_castle_masks();
 
-template <typename PieceC, typename T> template <Color c> void _Position<PieceC, T>::genEP(Movelist &ep_moves) const {
-    chess::movegen::genEP<PieceC, c>(*this, ep_moves);
-}
-template <typename PieceC, typename T>
-template <Color c, bool capturesOnly>
-void _Position<PieceC, T>::genPawnSingleMoves(Movelist &moves) const {
-    chess::movegen::genPawnSingleMoves<PieceC, c, capturesOnly>(*this, moves, _rook_pin, _bishop_pin, _check_mask);
-}
-template <typename PieceC, typename T> template <Color c> void _Position<PieceC, T>::genPawnDoubleMoves(Movelist &moves) const {
-    chess::movegen::genPawnDoubleMoves<PieceC, c>(*this, moves, _pin_mask, _check_mask);
-}
-template <typename PieceC, typename T>
-template <Color c, bool capturesOnly>
-void _Position<PieceC, T>::genKingMoves(Movelist &out) const {
-    chess::movegen::genKingMoves<PieceC, c, capturesOnly>(*this, out);
-}
 template <typename PieceC, typename T> template <bool Strict> void _Position<PieceC, T>::doMove(const Move &move) {
     assert(move.is_ok() && "doMove called with invalid move");
     Square from_sq = move.from_sq(), to_sq = move.to_sq();
@@ -414,10 +398,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
 }
 
 template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen() const {
-    constexpr std::string_view EnginePieceToChar(" PNBRQK  pnbrqk ");
-    constexpr std::string_view PolyglotPieceToChar("PNBRQKpnbrqk ");
-    constexpr std::string_view PieceToChar = std::is_same_v<PieceC, EnginePiece> ? EnginePieceToChar : PolyglotPieceToChar;
-    std::string fen;
+    std::ostringstream ss;
 
     // 1) Piece placement
     for (Rank rank = RANK_8; rank >= RANK_1; --rank) {
@@ -430,24 +411,23 @@ template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen() c
                 emptyCount++;
             } else {
                 if (emptyCount > 0) {
-                    fen += std::to_string(emptyCount);
+                    ss<< std::to_string(emptyCount);
                     emptyCount = 0;
                 }
-                fen += PieceToChar[static_cast<size_t>(piece)];
+                ss<< piece;
             }
         }
         if (emptyCount > 0)
-            fen += std::to_string(emptyCount);
+            ss<< std::to_string(emptyCount);
         if (rank > 0)
-            fen += '/';
+            ss<< '/';
     }
 
     // 2) Side to move
-    fen += ' ';
-    fen += (sideToMove() == WHITE) ? 'w' : 'b';
+    ss<< ' ' << (sideToMove() == WHITE ? 'w' : 'b');
 
     // 3) Castling availability
-    fen += ' ';
+    ss<< ' ';
     std::string castlingStr;
     if (castlingRights() & WHITE_OO)
         castlingStr += 'K';
@@ -457,22 +437,20 @@ template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen() c
         castlingStr += 'k';
     if (castlingRights() & BLACK_OOO)
         castlingStr += 'q';
-    fen += (castlingStr.empty()) ? "-" : castlingStr;
+    ss<<(castlingStr.empty() ? "-" : castlingStr);
 
     // 4) En passant target square or '-'
-    fen += ' ';
+    ss<< ' ';
     Square ep = ep_square();
-    fen += (ep == SQ_NONE) ? "-" : uci::squareToString(ep);
+    ss<< (ep == SQ_NONE ? "-" : uci::squareToString(ep));
 
     // 5) Halfmove clock
-    fen += ' ';
-    fen += std::to_string(halfmoveClock());
+    ss<< ' ' <<(int)halfmoveClock();
 
     // 6) Fullmove number
-    fen += ' ';
-    fen += std::to_string(fullmoveNumber());
+    ss<< ' ' <<(int)fullmoveNumber();
 
-    return fen;
+    return ss.str();
 }
 template <typename PieceC, typename T> template <bool Strict> bool _Position<PieceC, T>::is_valid() const {
     if (count<KING, WHITE>() != 1)
@@ -542,6 +520,90 @@ template <typename PieceC, typename T> template <bool Strict> bool _Position<Pie
         return false;
     return false;
 }
+template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesCheck(Move move) const {
+    const static auto getSniper = [&](Square ksq, Bitboard oc) {
+        const auto us_occ = this->us(board->sideToMove());
+        const auto bishop = attacks::bishop(ksq, oc) & this->pieces(PieceType::BISHOP, PieceType::QUEEN) & us_occ;
+        const auto rook   = attacks::rook(ksq, oc) & this->pieces(PieceType::ROOK, PieceType::QUEEN) & us_occ;
+        return (bishop | rook);
+    };
+
+    assert(color_of(at(m.from())) == sideToMove());
+
+    const Square from   = m.from();
+    const Square to     = m.to();
+    const Square ksq    = kingSq(~sideToMove());
+    const Bitboard toBB = 1ULL<<(to);
+    const PieceType pt  = at(from).type();
+
+    Bitboard fromKing = 0ull;
+
+    if (pt == PieceType::PAWN) {
+        fromKing = attacks::pawn(~stm_, ksq);
+    } else if (pt == PieceType::KNIGHT) {
+        fromKing = attacks::knight(ksq);
+    } else if (pt == PieceType::BISHOP) {
+        fromKing = attacks::bishop(ksq, occ());
+    } else if (pt == PieceType::ROOK) {
+        fromKing = attacks::rook(ksq, occ());
+    } else if (pt == PieceType::QUEEN) {
+        fromKing = attacks::queen(ksq, occ());
+    }
+
+    if (fromKing & toBB) return CheckType::DIRECT_CHECK;
+
+    // Discovery check
+    const Bitboard fromBB = Bitboard::fromSquare(from);
+    const Bitboard oc     = occ() ^ fromBB;
+
+    Bitboard sniper = getSniper(this, ksq, oc);
+
+    while (sniper) {
+        Square sq = sniper.pop();
+        return (!(movegen::between(ksq, sq) & toBB) || m.typeOf() == Move::CASTLING) ? CheckType::DISCOVERY_CHECK
+                                                                                     : CheckType::NO_CHECK;
+    }
+
+    switch (m.typeOf()) {
+        case Move::NORMAL:
+            return CheckType::NO_CHECK;
+
+        case Move::PROMOTION: {
+            Bitboard attacks = 0ull;
+
+            switch (m.promotionType()) {
+                case static_cast<int>(PieceType::KNIGHT):
+                    attacks = attacks::knight(to);
+                    break;
+                case static_cast<int>(PieceType::BISHOP):
+                    attacks = attacks::bishop(to, oc);
+                    break;
+                case static_cast<int>(PieceType::ROOK):
+                    attacks = attacks::rook(to, oc);
+                    break;
+                case static_cast<int>(PieceType::QUEEN):
+                    attacks = attacks::queen(to, oc);
+            }
+
+            return (attacks & pieces(PieceType::KING, ~stm_)) ? CheckType::DIRECT_CHECK : CheckType::NO_CHECK;
+        }
+
+        case Move::ENPASSANT: {
+            Square capSq(to.file(), from.rank());
+            return (getSniper(this, ksq, (oc ^ Bitboard::fromSquare(capSq)) | toBB)) ? CheckType::DISCOVERY_CHECK
+                                                                                     : CheckType::NO_CHECK;
+        }
+
+        case Move::CASTLING: {
+            Square rookTo = Square::castling_rook_square(to > from, stm_);
+            return (attacks::rook(ksq, occ()) & Bitboard::fromSquare(rookTo)) ? CheckType::DISCOVERY_CHECK
+                                                                              : CheckType::NO_CHECK;
+        }
+    }
+
+    assert(false);
+    return CheckType::NO_CHECK;  // Prevent a compiler warning
+}
 template <typename PieceC, typename T> void _Position<PieceC, T>::refresh_attacks() {
     Color c = sideToMove();
 
@@ -600,18 +662,6 @@ template <typename PieceC, typename T> uint64_t _Position<PieceC, T>::zobrist() 
     }
     return hash;
 }
-
-template <typename PieceC, typename T>
-template <Color c, bool capturesOnly>
-void _Position<PieceC, T>::genKnightMoves(Movelist &list) const {
-    chess::movegen::genKnightMoves<PieceC, c, capturesOnly>(*this, list, _pin_mask, _check_mask);
-}
-template <typename PieceC, typename T>
-template <Color c, PieceType pt, bool capturesOnly>
-void _Position<PieceC, T>::genSlidingMoves(Movelist &moves) const {
-    chess::movegen::genSlidingMoves<PieceC, c, pt, capturesOnly>(*this, moves, _rook_pin, _bishop_pin, _check_mask);
-}
-
 template <typename PieceC, typename T> _Position<PieceC, T>::_Position(std::string fen) { setFEN(fen); }
 
 template <typename PieceC, typename T> Move _Position<PieceC, T>::parse_uci(std::string uci) const {
@@ -724,34 +774,6 @@ template <typename PieceC, typename T> CastlingRights _Position<PieceC, T>::clea
 }
 // clang-format off
 #define INSTANTIATE(PieceC) \
-template void _Position<PieceC, void>::genEP<Color::WHITE>(Movelist &) const; \
-template void _Position<PieceC, void>::genEP<Color::BLACK>(Movelist &) const; \
-template void _Position<PieceC, void>::genPawnDoubleMoves<Color::WHITE>(Movelist &) const; \
-template void _Position<PieceC, void>::genPawnDoubleMoves<Color::BLACK>(Movelist &) const; \
-template void _Position<PieceC, void>::genPawnSingleMoves<Color::WHITE, true>(Movelist &) const; \
-template void _Position<PieceC, void>::genPawnSingleMoves<Color::BLACK, true>(Movelist &) const; \
-template void _Position<PieceC, void>::genPawnSingleMoves<Color::WHITE, false>(Movelist &) const; \
-template void _Position<PieceC, void>::genPawnSingleMoves<Color::BLACK, false>(Movelist &) const; \
-template void _Position<PieceC, void>::genKingMoves<Color::WHITE, true>(Movelist &) const; \
-template void _Position<PieceC, void>::genKingMoves<Color::BLACK, true>(Movelist &) const; \
-template void _Position<PieceC, void>::genKingMoves<Color::WHITE, false>(Movelist &) const; \
-template void _Position<PieceC, void>::genKingMoves<Color::BLACK, false>(Movelist &) const; \
-template void _Position<PieceC, void>::genKnightMoves<Color::WHITE, true>(Movelist &) const; \
-template void _Position<PieceC, void>::genKnightMoves<Color::BLACK, true>(Movelist &) const; \
-template void _Position<PieceC, void>::genKnightMoves<Color::WHITE, false>(Movelist &) const; \
-template void _Position<PieceC, void>::genKnightMoves<Color::BLACK, false>(Movelist &) const; \
-template void _Position<PieceC, void>::genSlidingMoves<Color::WHITE, BISHOP, false>(Movelist &) const; \
-template void _Position<PieceC, void>::genSlidingMoves<Color::BLACK, BISHOP, false>(Movelist &) const; \
-template void _Position<PieceC, void>::genSlidingMoves<Color::WHITE, ROOK, false>(Movelist &) const; \
-template void _Position<PieceC, void>::genSlidingMoves<Color::BLACK, ROOK, false>(Movelist &) const; \
-template void _Position<PieceC, void>::genSlidingMoves<Color::WHITE, QUEEN, false>(Movelist &) const; \
-template void _Position<PieceC, void>::genSlidingMoves<Color::BLACK, QUEEN, false>(Movelist &) const; \
-template void _Position<PieceC, void>::genSlidingMoves<Color::WHITE, BISHOP, true>(Movelist &) const; \
-template void _Position<PieceC, void>::genSlidingMoves<Color::BLACK, BISHOP, true>(Movelist &) const; \
-template void _Position<PieceC, void>::genSlidingMoves<Color::WHITE, ROOK, true>(Movelist &) const; \
-template void _Position<PieceC, void>::genSlidingMoves<Color::BLACK, ROOK, true>(Movelist &) const; \
-template void _Position<PieceC, void>::genSlidingMoves<Color::WHITE, QUEEN, true>(Movelist &) const; \
-template void _Position<PieceC, void>::genSlidingMoves<Color::BLACK, QUEEN, true>(Movelist &) const; \
 template _Position<PieceC, void>::_Position(std::string); \
 template void _Position<PieceC, void>::setFEN(const std::string &); \
 template std::string _Position<PieceC, void>::fen() const; \

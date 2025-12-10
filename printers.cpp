@@ -82,11 +82,53 @@ std::ostream &operator<<(std::ostream &os, const Square &sq) {
     return os;
 }
 template <typename PieceC, typename> std::ostream &operator<<(std::ostream &os, PieceC p) {
-    constexpr std::string_view mapping = " PNBRQK..pnbrqk.";
-    return os << mapping[static_cast<int>(make_piece<EnginePiece>(piece_of(p), color_of(p)))];
+    char c='.';
+    switch(p){
+        case PieceC::WPAWN:
+            c='P';
+            break;
+        case PieceC::BPAWN:
+            c='p';
+            break;
+        case PieceC::WKNIGHT:
+            c='N';
+            break;
+        case PieceC::BKNIGHT:
+            c='n';
+            break;
+        case PieceC::WBISHOP:
+            c='B';
+            break;
+        case PieceC::BBISHOP:
+            c='b';
+            break;
+        case PieceC::WROOK:
+            c='R';
+            break;
+        case PieceC::BROOK:
+            c='r';
+            break;
+        case PieceC::WQUEEN:
+            c='Q';
+            break;
+        case PieceC::BQUEEN:
+            c='q';
+            break;
+        case PieceC::WKING:
+            c='K';
+            break;
+        case PieceC::BKING:
+            c='k';
+            break;
+        default:
+            break;
+    }
+    return os<<c;
 }
 
-#define INSTANTITATE(PieceC) template std::ostream &operator<<(std::ostream &, const _Position<PieceC, void> &);
+#define INSTANTITATE(PieceC) \
+    template std::ostream &operator<<(std::ostream &, const _Position<PieceC, void> &); \
+    template std::ostream &operator<<(std::ostream &, PieceC);
 
 INSTANTITATE(EnginePiece)
 INSTANTITATE(PolyglotPiece)

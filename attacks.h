@@ -144,7 +144,8 @@ extern const std::array<Bitboard, 0x1480> BishopAttacks;
  * @return
  */
 template <Direction direction> [[nodiscard]] static constexpr Bitboard shift(const Bitboard b) {
-    ASSUME(direction == NORTH || direction == EAST || direction == SOUTH || direction == WEST || direction == NORTH_EAST || direction == SOUTH_EAST || direction == SOUTH_WEST || direction == NORTH_WEST);
+    ASSUME(direction == NORTH || direction == EAST || direction == SOUTH || direction == WEST || direction == NORTH_EAST ||
+           direction == SOUTH_EAST || direction == SOUTH_WEST || direction == NORTH_WEST);
     switch (direction) {
     case Direction::NORTH:
         return b << 8;
@@ -240,7 +241,9 @@ template <Color c> [[nodiscard]] constexpr Bitboard pawn(const Bitboard pawns) {
  * @param occupied
  * @return
  */
-[[nodiscard]] constexpr Bitboard bishop(Square sq, Bitboard occupied) { return BishopAttacks[BishopTable[(int)sq].index + BishopTable[(int)sq](occupied)]; }
+[[nodiscard]] constexpr Bitboard bishop(Square sq, Bitboard occupied) {
+    return BishopAttacks[BishopTable[(int)sq].index + BishopTable[(int)sq](occupied)];
+}
 
 /**
  * @brief Returns the rook attacks for a given square
@@ -248,7 +251,9 @@ template <Color c> [[nodiscard]] constexpr Bitboard pawn(const Bitboard pawns) {
  * @param occupied
  * @return
  */
-[[nodiscard]] constexpr Bitboard rook(Square sq, Bitboard occupied) { return RookAttacks[RookTable[(int)sq].index + RookTable[(int)sq](occupied)]; }
+[[nodiscard]] constexpr Bitboard rook(Square sq, Bitboard occupied) {
+    return RookAttacks[RookTable[(int)sq].index + RookTable[(int)sq](occupied)];
+}
 
 /**
  * @brief Returns the queen attacks for a given square

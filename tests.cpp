@@ -339,7 +339,6 @@ TEST_CASE("Move making pin update") {
         Movelist out;
         pos.legals<MoveGenType::PAWN>(out);
         auto pin_mask = pos.pin_mask();
-        for (auto& mv: out) std::cout<<mv<<'\n';
         REQUIRE(out.size() == 12);
         REQUIRE(pin_mask != 0);
         auto pin_maskAND0x8000000000000ULL = pin_mask & 0x8000000000000ULL;
