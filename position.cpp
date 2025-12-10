@@ -8,6 +8,12 @@
 #else
 #define _POSSIBLY_CONSTEXPR const
 #endif
+
+#if defined(__EXCEPTIONS) && defined(_DEBUG)
+#define THROW_IF_EXCEPTIONS_ON(stuff) throw stuff
+#else
+#define THROW_IF_EXCEPTIONS_ON(stuff) ((void)0)
+#endif
 namespace chess {
 static _POSSIBLY_CONSTEXPR CastlingRights make_clear_mask(Color c, PieceType pt, Square sq) {
     if (pt == KING) {
@@ -80,9 +86,9 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
 #elif defined(__EXCEPTIONS) && (defined(_DEBUG) || !defined(NDEBUG))
 
     if (target_piecetype == KING)
-        throw std::invalid_argument("No captures to king exists.");
+        THROW_IF_EXCEPTIONS_ON(std::invalid_argument("No captures to king exists."));
     if (moving_piecetype == NO_PIECE_TYPE)
-        throw std::invalid_argument("Expected a piece to move.");
+        THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Expected a piece to move."));
 #endif
     removePiece(moving_piecetype, from_sq, us);
     {
@@ -231,7 +237,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                 assert(file_count == 8 && "Each rank must contain exactly 8 squares");
 #elif defined(__EXCEPTIONS)
                 if (file_count != 8)
-                    throw std::invalid_argument("Each rank must contain exactly 8 squares");
+                    THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Each rank must contain exactly 8 squares"));
 #endif
                 f = FILE_A;
                 --r;
@@ -254,9 +260,9 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                 assert(chess::is_valid(r, f) && "Invalid file/rank position");
 #elif defined(__EXCEPTIONS)
                 if (file_count >= 8)
-                    throw std::invalid_argument("Too many pieces in one rank");
+                    THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Too many pieces in one rank"));
                 if (!chess::is_valid(r, f))
-                    throw std::invalid_argument("Invalid file/rank position");
+                    THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Invalid file/rank position"));
 #endif
                 switch (c) {
                 case 'p':
@@ -299,7 +305,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
 #if defined(_DEBUG) || !defined(NDEBUG)
                     assert(false && "Invalid FEN character");
 #elif defined(__EXCEPTIONS)
-                    throw std::invalid_argument("Invalid FEN character");
+                    THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Invalid FEN character"));
 #endif
                     break;
                 }
@@ -318,10 +324,10 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
         assert(rank_count == 8 && "FEN must contain exactly 8 ranks");
 #elif defined(__EXCEPTIONS)
         if (file_count != 8)
-            throw std::invalid_argument("Last rank must have 8 squares");
+            THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Last rank must have 8 squares"));
         rank_count++;
         if (rank_count != 8)
-            throw std::invalid_argument("FEN must contain exactly 8 ranks");
+            THROW_IF_EXCEPTIONS_ON(std::invalid_argument("FEN must contain exactly 8 ranks"));
 #endif
     }
 
@@ -335,7 +341,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
 #if defined(_DEBUG) || !defined(NDEBUG)
         assert(false && "Expected white or black, got something else.");
 #elif defined(__EXCEPTIONS)
-        throw std::invalid_argument("Expected white or black, got something else.");
+        THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Expected white or black, got something else."));
 #endif
     }
 
@@ -366,7 +372,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
 #if defined(_DEBUG) || !defined(NDEBUG)
             assert(false && "Invalid castling rights, this library doesn't support Chess960");
 #elif defined(__EXCEPTIONS)
-            throw std::invalid_argument("Invalid castling rights, this library doesn't support Chess960");
+            THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Invalid castling rights, this library doesn't support Chess960"));
 #endif
             break;
         }
@@ -393,7 +399,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
         assert(enpassant == "-" && "Invalid en passant FEN field");
 #elif defined(__EXCEPTIONS)
         if (enpassant != "-")
-            throw std::invalid_argument("Invalid en passant FEN field");
+            THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Invalid en passant FEN field"));
 #endif
         current_state.enPassant = SQ_NONE;
     }

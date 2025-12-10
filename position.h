@@ -47,7 +47,7 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
     inline ~HeapAllocatedValueList() { ::operator delete(values_, std::align_val_t{ALIGNMENT}); }
 
     HeapAllocatedValueList(const HeapAllocatedValueList &other) : size_(other.size_) {
-        ::operator delete(values_, std::align_val_t{ALIGNMENT});
+        if (values_) ::operator delete(values_, std::align_val_t{ALIGNMENT});
         values_ = reinterpret_cast<T *>(::operator new(MaxSize*sizeof(T), std::align_val_t{ALIGNMENT}));
         assert(values_);
         std::copy(other.values_, other.values_ + size_, values_);
@@ -121,7 +121,7 @@ template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
     size_type size_ = 0;
 
   private:
-    T *values_;
+    T *values_=nullptr;
 };
 
 enum class MoveGenType : uint8_t { ALL, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, CAPTURE };
@@ -419,7 +419,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     __FORCEINLINE uint8_t rule50_count() const { return current_state.halfMoveClock; }
     __FORCEINLINE CastlingRights castlingRights(Color c) const { return current_state.castlingRights & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING); }
     __FORCEINLINE CastlingRights castlingRights() const { return current_state.castlingRights; }
-    __FORCEINLINE bool is_castling(Move mv) const { return (mv.type_of() & CASTLING) != 0; }
+    __FORCEINLINE bool is_castling(Move mv) const { return mv.type_of() == CASTLING; }
     __FORCEINLINE const HistoryEntry<PieceC> &state() const { return current_state; }
     uint64_t zobrist() const;
     __FORCEINLINE PieceC piece_at(Square sq) const { return piece_on(sq); }
@@ -538,11 +538,13 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     __FORCEINLINE _Position(HistoryEntry<PieceC> state) {
         // compatible!
         current_state = state;
+        std::copy(std::begin(other.pieces_list), std::end(other.pieces_list), std::begin(pieces_list));
         refresh_attacks();
     }
     __FORCEINLINE _Position(const _Position &other)
         : current_state(other.current_state), history(other.history) // calls HeapAllocatedValueList's copy constructor
     {
+        std::copy(std::begin(other.pieces_list), std::end(other.pieces_list), std::begin(pieces_list));
         refresh_attacks();
     }
 

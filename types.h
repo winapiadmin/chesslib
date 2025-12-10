@@ -335,7 +335,19 @@ template <typename T, std::size_t MaxSize> class ValueList {
 
 using Movelist = ValueList<Move, 256>;
 constexpr int square_distance(Square a, Square b) { return std::max(std::abs(file_of(a) - file_of(b)), std::abs(rank_of(a) - rank_of(b))); }
-constexpr Square parse_square(std::string_view sv) { return make_sq(File(sv[0] - 'a'), Rank(sv[1] - '1')); }
+constexpr Square parse_square(std::string_view sv) {
+    if (sv.size() < 2)
+        return SQ_NONE;
+
+    char f = sv[0];
+    char r = sv[1];
+
+    if (f < 'a' || f > 'h' || r < '1' || r > '8')
+        return SQ_NONE;
+
+    return make_sq(File(f - 'a'), Rank(r - '1'));
+}
+
 constexpr PieceType parse_pt(unsigned char c) {
     const char a[] = "pnbrqk";
     int p = -1;
