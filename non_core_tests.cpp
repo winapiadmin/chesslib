@@ -409,9 +409,11 @@ TEST_SUITE("SAN Parser") {
         auto b = Position{ "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 17" };
 
         Move m = Move::make<Move::CASTLING>(Square::SQ_E1, Square::SQ_H1);
-        #if defined(_DEBUG) && !defined(NDEBUG)
-        REQUIRE_THROWS_WITH_AS(uci::parseSan(b, "0-0+?!"), "illegal san: '0-0+?!' in rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 17", chess::uci::IllegalMoveException);
-        #endif
+#if defined(_DEBUG) && !defined(NDEBUG)
+        REQUIRE_THROWS_WITH_AS(uci::parseSan(b, "0-0+?!"),
+                               "illegal san: '0-0+?!' in rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 17",
+                               chess::uci::IllegalMoveException);
+#endif
         REQUIRE(uci::parseSan(b, "0-0+?!", true) == m);
     }
 
@@ -420,9 +422,11 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make<Move::CASTLING>(Square::SQ_E1, Square::SQ_A1);
 
-        #if defined(_DEBUG) && !defined(NDEBUG)
-        REQUIRE_THROWS_WITH_AS(uci::parseSan(b, "0-0-0+?!"), "illegal san: '0-0-0+?!' in rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1", chess::uci::IllegalMoveException);
-        #endif
+#if defined(_DEBUG) && !defined(NDEBUG)
+        REQUIRE_THROWS_WITH_AS(uci::parseSan(b, "0-0-0+?!"),
+                               "illegal san: '0-0-0+?!' in rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1",
+                               chess::uci::IllegalMoveException);
+#endif
         REQUIRE(uci::parseSan(b, "0-0-0+?!", true) == m);
     }
 
@@ -887,16 +891,18 @@ TEST_SUITE("SAN Parser") {
         REQUIRE(uci::parseSan(b, "O-O+") == m);
     }
 }
-TEST_CASE("Reconstruction of Position from history entry"){{
-    Position p;
-    Position p2(p.state());
-    REQUIRE(p.fen()==p2.fen());}
+TEST_CASE("Reconstruction of Position from history entry") {
     {
-    _Position<PolyglotPiece> p;
-    Position p2(p.state());
-    _Position<PolyglotPiece> p3(p2.state());
-    REQUIRE(p.fen()==p3.fen());
-    REQUIRE(p.fen()==p2.fen());
+        Position p;
+        Position p2(p.state());
+        REQUIRE(p.fen() == p2.fen());
+    }
+    {
+        _Position<PolyglotPiece> p;
+        Position p2(p.state());
+        _Position<PolyglotPiece> p3(p2.state());
+        REQUIRE(p.fen() == p3.fen());
+        REQUIRE(p.fen() == p2.fen());
     }
 }
 int main(int argc, char **argv) {

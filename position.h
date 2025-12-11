@@ -130,18 +130,18 @@ enum class MoveGenType : uint16_t {
     NONE = 0,
 
     // piece selectors
-    PAWN   = 1 << 1,
+    PAWN = 1 << 1,
     KNIGHT = 1 << 2,
     BISHOP = 1 << 3,
-    ROOK   = 1 << 4,
-    QUEEN  = 1 << 5,
-    KING   = 1 << 6,
+    ROOK = 1 << 4,
+    QUEEN = 1 << 5,
+    KING = 1 << 6,
 
     PIECE_MASK = PAWN | KNIGHT | BISHOP | ROOK | QUEEN | KING,
 
     // move-type selectors
     CAPTURE = 1 << 7,
-    QUIET   = 1 << 8,
+    QUIET = 1 << 8,
 
     ALL = PIECE_MASK | CAPTURE | QUIET
 };
@@ -184,63 +184,60 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
   public:
     // Legal move generation functions
-template <MoveGenType type = MoveGenType::ALL, Color c>
-__FORCEINLINE void legals(Movelist &out) const {
+    template <MoveGenType type = MoveGenType::ALL, Color c> __FORCEINLINE void legals(Movelist &out) const {
 
-    constexpr uint16_t raw = static_cast<uint16_t>(type);
-    constexpr uint16_t pieceBits = raw & static_cast<uint16_t>(MoveGenType::PIECE_MASK);
-    constexpr uint16_t modeBits  = raw & (static_cast<uint16_t>(MoveGenType::CAPTURE) |
-                                          static_cast<uint16_t>(MoveGenType::QUIET));
+        constexpr uint16_t raw = static_cast<uint16_t>(type);
+        constexpr uint16_t pieceBits = raw & static_cast<uint16_t>(MoveGenType::PIECE_MASK);
+        constexpr uint16_t modeBits =
+            raw & (static_cast<uint16_t>(MoveGenType::CAPTURE) | static_cast<uint16_t>(MoveGenType::QUIET));
 
-    // ----------------------------------------
-    // Resolve default piece selection
-    // ----------------------------------------
-    constexpr uint16_t effectivePieces =
-        pieceBits ? pieceBits :
-        (raw == static_cast<uint16_t>(MoveGenType::NONE)
-            ? 0
-            : static_cast<uint16_t>(MoveGenType::PIECE_MASK));
+        // ----------------------------------------
+        // Resolve default piece selection
+        // ----------------------------------------
+        constexpr uint16_t effectivePieces =
+            pieceBits ? pieceBits
+                      : (raw == static_cast<uint16_t>(MoveGenType::NONE) ? 0 : static_cast<uint16_t>(MoveGenType::PIECE_MASK));
 
-    // ----------------------------------------
-    // Resolve default mode selection
-    // ----------------------------------------
-    constexpr bool includeCaps  = modeBits == 0 || (modeBits & static_cast<uint16_t>(MoveGenType::CAPTURE));
-    constexpr bool includeQuiet = modeBits == 0 || (modeBits & static_cast<uint16_t>(MoveGenType::QUIET));
-    constexpr bool captureOnly  = includeCaps && !includeQuiet;
+        // ----------------------------------------
+        // Resolve default mode selection
+        // ----------------------------------------
+        constexpr bool includeCaps = modeBits == 0 || (modeBits & static_cast<uint16_t>(MoveGenType::CAPTURE));
+        constexpr bool includeQuiet = modeBits == 0 || (modeBits & static_cast<uint16_t>(MoveGenType::QUIET));
+        constexpr bool captureOnly = includeCaps && !includeQuiet;
 
-    // Early-out for NONE
-    if constexpr (effectivePieces == 0 && modeBits != 0)
-        return;
+        // Early-out for NONE
+        if constexpr (effectivePieces == 0 && modeBits != 0)
+            return;
 
-    // Now your existing piece dispatch logic stays the same:
-    if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::PAWN)) {
-        movegen::genPawnSingleMoves<PieceC, c, captureOnly>(*this, out, _rook_pin, _bishop_pin, _check_mask);
-        if constexpr (includeQuiet)
-            movegen::genPawnDoubleMoves<PieceC, c>(*this, out, _pin_mask, _check_mask);
-        if constexpr (includeCaps)
-            movegen::genEP<PieceC, c>(*this, out);
+        // Now your existing piece dispatch logic stays the same:
+        if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::PAWN)) {
+            movegen::genPawnSingleMoves<PieceC, c, captureOnly>(*this, out, _rook_pin, _bishop_pin, _check_mask);
+            if constexpr (includeQuiet)
+                movegen::genPawnDoubleMoves<PieceC, c>(*this, out, _pin_mask, _check_mask);
+            if constexpr (includeCaps)
+                movegen::genEP<PieceC, c>(*this, out);
+        }
+
+        if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::KNIGHT)) {
+            movegen::genKnightMoves<PieceC, c, captureOnly>(*this, out, _pin_mask, _check_mask);
+        }
+
+        if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::KING)) {
+            movegen::genKingMoves<PieceC, c, captureOnly>(*this, out);
+        }
+
+        if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::BISHOP)) {
+            movegen::genSlidingMoves<PieceC, c, BISHOP, captureOnly>(*this, out, _rook_pin, _bishop_pin, _check_mask);
+        }
+
+        if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::ROOK)) {
+            movegen::genSlidingMoves<PieceC, c, ROOK, captureOnly>(*this, out, _rook_pin, _bishop_pin, _check_mask);
+        }
+
+        if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::QUEEN)) {
+            movegen::genSlidingMoves<PieceC, c, QUEEN, captureOnly>(*this, out, _rook_pin, _bishop_pin, _check_mask);
+        }
     }
-
-    if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::KNIGHT)) {
-        movegen::genKnightMoves<PieceC, c, captureOnly>(*this, out, _pin_mask, _check_mask);
-    }
-
-    if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::KING)) {
-        movegen::genKingMoves<PieceC, c, captureOnly>(*this, out);
-    }
-
-    if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::BISHOP)) {
-        movegen::genSlidingMoves<PieceC, c, BISHOP, captureOnly>(*this, out, _rook_pin, _bishop_pin, _check_mask);
-    }
-
-    if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::ROOK)) {
-        movegen::genSlidingMoves<PieceC, c, ROOK, captureOnly>(*this, out, _rook_pin, _bishop_pin, _check_mask);
-    }
-
-    if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::QUEEN)) {
-        movegen::genSlidingMoves<PieceC, c, QUEEN, captureOnly>(*this, out, _rook_pin, _bishop_pin, _check_mask);
-    }
-}
 
     // Legal move generation functions
     template <MoveGenType type = MoveGenType::ALL> __FORCEINLINE void legals(Movelist &out) const {
@@ -324,14 +321,12 @@ __FORCEINLINE void legals(Movelist &out) const {
             return current_state.pieces[pt];
         }
     }
-    template <typename... PTypes,
-            typename = std::enable_if_t<(std::is_same_v<PTypes, PieceType> && ...)>>
+    template <typename... PTypes, typename = std::enable_if_t<(std::is_same_v<PTypes, PieceType> && ...)>>
     [[nodiscard]] __FORCEINLINE Bitboard pieces(PTypes... ptypes) const {
         return (current_state.pieces[static_cast<int>(ptypes)] | ...);
     }
 
-    template <typename... PTypes,
-            typename = std::enable_if_t<(std::is_same_v<PTypes, PieceType> && ...)>>
+    template <typename... PTypes, typename = std::enable_if_t<(std::is_same_v<PTypes, PieceType> && ...)>>
     [[nodiscard]] __FORCEINLINE Bitboard pieces(Color c, PTypes... ptypes) const {
         return (pieces(ptypes, c) | ...);
     }

@@ -137,7 +137,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
                                                   relative_square(pos.side_to_move(), SQ_H1));
             if (std::find(moves.begin(), moves.end(), km) != moves.end())
                 return km;
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '"+san+"' in "+pos.fen()));
+            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));
             return Move::none();
         }
         if (san == "O-O-O" || san == "0-0-0" || san == "O-O-O+" || san == "0-0-0+" || san == "O-O-O#" || san == "0-0-0#") {
@@ -145,7 +145,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
                                                   relative_square(pos.side_to_move(), SQ_A1));
             if (std::find(moves.begin(), moves.end(), qm) != moves.end())
                 return qm;
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '"+san+"' in "+pos.fen()));
+            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));
             return Move::none();
         }
         // 2) Strip trailing annotations (+, #) that aren't required in the standard (except "e.p. "). Repeated occurrences too.
@@ -157,7 +157,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
                 break;
         }
         if (san.empty()) {
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '"+san+"' in "+pos.fen()));
+            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));
             return Move::none();
         }
 
@@ -170,7 +170,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
             if (penult == '=') {
                 promotion = parse_pt(last);
                 if (promotion == NO_PIECE_TYPE) {
-                    THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '"+_san+"' in "+pos.fen()));
+                    THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
                     return Move::none();
                 }
                 san.pop_back(); // remove piece letter
@@ -185,17 +185,17 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
 
         // 4) Destination square: always the last [file][rank]
         if (san.size() < 2)
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '"+_san+"' in "+pos.fen()));
+            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
         char dfile = san[san.size() - 2];
         char drank = san[san.size() - 1];
         if (!(dfile >= 'a' && dfile <= 'h' && drank >= '1' && drank <= '8')) {
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '"+_san+"' in "+pos.fen()));
+            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
             return Move::none();
         }
         std::string dest_sq_str = san.substr(san.size() - 2, 2);
         Square to_square = parse_square(dest_sq_str);
         if (to_square == SQ_NONE) {
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '"+_san+"' in "+pos.fen()));
+            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
             return Move::none();
         }
         san.resize(san.size() - 2); // chop off destination
@@ -222,7 +222,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
                 std::string src_sq_str = prefix.substr(prefix.size() - 2, 2);
                 src_square = parse_square(src_sq_str);
                 if (src_square == SQ_NONE)
-                    THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '"+_san+"' in "+pos.fen()));
+                    THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
                 prefix.resize(prefix.size() - 2);
                 has_src_square = true;
             }
@@ -253,7 +253,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
                 dis_rank = c - '1';
             else {
                 // unexpected char in prefix
-                THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '"+_san+"' in "+pos.fen()));
+                THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
                 return Move::none();
             }
         }
@@ -313,8 +313,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
 
             // Everything matches -> accept candidate
             if (found) {
-                THROW_IF_EXCEPTIONS_ON(
-                    AmbiguousMoveException("ambiguous san: '" + _san + "' in " + pos.fen()));
+                THROW_IF_EXCEPTIONS_ON(AmbiguousMoveException("ambiguous san: '" + _san + "' in " + pos.fen()));
                 return Move::none();
             }
             matched = m;
@@ -332,12 +331,12 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
     if (remove_illegals) {
         std::string trimmed_san(raw_san);
         while (!trimmed_san.empty()) {
-            try{
+            try {
                 Move attempt = do_parse(trimmed_san);
                 if (attempt.is_ok())
                     return attempt;
+            } catch (...) {
             }
-            catch(...){}
             trimmed_san.pop_back();
         }
         THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + std::string(raw_san) + "' in " + pos.fen()));

@@ -403,23 +403,23 @@ template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen() c
                 emptyCount++;
             } else {
                 if (emptyCount > 0) {
-                    ss<< std::to_string(emptyCount);
+                    ss << std::to_string(emptyCount);
                     emptyCount = 0;
                 }
-                ss<< piece;
+                ss << piece;
             }
         }
         if (emptyCount > 0)
-            ss<< std::to_string(emptyCount);
+            ss << std::to_string(emptyCount);
         if (rank > 0)
-            ss<< '/';
+            ss << '/';
     }
 
     // 2) Side to move
-    ss<< ' ' << (sideToMove() == WHITE ? 'w' : 'b');
+    ss << ' ' << (sideToMove() == WHITE ? 'w' : 'b');
 
     // 3) Castling availability
-    ss<< ' ';
+    ss << ' ';
     std::string castlingStr;
     if (castlingRights() & WHITE_OO)
         castlingStr += 'K';
@@ -429,18 +429,18 @@ template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen() c
         castlingStr += 'k';
     if (castlingRights() & BLACK_OOO)
         castlingStr += 'q';
-    ss<<(castlingStr.empty() ? "-" : castlingStr);
+    ss << (castlingStr.empty() ? "-" : castlingStr);
 
     // 4) En passant target square or '-'
-    ss<< ' ';
+    ss << ' ';
     Square ep = ep_square();
-    ss<< (ep == SQ_NONE ? "-" : uci::squareToString(ep));
+    ss << (ep == SQ_NONE ? "-" : uci::squareToString(ep));
 
     // 5) Halfmove clock
-    ss<< ' ' <<(int)halfmoveClock();
+    ss << ' ' << (int)halfmoveClock();
 
     // 6) Fullmove number
-    ss<< ' ' <<(int)fullmoveNumber();
+    ss << ' ' << (int)fullmoveNumber();
 
     return ss.str();
 }
@@ -513,20 +513,20 @@ template <typename PieceC, typename T> template <bool Strict> bool _Position<Pie
     return false;
 }
 template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesCheck(Move m) const {
-    const static auto getSniper = [](const _Position<PieceC>* p, Square ksq, Bitboard oc) {
+    const static auto getSniper = [](const _Position<PieceC> *p, Square ksq, Bitboard oc) {
         const auto us_occ = p->us(p->sideToMove());
         const auto bishop = attacks::bishop(ksq, oc) & p->pieces(PieceType::BISHOP, PieceType::QUEEN) & us_occ;
-        const auto rook   = attacks::rook(ksq, oc) & p->pieces(PieceType::ROOK, PieceType::QUEEN) & us_occ;
+        const auto rook = attacks::rook(ksq, oc) & p->pieces(PieceType::ROOK, PieceType::QUEEN) & us_occ;
         return (bishop | rook);
     };
 
     assert(color_of(at(m.from())) == sideToMove());
 
-    const Square from   = m.from();
-    const Square to     = m.to();
-    const Square ksq    = kingSq(~sideToMove());
-    const Bitboard toBB = 1ULL<<(to);
-    const PieceType pt  = piece_of(at(from));
+    const Square from = m.from();
+    const Square to = m.to();
+    const Square ksq = kingSq(~sideToMove());
+    const Bitboard toBB = 1ULL << (to);
+    const PieceType pt = piece_of(at(from));
 
     Bitboard fromKing = 0ull;
 
@@ -542,11 +542,12 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
         fromKing = attacks::queen(ksq, occ());
     }
 
-    if (fromKing & toBB) return CheckType::DIRECT_CHECK;
+    if (fromKing & toBB)
+        return CheckType::DIRECT_CHECK;
 
     // Discovery check
-    const Bitboard fromBB = 1ULL<<(from);
-    const Bitboard oc     = occ() ^ fromBB;
+    const Bitboard fromBB = 1ULL << (from);
+    const Bitboard oc = occ() ^ fromBB;
 
     Bitboard sniper = getSniper(this, ksq, oc);
 
@@ -557,47 +558,45 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
     }
 
     switch (m.typeOf()) {
-        case Move::NORMAL:
-            return CheckType::NO_CHECK;
+    case Move::NORMAL:
+        return CheckType::NO_CHECK;
 
-        case Move::PROMOTION: {
-            Bitboard attacks = 0ull;
+    case Move::PROMOTION: {
+        Bitboard attacks = 0ull;
 
-            switch (m.promotionType()) {
-                case KNIGHT:
-                    attacks = attacks::knight(to);
-                    break;
-                case BISHOP:
-                    attacks = attacks::bishop(to, oc);
-                    break;
-                case ROOK:
-                    attacks = attacks::rook(to, oc);
-                    break;
-                case QUEEN:
-                    attacks = attacks::queen(to, oc);
-                    break;
-                default:
-                    break;
-            }
-
-            return (attacks & pieces(PieceType::KING, ~sideToMove())) ? CheckType::DIRECT_CHECK : CheckType::NO_CHECK;
+        switch (m.promotionType()) {
+        case KNIGHT:
+            attacks = attacks::knight(to);
+            break;
+        case BISHOP:
+            attacks = attacks::bishop(to, oc);
+            break;
+        case ROOK:
+            attacks = attacks::rook(to, oc);
+            break;
+        case QUEEN:
+            attacks = attacks::queen(to, oc);
+            break;
+        default:
+            break;
         }
 
-        case Move::ENPASSANT: {
-            Square capSq=make_sq(file_of(to), rank_of(from));
-            return (getSniper(this, ksq, (oc ^ (1ULL<<capSq)) | toBB)) ? CheckType::DISCOVERY_CHECK
-                                                                                     : CheckType::NO_CHECK;
-        }
+        return (attacks & pieces(PieceType::KING, ~sideToMove())) ? CheckType::DIRECT_CHECK : CheckType::NO_CHECK;
+    }
 
-        case Move::CASTLING: {
-            Square rookTo = relative_square(side_to_move(), to > from ? SQ_F1 : SQ_D1);
-            return (attacks::rook(ksq, occ()) & (1ULL<<rookTo)) ? CheckType::DISCOVERY_CHECK
-                                                                              : CheckType::NO_CHECK;
-        }
+    case Move::ENPASSANT: {
+        Square capSq = make_sq(file_of(to), rank_of(from));
+        return (getSniper(this, ksq, (oc ^ (1ULL << capSq)) | toBB)) ? CheckType::DISCOVERY_CHECK : CheckType::NO_CHECK;
+    }
+
+    case Move::CASTLING: {
+        Square rookTo = relative_square(side_to_move(), to > from ? SQ_F1 : SQ_D1);
+        return (attacks::rook(ksq, occ()) & (1ULL << rookTo)) ? CheckType::DISCOVERY_CHECK : CheckType::NO_CHECK;
+    }
     }
 
     assert(false);
-    return CheckType::NO_CHECK;  // Prevent a compiler warning
+    return CheckType::NO_CHECK; // Prevent a compiler warning
 }
 template <typename PieceC, typename T> void _Position<PieceC, T>::refresh_attacks() {
     Color c = sideToMove();
