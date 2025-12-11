@@ -37,7 +37,7 @@ Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
     return moveList;
 }
 
-template <int offset> Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
+template <Direction offset> Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
     const auto *table = reinterpret_cast<const __m512i *>(SPLAT_PAWN_TABLE<offset>.data.data());
     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0), _mm512_load_si512(table + 0));
     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), _mm512_load_si512(table + 1));
