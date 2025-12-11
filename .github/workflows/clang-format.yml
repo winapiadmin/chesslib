@@ -1,6 +1,30 @@
-name: clang-format check
+name: clang-format
 
-uses: jidicula/clang-format-action@v4.16.0
 on:
   pull_request:
     branches: [ "main" ]
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required to push back into PR
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run clang-format
+        run: |
+          clang-format -i $(git ls-files '*.cpp' '*.hpp' '*.h' '*.c')
+
+      - name: Commit and push changes
+        run: |
+          if ! git diff --quiet; then
+            git config user.email "actions@github.com"
+            git.config user.name "GitHub Actions"
+            git add .
+            git commit -m "Apply clang-format"
+            git push
+          fi

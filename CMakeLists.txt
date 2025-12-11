@@ -56,6 +56,12 @@ FetchContent_MakeAvailable(doctest)
 add_executable(test_chess
     tests.cpp
 )
+add_executable(NonImportantTests
+    non_core_tests.cpp
+)
 target_link_libraries(test_chess PRIVATE chesslib)
 target_include_directories(test_chess PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${doctest_SOURCE_DIR})
-add_test(NAME tests COMMAND test_chess)
+target_link_libraries(NonImportantTests PRIVATE chesslib)
+target_include_directories(NonImportantTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${doctest_SOURCE_DIR})
+add_test(NAME test_core COMMAND test_chess)
+add_test(NAME api_tests COMMAND NonImportantTests)

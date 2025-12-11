@@ -1,9 +1,9 @@
 #pragma once
 
+#include "fwd_decl.h"
 #include <cassert>
 #include <cstdint>
 #include <string>
-#include "fwd_decl.h"
 #if defined(_MSC_VER)
 #define UNREACHABLE() __assume(false)
 #elif defined(__clang__) || defined(__GNUC__)
@@ -23,17 +23,17 @@
 #elif __GNUC__ >= 13
 #define ASSUME(cond) __attribute__((assume(cond)))
 #else
-#define ASSUME(cond)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
-    do {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-        if (!(cond))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
-            UNREACHABLE();                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             \
+#define ASSUME(cond)                                                                                                           \
+    do {                                                                                                                       \
+        if (!(cond))                                                                                                           \
+            UNREACHABLE();                                                                                                     \
     } while (0)
 #endif
 #else
-#define ASSUME(cond)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
-    do {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               \
-        if (!(cond))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   \
-            UNREACHABLE();                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             \
+#define ASSUME(cond)                                                                                                           \
+    do {                                                                                                                       \
+        if (!(cond))                                                                                                           \
+            UNREACHABLE();                                                                                                     \
     } while (0)
 #endif
 
@@ -132,18 +132,18 @@ inline constexpr Direction relative_direction(Color c, Direction d) { return sta
 
 inline constexpr Direction pawn_push(Color c) { return c == WHITE ? NORTH : SOUTH; }
 
-#define ENABLE_INCR_OPERATORS_ON(T)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    \
-    constexpr T &operator++(T &d) { return d = T(int(d) + 1); }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        \
-    constexpr T &operator--(T &d) { return d = T(int(d) - 1); }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        \
-    constexpr T operator++(T &d, int) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                \
-        T old = d;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     \
-        ++d;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
-        return old;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    \
-    }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  \
-    constexpr T operator--(T &d, int) {                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                \
-        T old = d;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     \
-        --d;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           \
-        return old;                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    \
+#define ENABLE_INCR_OPERATORS_ON(T)                                                                                            \
+    constexpr T &operator++(T &d) { return d = T(int(d) + 1); }                                                                \
+    constexpr T &operator--(T &d) { return d = T(int(d) - 1); }                                                                \
+    constexpr T operator++(T &d, int) {                                                                                        \
+        T old = d;                                                                                                             \
+        ++d;                                                                                                                   \
+        return old;                                                                                                            \
+    }                                                                                                                          \
+    constexpr T operator--(T &d, int) {                                                                                        \
+        T old = d;                                                                                                             \
+        --d;                                                                                                                   \
+        return old;                                                                                                            \
     }
 
 ENABLE_INCR_OPERATORS_ON(PieceType)
@@ -162,10 +162,55 @@ constexpr Square operator-(Square s, Direction d) { return Square(int(s) - int(d
 constexpr Square &operator+=(Square &s, Direction d) { return s = s + d; }
 constexpr Square &operator-=(Square &s, Direction d) { return s = s - d; }
 // specifically for Polyglot (a.k.a zobrist hashing but use proper hash)
-enum class PolyglotPiece : uint8_t { WPAWN = 1, WKNIGHT = 3, WBISHOP = 5, WROOK = 7, WQUEEN = 9, WKING = 11, BPAWN = 0, BKNIGHT = 2, BBISHOP = 4, BROOK = 6, BQUEEN = 8, BKING = 10, NO_PIECE = 12, PIECE_NB = 12 };
+enum class PolyglotPiece : uint8_t {
+    WPAWN = 1,
+    WKNIGHT = 3,
+    WBISHOP = 5,
+    WROOK = 7,
+    WQUEEN = 9,
+    WKING = 11,
+    BPAWN = 0,
+    BKNIGHT = 2,
+    BBISHOP = 4,
+    BROOK = 6,
+    BQUEEN = 8,
+    BKING = 10,
+    NO_PIECE = 12,
+    PIECE_NB = 12
+};
 // Normal board, you can use ANY! (but comfortable for certain chess engines such as Stockfish)
-enum class EnginePiece : uint8_t { NO_PIECE, WPAWN = PAWN + 0, WKNIGHT, WBISHOP, WROOK, WQUEEN, WKING, BPAWN = PAWN + 8, BKNIGHT, BBISHOP, BROOK, BQUEEN, BKING, PIECE_NB = 16 };
-enum class ContiguousMappingPiece : uint8_t { WPAWN = 0, WKNIGHT = 1, WBISHOP = 2, WROOK = 3, WQUEEN = 4, WKING = 5, BPAWN = 6, BKNIGHT = 7, BBISHOP = 8, BROOK = 9, BQUEEN = 10, BKING = 11, NO_PIECE = 12, PIECE_NB = 12 };
+enum class EnginePiece : uint8_t {
+    NO_PIECE,
+    WPAWN = PAWN + 0,
+    WKNIGHT,
+    WBISHOP,
+    WROOK,
+    WQUEEN,
+    WKING,
+    BPAWN = PAWN + 8,
+    BKNIGHT,
+    BBISHOP,
+    BROOK,
+    BQUEEN,
+    BKING,
+    PIECE_NB = 16
+};
+enum class ContiguousMappingPiece : uint8_t {
+    WPAWN = 0,
+    WKNIGHT = 1,
+    WBISHOP = 2,
+    WROOK = 3,
+    WQUEEN = 4,
+    WKING = 5,
+    BPAWN = 6,
+    BKNIGHT = 7,
+    BBISHOP = 8,
+    BROOK = 9,
+    BQUEEN = 10,
+    BKING = 11,
+    NO_PIECE = 12,
+    PIECE_NB = 12
+};
 template <typename T> constexpr size_t enum_idx() {
     if constexpr (std::is_same_v<T, PolyglotPiece>)
         return 0;
@@ -176,16 +221,35 @@ template <typename T> constexpr size_t enum_idx() {
     return -1;
 }
 // clang-format on
-constexpr PieceType piece_of(PolyglotPiece p) { return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>(static_cast<int>(p) / 2 + 1); }
-constexpr PieceType piece_of(EnginePiece p) { return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>((static_cast<int>(p) - 1) % 8 + 1); }
-constexpr PieceType piece_of(ContiguousMappingPiece p) { return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>(static_cast<int>(p) % 6 + 1); }
+constexpr PieceType piece_of(PolyglotPiece p) {
+    return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>(static_cast<int>(p) / 2 + 1);
+}
+constexpr PieceType piece_of(EnginePiece p) {
+    return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>((static_cast<int>(p) - 1) % 8 + 1);
+}
+constexpr PieceType piece_of(ContiguousMappingPiece p) {
+    return p == decltype(p)::NO_PIECE ? NO_PIECE_TYPE : static_cast<PieceType>(static_cast<int>(p) % 6 + 1);
+}
 constexpr Color color_of(PolyglotPiece pt) { return static_cast<Color>((static_cast<int>(pt) + 1) % 2); }
-constexpr Color color_of(EnginePiece pt) { return static_cast<Color>(static_cast<int>(pt) / static_cast<int>(EnginePiece::BPAWN)); }
+constexpr Color color_of(EnginePiece pt) {
+    return static_cast<Color>(static_cast<int>(pt) / static_cast<int>(EnginePiece::BPAWN));
+}
 constexpr Color color_of(ContiguousMappingPiece pt) { return static_cast<Color>(static_cast<uint8_t>(pt) / 6); }
-template <typename T, std::enable_if_t<std::is_same_v<T, EnginePiece>, bool> = 0> constexpr EnginePiece make_piece(PieceType pt, Color c) { return static_cast<EnginePiece>((c << 3) + pt); }
-template <typename T, std::enable_if_t<std::is_same_v<T, PolyglotPiece>, bool> = 0> constexpr PolyglotPiece make_piece(PieceType pt, Color c) { return static_cast<PolyglotPiece>(~c + 2 * (pt - 1)); }
-template <typename T, std::enable_if_t<std::is_same_v<T, ContiguousMappingPiece>, bool> = 0> constexpr ContiguousMappingPiece make_piece(PieceType pt, Color c) { return static_cast<ContiguousMappingPiece>((static_cast<uint8_t>(pt) - 1) + 6 * static_cast<uint8_t>(c)); }
-template <typename T, typename = std::enable_if_t<is_piece_enum<T>::value>> constexpr PieceType type_of(T p) { return piece_of(p); }
+template <typename T, std::enable_if_t<std::is_same_v<T, EnginePiece>, bool> = 0>
+constexpr EnginePiece make_piece(PieceType pt, Color c) {
+    return static_cast<EnginePiece>((c << 3) + pt);
+}
+template <typename T, std::enable_if_t<std::is_same_v<T, PolyglotPiece>, bool> = 0>
+constexpr PolyglotPiece make_piece(PieceType pt, Color c) {
+    return static_cast<PolyglotPiece>(~c + 2 * (pt - 1));
+}
+template <typename T, std::enable_if_t<std::is_same_v<T, ContiguousMappingPiece>, bool> = 0>
+constexpr ContiguousMappingPiece make_piece(PieceType pt, Color c) {
+    return static_cast<ContiguousMappingPiece>((static_cast<uint8_t>(pt) - 1) + 6 * static_cast<uint8_t>(c));
+}
+template <typename T, typename = std::enable_if_t<is_piece_enum<T>::value>> constexpr PieceType type_of(T p) {
+    return piece_of(p);
+}
 
 enum CastlingRights : int8_t {
     NO_CASTLING,
@@ -202,21 +266,27 @@ enum CastlingRights : int8_t {
 
     CASTLING_RIGHT_NB = 16
 };
-constexpr CastlingRights operator&(Color c, CastlingRights cr) { return CastlingRights((c == WHITE ? WHITE_CASTLING : BLACK_CASTLING) & cr); }
+constexpr CastlingRights operator&(Color c, CastlingRights cr) {
+    return CastlingRights((c == WHITE ? WHITE_CASTLING : BLACK_CASTLING) & cr);
+}
 // Bitwise OR assignment operator
 inline CastlingRights &operator|=(CastlingRights &a, CastlingRights b) {
     a = static_cast<CastlingRights>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
     return a;
 }
 // Bitwise OR assignment operator
-inline CastlingRights operator|(CastlingRights a, CastlingRights b) { return static_cast<CastlingRights>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b)); }
+inline CastlingRights operator|(CastlingRights a, CastlingRights b) {
+    return static_cast<CastlingRights>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
+}
 
 // Bitwise OR assignment operator
 inline CastlingRights &operator&=(CastlingRights &a, CastlingRights b) {
     a = static_cast<CastlingRights>(static_cast<uint8_t>(a) & static_cast<uint8_t>(b));
     return a;
 }
-inline CastlingRights operator~(CastlingRights a) { return static_cast<CastlingRights>(static_cast<uint8_t>(a) ^ ANY_CASTLING); }
+inline CastlingRights operator~(CastlingRights a) {
+    return static_cast<CastlingRights>(static_cast<uint8_t>(a) ^ ANY_CASTLING);
+}
 
 enum MoveType : uint16_t { NORMAL, PROMOTION = 1 << 14, EN_PASSANT = 2 << 14, CASTLING = 3 << 14 };
 // A move needs 16 bits to be stored
@@ -237,7 +307,10 @@ class Move {
 
     constexpr Move(Square from, Square to) : data((static_cast<uint16_t>(from) << 6) | static_cast<int>(to)) {}
 
-    template <MoveType T = NORMAL> static constexpr Move make(Square from, Square to, PieceType pt = PieceType::KNIGHT) { return Move(static_cast<int>(T) | static_cast<int>((static_cast<int>(pt) - static_cast<int>(PieceType::KNIGHT)) << 12) | (static_cast<int>(from) << 6) | static_cast<int>(to)); }
+    template <MoveType T = NORMAL> static constexpr Move make(Square from, Square to, PieceType pt = PieceType::KNIGHT) {
+        return Move(static_cast<int>(T) | static_cast<int>((static_cast<int>(pt) - static_cast<int>(PieceType::KNIGHT)) << 12) |
+                    (static_cast<int>(from) << 6) | static_cast<int>(to));
+    }
 
     constexpr Square from_sq() const {
         assert(is_ok());
@@ -256,7 +329,9 @@ class Move {
     constexpr MoveType type_of() const { return MoveType(data & (3 << 14)); }
     constexpr MoveType typeOf() const { return type_of(); }
 
-    constexpr PieceType promotion_type() const { return static_cast<PieceType>(((data >> 12) & 3) + static_cast<int>(PieceType::KNIGHT)); }
+    constexpr PieceType promotion_type() const {
+        return static_cast<PieceType>(((data >> 12) & 3) + static_cast<int>(PieceType::KNIGHT));
+    }
     constexpr PieceType promotionType() const { return promotion_type(); }
     constexpr bool is_ok() const { return none().data != data && null().data != data; }
 
@@ -334,12 +409,26 @@ template <typename T, std::size_t MaxSize> class ValueList {
 };
 
 using Movelist = ValueList<Move, 256>;
-constexpr int square_distance(Square a, Square b) { return std::max(std::abs(file_of(a) - file_of(b)), std::abs(rank_of(a) - rank_of(b))); }
-constexpr Square parse_square(std::string_view sv) { return make_sq(File(sv[0] - 'a'), Rank(sv[1] - '1')); }
+constexpr int square_distance(Square a, Square b) {
+    return std::max(std::abs(file_of(a) - file_of(b)), std::abs(rank_of(a) - rank_of(b)));
+}
+constexpr Square parse_square(std::string_view sv) {
+    if (sv.size() < 2)
+        return SQ_NONE;
+
+    char f = sv[0];
+    char r = sv[1];
+
+    if (f < 'a' || f > 'h' || r < '1' || r > '8')
+        return SQ_NONE;
+
+    return make_sq(File(f - 'a'), Rank(r - '1'));
+}
+
 constexpr PieceType parse_pt(unsigned char c) {
     const char a[] = "pnbrqk";
     int p = -1;
-    (c >='A' && c<='Z') ? (c += 32) : (c); // tolower
+    (c >= 'A' && c <= 'Z') ? (c += 32) : (c); // tolower
     for (size_t i = 0; i < sizeof(a); i++) {
         if (c == a[i])
             p = i;
@@ -348,5 +437,3 @@ constexpr PieceType parse_pt(unsigned char c) {
 }
 
 } // namespace chess
-
-
