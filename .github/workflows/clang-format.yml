@@ -2,5 +2,7 @@ name: clang-format check
 
 uses: jidicula/clang-format-action@v4.16.0
 on:
+  push:
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]

@@ -5,7 +5,7 @@
 #include <iostream>
 #include <regex>
 #include <string_view>
-#if defined(__EXCEPTIONS) && defined(_DEBUG)
+#if defined(__EXCEPTIONS)
 #define THROW_IF_EXCEPTIONS_ON(stuff) throw stuff
 #else
 #define THROW_IF_EXCEPTIONS_ON(stuff) ((void)0)

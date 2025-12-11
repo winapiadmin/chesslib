@@ -9,7 +9,7 @@
 #define _POSSIBLY_CONSTEXPR const
 #endif
 
-#if defined(__EXCEPTIONS) && defined(_DEBUG)
+#if defined(__EXCEPTIONS)
 #define THROW_IF_EXCEPTIONS_ON(stuff) throw stuff
 #else
 #define THROW_IF_EXCEPTIONS_ON(stuff) ((void)0)
@@ -63,16 +63,8 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
         PieceC::NO_PIECE;
     current_state.mv = move; // Update the move in the current state
 #if defined(_DEBUG) || !defined(NDEBUG)
-    if (target_piecetype == KING)
-        assert(target_piecetype != KING && "No captures");
-    if (moving_piecetype == NO_PIECE_TYPE)
-        assert(moving_piecetype != NO_PIECE_TYPE && "Expected a piece to move.");
-#elif defined(__EXCEPTIONS) && (defined(_DEBUG) || !defined(NDEBUG))
-
-    if (target_piecetype == KING)
-        THROW_IF_EXCEPTIONS_ON(std::invalid_argument("No captures to king exists."));
-    if (moving_piecetype == NO_PIECE_TYPE)
-        THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Expected a piece to move."));
+    assert(target_piecetype != KING && "No captures");
+    assert(moving_piecetype != NO_PIECE_TYPE && "Expected a piece to move.");
 #endif
     removePiece(moving_piecetype, from_sq, us);
     {
