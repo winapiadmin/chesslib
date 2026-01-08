@@ -722,7 +722,7 @@ namespace attacks{
  * @param square
  * @return
  */
-template <typename T, typename = std::enable_if_t<is_piece_enum<PieceC>::value>>
+template <typename T, typename = std::enable_if_t<is_piece_enum<T>::value>>
 [[nodiscard]] __FORCEINLINE Bitboard attackers(const _Position<T> &board, Color color, Square square) noexcept {
     return board.attackers(color, square);
 }
@@ -731,9 +731,3 @@ template <typename T, typename = std::enable_if_t<is_piece_enum<PieceC>::value>>
 using Position = _Position<EnginePiece>;
 using Board = _Position<EnginePiece>;
 }; // namespace chess
-
-
-
-
-
-
