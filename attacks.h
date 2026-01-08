@@ -272,15 +272,6 @@ template <Color c> [[nodiscard]] constexpr Bitboard pawn(const Bitboard pawns) {
 [[nodiscard]] constexpr Bitboard king(Square sq) { return KingAttacks[(int)sq]; }
 
 /**
- * @brief Returns the attacks for a given piece on a given square
- * @param board
- * @param color
- * @param square
- * @return
- */
-
-[[nodiscard]] Bitboard attackers(const _Position<T> &board, Color color, Square square) noexcept;
-/**
  * @brief Returns the slider attacks for a given square
  * @param sq
  * @param occupied
@@ -300,3 +291,4 @@ template <PieceType pt> [[nodiscard]] constexpr Bitboard slider(Square sq, Bitbo
 
 
 } // namespace chess::attacks
+
