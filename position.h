@@ -158,9 +158,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     // Move history stack
     HeapAllocatedValueList<HistoryEntry<PieceC>, 6144>
-        history; // ahh, but i hope it fulfils before I manages to find the absolute limit of a game
-    // Move generation functions, but INTERNAL. (they're kind of long so i put them into a source
-    // file) Pawns (fully extensively tested)
+        history;
     Bitboard _rook_pin;
     Bitboard _bishop_pin;
     Bitboard _checkers;
@@ -180,11 +178,11 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE
     };
     // Castling path, [color][king_side]
-static constexpr std::array<std::array<Bitboard, 2>, 2> castling_path =
-{{
-    {{ 0xc, 0x60 }},
-    {{ 0xc00000000000000ULL, 0x6000000000000000ULL }}
-}};
+    static constexpr std::array<std::array<Bitboard, 2>, 2> castling_path =
+    {{
+        {{ 0xe, 0x60 }},
+        {{ 0xe00000000000000ULL, 0x6000000000000000ULL }}
+    }};
 
   public:
     // Legal move generation functions
@@ -731,5 +729,6 @@ template <typename T, typename = std::enable_if_t<is_piece_enum<T>::value>>
 using Position = _Position<EnginePiece>;
 using Board = _Position<EnginePiece>;
 }; // namespace chess
+
 
 
