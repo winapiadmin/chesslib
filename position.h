@@ -19,13 +19,11 @@ template <typename Piece> struct alignas(64) HistoryEntry {
     Color turn; // true if white to move
     Move mv;
     Key hash;
-    struct {
-        uint8_t halfMoveClock;   // Half-move clock for 50/75-move rule
-        uint16_t fullMoveNumber; // Full-move number (starts at 1)
-        bool epIncluded;
-        int8_t repetition = 0;
-        uint8_t pliesFromNull = 0;
-    };
+    uint8_t halfMoveClock;   // Half-move clock for 50/75-move rule
+    uint16_t fullMoveNumber; // Full-move number (starts at 1)
+    bool epIncluded;
+    int8_t repetition = 0;
+    uint8_t pliesFromNull = 0;
     Square enPassant = SQ_NONE; // En passant target square
     Square kings[COLOR_NB] = { SQ_NONE };
     CastlingRights castlingRights; // Castling rights bitmask
@@ -448,6 +446,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     }
     __FORCEINLINE Bitboard occ() const { return current_state.occ[0] | current_state.occ[1]; }
     PieceC piece_on(Square s) const {
+        assert(is_valid(s));
 #if !defined(_DEBUG) || defined(NDEBUG)
         return pieces_list[s];
 #else
@@ -470,8 +469,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         assert(p == _p2 && "Inconsistient piece map");
 #else
         if (p != _p2)
-            // throw std::invalid_argument("Inconsistient piece map");
-            exit(-1);
+            throw std::invalid_argument("Inconsistient piece map");
 #endif
         return p;
 #endif
@@ -504,7 +502,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     __FORCEINLINE const HistoryEntry<PieceC> &state() const { return current_state; }
     uint64_t zobrist() const;
     __FORCEINLINE PieceC piece_at(Square sq) const { return piece_on(sq); }
-    __FORCEINLINE PieceC at(Square sq) const { return piece_at(sq); }
+    template <typename T = PieceC>
+    __FORCEINLINE PieceC at(Square sq) const {
+        assert(is_valid(sq));
+        if constexpr (std::is_same_v<T, PieceType>) return piece_of(piece_at(sq));
+        else return piece_at(sq);
+    }
     __FORCEINLINE Square enpassantSq() const { return ep_square(); }
     CastlingRights clean_castling_rights() const;
     void setFEN(const std::string &str);
@@ -524,6 +527,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     __FORCEINLINE bool is_insufficient_material() const {
         return has_insufficient_material(WHITE) && has_insufficient_material(BLACK);
     }
+    __FORCEINLINE bool isInsufficientMaterial() const { return is_insufficient_material(); }
+    __FORCEINLINE bool hasNonPawnMaterial(Color c) const { return count<KNIGHT>(c)!=0 || count<BISHOP>(c)!=0 || count<ROOK>(c)!=0 || count<QUEEN>(c)!=0; }
     __FORCEINLINE bool inCheck() const { return checkers() != 0; }
     __FORCEINLINE bool is_check() const { return checkers() != 0; }
     __FORCEINLINE bool has_castling_rights(Color c) const { return castlingRights(c) != 0; }
@@ -701,4 +706,5 @@ namespace attacks{
 using Position = _Position<EnginePiece>;
 using Board = _Position<EnginePiece>;
 }; // namespace chess
+
 
