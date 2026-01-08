@@ -1,4 +1,5 @@
 #pragma once
+#include "fwd_decl.h"
 #include "bitboard.h"
 #include "types.h"
 #include <array>
@@ -271,6 +272,15 @@ template <Color c> [[nodiscard]] constexpr Bitboard pawn(const Bitboard pawns) {
 [[nodiscard]] constexpr Bitboard king(Square sq) { return KingAttacks[(int)sq]; }
 
 /**
+ * @brief Returns the attacks for a given piece on a given square
+ * @param board
+ * @param color
+ * @param square
+ * @return
+ */
+
+[[nodiscard]] Bitboard attackers(const _Position<T> &board, Color color, Square square) noexcept;
+/**
  * @brief Returns the slider attacks for a given square
  * @param sq
  * @param occupied
@@ -287,5 +297,6 @@ template <PieceType pt> [[nodiscard]] constexpr Bitboard slider(Square sq, Bitbo
     if constexpr (pt == PieceType::QUEEN)
         return queen(sq, occupied);
 }
+
 
 } // namespace chess::attacks
