@@ -182,8 +182,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     // Castling path, [color][king_side]
 static constexpr std::array<std::array<Bitboard, 2>, 2> castling_path =
 {{
-    {{ 0xe, 0x60 }},
-    {{ 0xe00000000000000, 0x6000000000000000 }}
+    {{ 0xc, 0x60 }},
+    {{ 0xc00000000000000ULL, 0x6000000000000000ULL }}
 }};
 
   public:
@@ -731,4 +731,5 @@ template <typename T, typename = std::enable_if_t<is_piece_enum<T>::value>>
 using Position = _Position<EnginePiece>;
 using Board = _Position<EnginePiece>;
 }; // namespace chess
+
 
