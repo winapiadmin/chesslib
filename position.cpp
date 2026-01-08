@@ -101,8 +101,8 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
         case CASTLING: {
             removePiece(target_piecetype, to_sq, target_color);
             bool is_king_side = from_sq < to_sq;
-            Square rook_dest = relative_square(us, is_king_side ? SQ_F1 : Square::SQ_D1),
-                   king_dest = relative_square(us, is_king_side ? SQ_G1 : Square::SQ_C1);
+            Square rook_dest = castling_rook_square(us, is_king_side),
+                   king_dest = castling_king_square(us, is_king_side);
             placePiece<ROOK>(rook_dest, us);
             placePiece<KING>(king_dest, us);
             current_state.incr_sqs[0] = from_sq;
@@ -787,4 +787,5 @@ INSTANTIATE(EnginePiece)
 INSTANTIATE(ContiguousMappingPiece)
 #undef INSTANTIATE
 } // namespace chess
+
 
