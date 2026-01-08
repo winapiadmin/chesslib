@@ -123,13 +123,14 @@ enum Direction : int8_t {
 };
 // clang-format on
 inline constexpr Square relative_square(Color c, Square s) { return Square(s ^ (c * 56)); }
+inline constexpr Square castling_king_square(Color c, bool is_king_side) { return relative_square(c, is_king_side ? SQ_F1 : Square::SQ_D1); }
+inline constexpr Square castling_rook_square(Color c, bool is_king_side) { return relative_square(c, is_king_side ? SQ_G1 : Square::SQ_C1); }
 
 inline constexpr Rank relative_rank(Color c, Rank r) { return Rank(r ^ (c * 7)); }
 
 inline constexpr Rank relative_rank(Color c, Square s) { return relative_rank(c, rank_of(s)); }
 
 inline constexpr Direction relative_direction(Color c, Direction d) { return static_cast<Direction>(c == WHITE ? d : -d); }
-
 inline constexpr Direction pawn_push(Color c) { return c == WHITE ? NORTH : SOUTH; }
 
 #define ENABLE_INCR_OPERATORS_ON(T)                                                                                            \
@@ -437,3 +438,4 @@ constexpr PieceType parse_pt(unsigned char c) {
 }
 
 } // namespace chess
+
