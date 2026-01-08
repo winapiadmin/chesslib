@@ -180,7 +180,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE
     };
     // Castling path, [color][king_side]
-constexpr std::array<std::array<Bitboard, 2>, 2> castling_path =
+static constexpr std::array<std::array<Bitboard, 2>, 2> castling_path =
 {{
     {{ 0xe, 0x60 }},
     {{ 0xe00000000000000, 0x6000000000000000 }}
@@ -534,7 +534,7 @@ constexpr std::array<std::array<Bitboard, 2>, 2> castling_path =
         return has_insufficient_material(WHITE) && has_insufficient_material(BLACK);
     }
     __FORCEINLINE bool isInsufficientMaterial() const { return is_insufficient_material(); }
-    __FORCEINLINE bool hasNonPawnMaterial(Color c) const { return bool(us(color) ^ (pieces(PAWN, KING) & us(color))); }
+    __FORCEINLINE bool hasNonPawnMaterial(Color c) const { return bool(us(c) ^ (pieces(PAWN, KING) & us(c))); }
     __FORCEINLINE bool inCheck() const { return checkers() != 0; }
     __FORCEINLINE bool is_check() const { return checkers() != 0; }
     __FORCEINLINE bool has_castling_rights(Color c) const { return castlingRights(c) != 0; }
@@ -731,3 +731,4 @@ template <typename T, typename = std::enable_if_t<is_piece_enum<T>::value>>
 using Position = _Position<EnginePiece>;
 using Board = _Position<EnginePiece>;
 }; // namespace chess
+
