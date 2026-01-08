@@ -1,14 +1,19 @@
 name: clang-format
 
 on:
-  pull_request:
-    branches: [ "main" ]
-
+  workflow_run:
+    workflows: ["CMake on multiple platforms"]
+    types:
+      - completed
+      
 jobs:
   format:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # required to push back into PR
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
