@@ -180,7 +180,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE
     };
     // Castling path, [color][king_side]
-    constexpr std::array<std::array<Bitboard, 2>, 2> castling_path={{0xe, 0x60}, {0xe00000000000000, 0x6000000000000000}};
+constexpr std::array<std::array<Bitboard, 2>, 2> castling_path =
+{{
+    {{ 0xe, 0x60 }},
+    {{ 0xe00000000000000, 0x6000000000000000 }}
+}};
+
   public:
     // Legal move generation functions
     template <MoveGenType type = MoveGenType::ALL, Color c> __FORCEINLINE void legals(Movelist &out) const {
@@ -505,7 +510,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     __FORCEINLINE PieceC piece_at(Square sq) const { return piece_on(sq); }
     template <typename T = PieceC>
     __FORCEINLINE PieceC at(Square sq) const {
-        assert(is_valid(sq));
+        assert(chess::is_valid(sq));
         if constexpr (std::is_same_v<T, PieceType>) return piece_of(piece_at(sq));
         else return piece_at(sq);
     }
@@ -717,7 +722,7 @@ namespace attacks{
  * @param square
  * @return
  */
-
+template <typename T, typename = std::enable_if_t<is_piece_enum<PieceC>::value>>
 [[nodiscard]] __FORCEINLINE Bitboard attackers(const _Position<T> &board, Color color, Square square) noexcept {
     return board.attackers(color, square);
 }
@@ -726,6 +731,7 @@ namespace attacks{
 using Position = _Position<EnginePiece>;
 using Board = _Position<EnginePiece>;
 }; // namespace chess
+
 
 
 
