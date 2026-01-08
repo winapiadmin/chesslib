@@ -447,7 +447,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     }
     __FORCEINLINE Bitboard occ() const { return current_state.occ[0] | current_state.occ[1]; }
     PieceC piece_on(Square s) const {
-        assert(is_valid(s));
+        assert(chess::is_valid(s));
 #if !defined(_DEBUG) || defined(NDEBUG)
         return pieces_list[s];
 #else
@@ -726,6 +726,7 @@ namespace attacks{
 using Position = _Position<EnginePiece>;
 using Board = _Position<EnginePiece>;
 }; // namespace chess
+
 
 
 
