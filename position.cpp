@@ -629,7 +629,6 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::refresh_attack
 }
 template <typename PieceC, typename T> uint64_t _Position<PieceC, T>::zobrist() const {
     uint64_t hash = 0;
-#pragma unroll(64)
     for (int sq = 0; sq < 64; ++sq) {
         auto p = piece_on((Square)sq);
         hash ^= (p == PieceC::NO_PIECE) ? 0 : zobrist::RandomPiece[enum_idx<PieceC>()][(int)p][sq];
@@ -674,6 +673,7 @@ template <typename PieceC, typename T> Square _Position<PieceC, T>::_valid_ep_sq
     Bitboard mask = 1ULL << ep_square();
     Bitboard pawn_mask = mask << 8;
     Bitboard org_pawn_mask = mask >> 8;
+    if (sideToMove() == BLACK) std::swap(pawn_mask, org_pawn_mask);
     // rank 3 or rank 6, depending on color
     if (rank_of(ep_square()) != ep_rank)
         return SQ_NONE;
@@ -787,3 +787,4 @@ INSTANTIATE(EnginePiece)
 INSTANTIATE(ContiguousMappingPiece)
 #undef INSTANTIATE
 } // namespace chess
+
