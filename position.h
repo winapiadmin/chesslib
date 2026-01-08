@@ -684,5 +684,21 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         refresh_attacks();
     }
 };
-using Position = _Position<EnginePiece>; // for some fun because I HATE HARDCODING
+namespace attacks{
+/**
+ * @brief Returns the attacks for a given piece on a given square
+ * @param board
+ * @param color
+ * @param square
+ * @return
+ */
+
+[[nodiscard]] __FORCEINLINE Bitboard attackers(const _Position<T> &board, Color color, Square square) noexcept {
+    return board.attackers(color, square);
+}
+}
+// Aliases
+using Position = _Position<EnginePiece>;
+using Board = _Position<EnginePiece>;
 }; // namespace chess
+
