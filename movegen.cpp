@@ -272,27 +272,27 @@ template <typename T, Color c, bool capturesOnly> void movegen::genKingMoves(con
 
         if constexpr (c == WHITE) {
             Bitboard WHITE_OO_EMPTY = pos.getCastlingPath(WHITE, true);
-            Bitboard WHITE_OO_SAFE = between(sq, castling_king_square(WHITE, true));
+            Bitboard WHITE_OO_SAFE = between(kingSq, castling_king_square(WHITE, true));
             Bitboard WHITE_OOO_EMPTY = pos.getCastlingPath(WHITE, false);
-            Bitboard WHITE_OOO_SAFE = between(sq, castling_king_square(WHITE, false));
+            Bitboard WHITE_OOO_SAFE = between(kingSq, castling_king_square(WHITE, false));
 
             if ((pos.castlingRights() & WHITE_OO) && !(occupancy & WHITE_OO_EMPTY) && !(enemy_attacks & WHITE_OO_SAFE)) {
-                out.push_back(Move::make<CASTLING>(SQ_E1, SQ_H1));
+                out.push_back(Move::make<CASTLING>(kingSq, SQ_H1));
             }
             if ((pos.castlingRights() & WHITE_OOO) && !(occupancy & WHITE_OOO_EMPTY) && !(enemy_attacks & WHITE_OOO_SAFE)) {
-                out.push_back(Move::make<CASTLING>(SQ_E1, SQ_A1));
+                out.push_back(Move::make<CASTLING>(kingSq, SQ_A1));
             }
         } else {
             Bitboard BLACK_OO_EMPTY = pos.getCastlingPath(BLACK, true);
-            Bitboard BLACK_OO_SAFE = between(sq, castling_king_square(BLACK, true));
+            Bitboard BLACK_OO_SAFE = between(kingSq, castling_king_square(BLACK, true));
             Bitboard BLACK_OOO_EMPTY = pos.getCastlingPath(BLACK, false);
-            Bitboard BLACK_OOO_SAFE = between(sq, castling_king_square(BLACK, false));
+            Bitboard BLACK_OOO_SAFE = between(kingSq, castling_king_square(BLACK, false));
 
             if ((pos.castlingRights() & BLACK_OO) && !(occupancy & BLACK_OO_EMPTY) && !(enemy_attacks & BLACK_OO_SAFE)) {
-                out.push_back(Move::make<CASTLING>(SQ_E8, SQ_H8));
+                out.push_back(Move::make<CASTLING>(kingSq, SQ_H8));
             }
             if ((pos.castlingRights() & BLACK_OOO) && !(occupancy & BLACK_OOO_EMPTY) && !(enemy_attacks & BLACK_OOO_SAFE)) {
-                out.push_back(Move::make<CASTLING>(SQ_E8, SQ_A8));
+                out.push_back(Move::make<CASTLING>(kingSq, SQ_A8));
             }
         }
     }
