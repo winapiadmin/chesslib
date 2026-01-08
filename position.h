@@ -19,13 +19,11 @@ template <typename Piece> struct alignas(64) HistoryEntry {
     Color turn; // true if white to move
     Move mv;
     Key hash;
-    struct {
-        uint8_t halfMoveClock;   // Half-move clock for 50/75-move rule
-        uint16_t fullMoveNumber; // Full-move number (starts at 1)
-        bool epIncluded;
-        int8_t repetition = 0;
-        uint8_t pliesFromNull = 0;
-    };
+    uint8_t halfMoveClock;   // Half-move clock for 50/75-move rule
+    uint16_t fullMoveNumber; // Full-move number (starts at 1)
+    bool epIncluded;
+    int8_t repetition = 0;
+    uint8_t pliesFromNull = 0;
     Square enPassant = SQ_NONE; // En passant target square
     Square kings[COLOR_NB] = { SQ_NONE };
     CastlingRights castlingRights; // Castling rights bitmask
@@ -160,9 +158,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     // Move history stack
     HeapAllocatedValueList<HistoryEntry<PieceC>, 6144>
-        history; // ahh, but i hope it fulfils before I manages to find the absolute limit of a game
-    // Move generation functions, but INTERNAL. (they're kind of long so i put them into a source
-    // file) Pawns (fully extensively tested)
+        history;
     Bitboard _rook_pin;
     Bitboard _bishop_pin;
     Bitboard _checkers;
@@ -181,6 +177,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE,
         PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE
     };
+    // Castling path, [color][king_side]
+    static constexpr std::array<std::array<Bitboard, 2>, 2> castling_path =
+    {{
+        {{ 0xe, 0x60 }},
+        {{ 0xe00000000000000ULL, 0x6000000000000000ULL }}
+    }};
 
   public:
     // Legal move generation functions
@@ -393,7 +395,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     }
 
     [[nodiscard]] __FORCEINLINE Bitboard attackers(Color color, Square square) const { return attackers(color, square, occ()); }
-    // Compile-time piece type and color, runtime square
+
     template <PieceType pt> __FORCEINLINE void placePiece(Square sq, Color c) {
         if constexpr (pt != NO_PIECE_TYPE) {
             Bitboard v = 1ULL << sq;
@@ -448,6 +450,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     }
     __FORCEINLINE Bitboard occ() const { return current_state.occ[0] | current_state.occ[1]; }
     PieceC piece_on(Square s) const {
+        assert(chess::is_valid(s));
 #if !defined(_DEBUG) || defined(NDEBUG)
         return pieces_list[s];
 #else
@@ -470,8 +473,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         assert(p == _p2 && "Inconsistient piece map");
 #else
         if (p != _p2)
-            // throw std::invalid_argument("Inconsistient piece map");
-            exit(-1);
+            throw std::invalid_argument("Inconsistient piece map");
 #endif
         return p;
 #endif
@@ -504,7 +506,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     __FORCEINLINE const HistoryEntry<PieceC> &state() const { return current_state; }
     uint64_t zobrist() const;
     __FORCEINLINE PieceC piece_at(Square sq) const { return piece_on(sq); }
-    __FORCEINLINE PieceC at(Square sq) const { return piece_at(sq); }
+    template <typename T = PieceC>
+    __FORCEINLINE PieceC at(Square sq) const {
+        assert(chess::is_valid(sq));
+        if constexpr (std::is_same_v<T, PieceType>) return piece_of(piece_at(sq));
+        else return piece_at(sq);
+    }
     __FORCEINLINE Square enpassantSq() const { return ep_square(); }
     CastlingRights clean_castling_rights() const;
     void setFEN(const std::string &str);
@@ -524,6 +531,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     __FORCEINLINE bool is_insufficient_material() const {
         return has_insufficient_material(WHITE) && has_insufficient_material(BLACK);
     }
+    __FORCEINLINE bool isInsufficientMaterial() const { return is_insufficient_material(); }
+    __FORCEINLINE bool hasNonPawnMaterial(Color c) const { return bool(us(c) ^ (pieces(PAWN, KING) & us(c))); }
     __FORCEINLINE bool inCheck() const { return checkers() != 0; }
     __FORCEINLINE bool is_check() const { return checkers() != 0; }
     __FORCEINLINE bool has_castling_rights(Color c) const { return castlingRights(c) != 0; }
@@ -583,6 +592,16 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         }
         return b != 0;
     }
+    __FORCEINLINE bool is_checkmate() const {
+        Movelist moves;
+        legals(moves);
+        return inCheck() && !moves.size();
+    }
+    __FORCEINLINE bool is_stalemate() const {
+        Movelist moves;
+        legals(moves);
+        return !inCheck() && !moves.size();
+    }
     // Material-only key (note: Zobrist=Zpieces^Zep^Zcastling^Zturn, we just XORs the remaining, it's trivial)
     __FORCEINLINE Key material_key() const {
         return hash() ^ (zobrist::RandomTurn * ~sideToMove()) ^ (zobrist::RandomCastle[castlingRights()]) ^
@@ -590,7 +609,16 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     }
     template <bool Strict = false> bool is_valid() const;
     CheckType givesCheck(Move move) const;
-
+    /**
+     * @brief Checks if the current position is a draw by 50 move rule.
+     * Keep in mind that by the rules of chess, if the position has 50 half
+     * moves it's not necessarily a draw, since checkmate has higher priority,
+     * <del>call getHalfMoveDrawType,
+     * to determine whether the position is a draw or checkmate.</del>
+     * @return
+     */
+    [[nodiscard]] __FORCEINLINE bool isHalfMoveDraw() const noexcept { return halfmoveClock() >= 100; }
+    [[nodiscard]] __FORCEINLINE Bitboard getCastlingPath(Color c, bool isKingSide) const { return castling_path[c][isKingSide]; }
   private:
     template <PieceType pt> [[nodiscard]] __FORCEINLINE Bitboard pinMask(Color c, Square sq) const {
         static_assert(pt == BISHOP || pt == ROOK, "Only bishop or rook allowed!");
@@ -684,5 +712,23 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         refresh_attacks();
     }
 };
-using Position = _Position<EnginePiece>; // for some fun because I HATE HARDCODING
+namespace attacks{
+/**
+ * @brief Returns the attacks for a given piece on a given square
+ * @param board
+ * @param color
+ * @param square
+ * @return
+ */
+template <typename T, typename = std::enable_if_t<is_piece_enum<T>::value>>
+[[nodiscard]] __FORCEINLINE Bitboard attackers(const _Position<T> &board, Color color, Square square) noexcept {
+    return board.attackers(color, square);
+}
+}
+// Aliases
+using Position = _Position<EnginePiece>;
+using Board = _Position<EnginePiece>;
 }; // namespace chess
+
+
+
