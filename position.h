@@ -615,6 +615,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      * @return
      */
     [[nodiscard]] __FORCEINLINE bool isHalfMoveDraw() const noexcept { return halfmoveClock() >= 100; }
+    [[nodiscard]] __FORCEINLINE Bitboard getCastlingPath(Color c, bool isKingSide) const { return castling_path[c][isKingSide]; }
   private:
     template <PieceType pt> [[nodiscard]] __FORCEINLINE Bitboard pinMask(Color c, Square sq) const {
         static_assert(pt == BISHOP || pt == ROOK, "Only bishop or rook allowed!");
@@ -725,6 +726,7 @@ namespace attacks{
 using Position = _Position<EnginePiece>;
 using Board = _Position<EnginePiece>;
 }; // namespace chess
+
 
 
 
