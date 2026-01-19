@@ -173,11 +173,8 @@ inline static Bitboard att(PieceType pt, Square sq, Bitboard occ) {
     return (pt == BISHOP) ? chess::_chess::_HyperbolaBishopAttacks(sq, occ) : chess::_chess::_HyperbolaRookAttacks(sq, occ);
 }
 
-inline static std::array<std::array<Bitboard, 64>, 64> generate_between() {
-    assert(att(BISHOP, SQ_A1, 0) == 9241421688590303744ULL &&
-           "Well... this is a debug message, but this is a landmine that the magic bitboards are NOT initialized before this, "
-           "wontwork\n");
-    std::array<std::array<Bitboard, 64>, 64> squares_between_bb{};
+inline static std::array<std::array<Bitboard, SQ_NONE + 1>, SQ_NONE + 1> generate_between() {
+    std::array<std::array<Bitboard, SQ_NONE + 1>, SQ_NONE + 1> squares_between_bb{};
 
     for (int sq1 = 0; sq1 < 64; ++sq1) {
         for (PieceType pt : { BISHOP, ROOK }) {
@@ -192,5 +189,5 @@ inline static std::array<std::array<Bitboard, 64>, 64> generate_between() {
 
     return squares_between_bb;
 }
-std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB = generate_between();
+std::array<std::array<Bitboard, SQ_NONE + 1>, SQ_NONE + 1> SQUARES_BETWEEN_BB = generate_between();
 } // namespace chess::movegen

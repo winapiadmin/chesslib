@@ -29,6 +29,12 @@ template <typename Piece> struct alignas(64) HistoryEntry {
     CastlingRights castlingRights; // Castling rights bitmask
     Square incr_sqs[4] = { SQ_NONE, SQ_NONE, SQ_NONE, SQ_NONE };
     Piece incr_pc[4] = { Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE };
+    struct {
+        Square king_start = SQ_NONE;
+        Square rook_start_ks = SQ_NONE;
+        Square rook_start_qs = SQ_NONE;
+        std::array<Bitboard, 2> castling_paths;
+    } castlingMetadata[2];
     // implementation-specific implementations goes here
 };
 
@@ -177,13 +183,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE,
         PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE
     };
-    // Castling path, [color][king_side]
-    static constexpr std::array<std::array<Bitboard, 2>, 2> castling_path =
-    {{
-        {{ 0xe, 0x60 }},
-        {{ 0xe00000000000000ULL, 0x6000000000000000ULL }}
-    }};
-
+    bool _chess960;
   public:
     // Legal move generation functions
     template <MoveGenType type = MoveGenType::ALL, Color c> __FORCEINLINE void legals(Movelist &out) const {
@@ -488,7 +488,9 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     __FORCEINLINE Square kingSq(Color c) const { return current_state.kings[c]; }
     __FORCEINLINE Bitboard checkers() const { return _checkers; }
     __FORCEINLINE Bitboard pin_mask() const { return _pin_mask; }
-    _Position(std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    __FORCEINLINE _Position(std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", bool chess960 = false) {
+        setFEN(fen, chess960);
+    }
     __FORCEINLINE bool isCapture(Move mv) const {
         return mv.type_of() == EN_PASSANT || (mv.type_of() != CASTLING && piece_on(mv.to_sq()) != PieceC::NO_PIECE);
     }
@@ -514,8 +516,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     }
     __FORCEINLINE Square enpassantSq() const { return ep_square(); }
     CastlingRights clean_castling_rights() const;
-    void setFEN(const std::string &str);
-    __FORCEINLINE void set_fen(const std::string &str) { setFEN(str); }
+    void setFEN(const std::string &str, bool chess960);
+    __FORCEINLINE void set_fen(const std::string &str, bool chess960) { setFEN(str, chess960); }
     Move parse_uci(std::string) const;
     Move push_uci(std::string);
     Square _valid_ep_square() const;
@@ -556,10 +558,11 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         }
         return false;
     }
-    __FORCEINLINE bool _is_halfmoves(int n) { return rule50_count() >= n; }
-    __FORCEINLINE bool is_seventyfive_moves(int n) { return _is_halfmoves(150); }
-    __FORCEINLINE bool is_fifty_moves(int n) { return _is_halfmoves(150); }
-    __FORCEINLINE bool is_fivefold_repetition() { return is_repetition(5); }
+    __FORCEINLINE bool _is_halfmoves(int n) const { return rule50_count() >= n; }
+    __FORCEINLINE bool chess960() const { return _chess960; }
+    __FORCEINLINE bool is_seventyfive_moves(int n) const { return _is_halfmoves(150); }
+    __FORCEINLINE bool is_fifty_moves(int n) const { return _is_halfmoves(150); }
+    __FORCEINLINE bool is_fivefold_repetition() const { return is_repetition(5); }
     __FORCEINLINE bool is_attacked_by(Color color, Square sq, Bitboard occupied = 0) const {
         Bitboard occ_bb = occupied ? occupied : this->occ();
         return attackers_mask(color, sq, occ_bb) != 0;
@@ -618,7 +621,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      * @return
      */
     [[nodiscard]] __FORCEINLINE bool isHalfMoveDraw() const noexcept { return halfmoveClock() >= 100; }
-    [[nodiscard]] __FORCEINLINE Bitboard getCastlingPath(Color c, bool isKingSide) const { return castling_path[c][isKingSide]; }
+    [[nodiscard]] __FORCEINLINE Bitboard getCastlingPath(Color c, bool isKingSide) const { return current_state.castlingMetadata[c].castling_paths[isKingSide]; }
   private:
     template <PieceType pt> [[nodiscard]] __FORCEINLINE Bitboard pinMask(Color c, Square sq) const {
         static_assert(pt == BISHOP || pt == ROOK, "Only bishop or rook allowed!");
@@ -643,72 +646,10 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     void refresh_attacks();
 
   public:
-    /** \brief Initializes the board as empty.
-     *
-     * \param nothing
-     * \param nothing
-     * \return nothing
-     *
-     */
-    __FORCEINLINE _Position(const HistoryEntry<PieceC> &state) {
-        // compatible!
-        current_state = state;
-        for (Square sq = SQ_A1; sq < SQ_NONE; sq++) {
-            Bitboard mask = (1ULL << sq);
-            if (((state.occ[WHITE] | state.occ[BLACK]) & mask) == 0) {
-                pieces_list[sq] = PieceC::NO_PIECE;
-                continue;
-            }
-            bool c = (state.occ[WHITE] & mask) != 0;
-            for (PieceType pt : { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING }) {
-                bool is_p = (current_state.pieces[(int)pt] & mask) != 0;
-                if (is_p) {
-                    pieces_list[sq] = make_piece<PieceC>(pt, c ? WHITE : BLACK);
-                    break;
-                }
-            }
-        }
-        refresh_attacks();
-    }
     __FORCEINLINE _Position(const _Position &other)
-        : current_state(other.current_state), history(other.history) // calls HeapAllocatedValueList's copy constructor
+        : current_state(other.current_state), history(other.history), _chess960(other._chess960)
     {
         std::copy(std::begin(other.pieces_list), std::end(other.pieces_list), std::begin(pieces_list));
-        refresh_attacks();
-    }
-
-    template <typename T, std::enable_if_t<is_piece_enum<PieceC>::value && !std::is_same_v<T, PieceC>, int> = 0>
-    [[deprecated("Incompatible piece method used, you shouldn't call this")]] __FORCEINLINE
-    _Position(const HistoryEntry<T> &state) {
-        // incompatible!
-        current_state = HistoryEntry<PieceC>();
-        current_state.turn = state.turn;
-        current_state.castlingRights = state.castlingRights;
-        current_state.enPassant = state.enPassant;
-        current_state.halfMoveClock = state.halfMoveClock;
-        current_state.fullMoveNumber = state.fullMoveNumber;
-        current_state.hash = state.hash;
-        current_state.epIncluded = state.epIncluded;
-        std::copy(std::begin(state.pieces), std::end(state.pieces), current_state.pieces);
-        current_state.repetition = state.repetition;
-        std::copy(std::begin(state.kings), std::end(state.kings), current_state.kings);
-        std::copy(std::begin(state.occ), std::end(state.occ), current_state.occ);
-        current_state.pliesFromNull = state.pliesFromNull;
-        for (Square sq = SQ_A1; sq < SQ_NONE; sq++) {
-            Bitboard mask = (1ULL << sq);
-            if (((state.occ[WHITE] | state.occ[BLACK]) & mask) == 0) {
-                pieces_list[sq] = PieceC::NO_PIECE;
-                continue;
-            }
-            bool c = (state.occ[WHITE] & mask) != 0;
-            for (PieceType pt : { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING }) {
-                bool is_p = (current_state.pieces[(int)pt] & mask) != 0;
-                if (is_p) {
-                    pieces_list[sq] = make_piece<PieceC>(pt, c ? WHITE : BLACK);
-                    break;
-                }
-            }
-        }
         refresh_attacks();
     }
 };

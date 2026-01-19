@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # --- Compiler tuning ---
-set(SAN_ENABLED OFF CACHE BOOL "Whether to enable ASan or not")
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
     # clang-cl: forward GCC/Clang style constexpr flags via /clang:

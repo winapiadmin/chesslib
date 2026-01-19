@@ -85,7 +85,7 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
         THROW_IF_EXCEPTIONS_ON(IllegalMoveException("source need to be a existing piece, got nothing"));
         return Move::NO_MOVE;
     }
-    if (pt == KING && square_distance(target, source) == 2) {
+    if (!pos.chess960() && pt == KING && square_distance(target, source) == 2) {
         target = make_sq(target > source ? File::FILE_H : File::FILE_A, rank_of(source));
         return Move::make<CASTLING>(source, target);
     }
