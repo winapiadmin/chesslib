@@ -1307,7 +1307,7 @@ TEST_CASE("Captures only?") {
     };
     check_perfts<MoveGenType::CAPTURE>(tests);
 }
-/*TEST_CASE("Chess960") {
+TEST_CASE("Chess960") {
     std::vector<TestEntry<std::string, perft_t>> tests = {
         {      "bqnb1rkr/pp3ppp/3ppn2/2p5/5P2/P2P4/NPP1P1PP/BQ1BNRKR w HFhf - 2 9", 1,         21 },
         {      "bqnb1rkr/pp3ppp/3ppn2/2p5/5P2/P2P4/NPP1P1PP/BQ1BNRKR w HFhf - 2 9", 2,        528 },
@@ -7071,7 +7071,7 @@ TEST_CASE("Captures only?") {
         {      "bbq1nr1r/pppppk1p/2n2p2/6p1/P4P2/4P1P1/1PPP3P/BBQNNRKR w HF - 1 9", 6,  280056112 },
     };
     check_perfts(tests);
-}*/
+}
 int main(int argc, char **argv) {
     doctest::Context ctx;
     ctx.setOption("success", true);
