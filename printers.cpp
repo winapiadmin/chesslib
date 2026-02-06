@@ -39,11 +39,11 @@ template <typename PieceC, typename> std::ostream &operator<<(std::ostream &os, 
 
     return os;
 }
-std::ostream &operator<<(std::ostream &os, const Move &mv) {
+std::ostream &operator<<(std::ostream &os, const Move mv) {
     os << uci::moveToUci(mv);
     return os;
 }
-std::ostream &operator<<(std::ostream &os, const Color &c) {
+std::ostream &operator<<(std::ostream &os, const Color c) {
     DescriptiveNameNotation<Color> colors = {
         {    WHITE,    "WHITE" },
         {    BLACK,    "BLACK" },
@@ -51,7 +51,20 @@ std::ostream &operator<<(std::ostream &os, const Color &c) {
     };
     return os << colors[c];
 }
-std::ostream &operator<<(std::ostream &os, const CastlingRights &cr) {
+std::ostream &operator<<(std::ostream &os, const PieceType c) {
+    DescriptiveNameNotation<PieceType> pieces = {
+        { NO_PIECE_TYPE, "NO_PIECE_TYPE/ALL_PIECES" },
+        {          PAWN,                     "PAWN" },
+        {        KNIGHT,                   "KNIGHT" },
+        {        BISHOP,                   "BISHOP" },
+        {          ROOK,                     "ROOK" },
+        {         QUEEN,                    "QUEEN" },
+        {          KING,                     "KING" },
+        { PIECE_TYPE_NB,            "PIECE_TYPE_NB" },
+    };
+    return os << pieces[c];
+}
+std::ostream &operator<<(std::ostream &os, const CastlingRights cr) {
     DescriptiveNameNotation<CastlingRights> castlingFlags = {
         {                      NO_CASTLING,                      "NO_CASTLING" },
         {                         WHITE_OO,                         "WHITE_OO" },
@@ -77,7 +90,7 @@ static std::string str_toupper(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::toupper(c); });
     return s;
 }
-std::ostream &operator<<(std::ostream &os, const Square &sq) {
+std::ostream &operator<<(std::ostream &os, const Square sq) {
     os << "SQ_" << str_toupper(chess::uci::squareToString(sq));
     return os;
 }

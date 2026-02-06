@@ -1,6 +1,6 @@
 #pragma once
-#include "fwd_decl.h"
 #include "bitboard.h"
+#include "fwd_decl.h"
 #include "types.h"
 #include <array>
 #include <immintrin.h>
@@ -289,6 +289,4 @@ template <PieceType pt> [[nodiscard]] constexpr Bitboard slider(Square sq, Bitbo
         return queen(sq, occupied);
 }
 
-
 } // namespace chess::attacks
-

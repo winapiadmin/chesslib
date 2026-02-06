@@ -3,11 +3,10 @@ name: clang-format
 on:
   pull_request:
     branches: [ "main" ]
+  push:
+
 jobs:
   format:
-    if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -17,6 +16,10 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Normalize line endings
+        run: |
+          git add --renormalize .
+
       - name: Run clang-format
         run: |
           clang-format -i $(git ls-files '*.cpp' '*.hpp' '*.h' '*.c')
@@ -25,8 +28,7 @@ jobs:
         run: |
           if ! git diff --quiet; then
             git config user.email "actions@github.com"
-            git.config user.name "GitHub Actions"
-            git add .
-            git commit -m "Apply clang-format"
+            git config user.name "GitHub Actions"
+            git commit -am "Normalize line endings and apply clang-format"
             git push
           fi

@@ -17,7 +17,11 @@
 #if defined(_DEBUG) || !defined(NDEBUG)
 #define INVALID_ARG_IF(c, s) assert(!(c) && s)
 #elif defined(__EXCEPTIONS)
-#define INVALID_ARG_IF(c, s) if (c) THROW_IF_EXCEPTIONS_ON(std::invalid_argument(s))
+#define INVALID_ARG_IF(c, s)                                                                                                   \
+    if (c)                                                                                                                     \
+    THROW_IF_EXCEPTIONS_ON(std::invalid_argument(s))
+#else
+#define INVALID_ARG_IF(c, s)
 #endif
 namespace chess {
 
@@ -37,8 +41,8 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     current_state.incr_pc[0] = current_state.incr_pc[1] = current_state.incr_pc[2] = current_state.incr_pc[3] =
         PieceC::NO_PIECE;
     current_state.mv = move; // Update the move in the current state
-    INVALID_ARG_IF(target_piecetype != KING, "Capturing kings is illegal");
-    INVALID_ARG_IF(moving_piecetype != NO_PIECE_TYPE, "Expected a piece to move.");
+    INVALID_ARG_IF(target_piecetype == KING, "Capturing kings is illegal");
+    INVALID_ARG_IF(moving_piecetype == NO_PIECE_TYPE, "Expected a piece to move.");
     removePiece(moving_piecetype, from_sq, us);
     {
         switch (move_type) {
@@ -73,8 +77,7 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
         case CASTLING: {
             removePiece(target_piecetype, to_sq, target_color);
             bool is_king_side = from_sq < to_sq;
-            Square rook_dest = castling_rook_square(us, is_king_side),
-                   king_dest = castling_king_square(us, is_king_side);
+            Square rook_dest = castling_rook_square(us, is_king_side), king_dest = castling_king_square(us, is_king_side);
             placePiece<ROOK>(rook_dest, us);
             placePiece<KING>(king_dest, us);
             current_state.incr_sqs[0] = from_sq;
@@ -308,7 +311,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
             INVALID_ARG_IF(!chess960, "Invalid castling right for non-Chess960");
             if (c >= 'A' && c <= 'H') // white-castling
             {
-                CastlingRights cr = (make_sq(RANK_1, static_cast<File>(c - 'a')) > SQ_E1 ? WHITE_OO : WHITE_OOO);
+                CastlingRights cr = (make_sq(RANK_1, static_cast<File>(c - 'A')) > SQ_E1 ? WHITE_OO : WHITE_OOO);
                 current_state.castlingRights |= cr;
                 current_state.castlingMetadata[WHITE].king_start = kingSq(WHITE);
                 if (cr & KING_SIDE)
@@ -321,9 +324,9 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                 current_state.castlingRights |= cr;
                 current_state.castlingMetadata[BLACK].king_start = kingSq(BLACK);
                 if (cr & KING_SIDE)
-                    current_state.castlingMetadata[BLACK].rook_start_ks = make_sq(RANK_8, static_cast<File>(c - 'A'));
+                    current_state.castlingMetadata[BLACK].rook_start_ks = make_sq(RANK_8, static_cast<File>(c - 'a'));
                 else
-                    current_state.castlingMetadata[BLACK].rook_start_qs = make_sq(RANK_8, static_cast<File>(c - 'A'));
+                    current_state.castlingMetadata[BLACK].rook_start_qs = make_sq(RANK_8, static_cast<File>(c - 'a'));
             }
             break;
         }
@@ -338,7 +341,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
             const auto rook_to = castling_rook_square(c, true);
             current_state.castlingMetadata[c].castling_paths[true] =
                 (movegen::between(rook_from, rook_to) | movegen::between(king_from, king_to)) &
-                ~((1ULL<<king_from) | (1ULL<<rook_from));
+                ~((1ULL << king_from) | (1ULL << rook_from));
         }
         // queen
         {
@@ -665,7 +668,8 @@ template <typename PieceC, typename T> Square _Position<PieceC, T>::_valid_ep_sq
     Bitboard mask = 1ULL << ep_square();
     Bitboard pawn_mask = mask << 8;
     Bitboard org_pawn_mask = mask >> 8;
-    if (sideToMove() == BLACK) std::swap(pawn_mask, org_pawn_mask);
+    if (sideToMove() == BLACK)
+        std::swap(pawn_mask, org_pawn_mask);
     // rank 3 or rank 6, depending on color
     if (rank_of(ep_square()) != ep_rank)
         return SQ_NONE;

@@ -215,14 +215,14 @@ void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
     double elapsed = 0;
     using namespace std::chrono;
     for (auto &entry : entries) {
-        std::cerr << entry.input << ' '<<entry.info.depth;
-        #if !IS_RELEASE
+        std::cerr << entry.input << ' ' << entry.info.depth;
+#if !IS_RELEASE
         if (entry.info.nodes > 5e7) {
             std::cerr << "(skipped)";
             continue;
         }
-        #endif
-        std::cerr<<'\n';
+#endif
+        std::cerr << '\n';
         {
             _Position<PolyglotPiece> pos(entry.input);
             auto start_time = high_resolution_clock::now();

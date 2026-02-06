@@ -163,8 +163,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     HistoryEntry<PieceC> current_state;
 
     // Move history stack
-    HeapAllocatedValueList<HistoryEntry<PieceC>, 6144>
-        history;
+    HeapAllocatedValueList<HistoryEntry<PieceC>, 6144> history;
     Bitboard _rook_pin;
     Bitboard _bishop_pin;
     Bitboard _checkers;
@@ -184,6 +183,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE
     };
     bool _chess960;
+
   public:
     // Legal move generation functions
     template <MoveGenType type = MoveGenType::ALL, Color c> __FORCEINLINE void legals(Movelist &out) const {
@@ -488,7 +488,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     __FORCEINLINE Square kingSq(Color c) const { return current_state.kings[c]; }
     __FORCEINLINE Bitboard checkers() const { return _checkers; }
     __FORCEINLINE Bitboard pin_mask() const { return _pin_mask; }
-    __FORCEINLINE _Position(std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", bool chess960 = false) {
+    __FORCEINLINE _Position(std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                            bool chess960 = false) {
         setFEN(fen, chess960);
     }
     __FORCEINLINE bool isCapture(Move mv) const {
@@ -508,15 +509,16 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     __FORCEINLINE const HistoryEntry<PieceC> &state() const { return current_state; }
     uint64_t zobrist() const;
     __FORCEINLINE PieceC piece_at(Square sq) const { return piece_on(sq); }
-    template <typename T = PieceC>
-    __FORCEINLINE PieceC at(Square sq) const {
+    template <typename T = PieceC> __FORCEINLINE PieceC at(Square sq) const {
         assert(chess::is_valid(sq));
-        if constexpr (std::is_same_v<T, PieceType>) return piece_of(piece_at(sq));
-        else return piece_at(sq);
+        if constexpr (std::is_same_v<T, PieceType>)
+            return piece_of(piece_at(sq));
+        else
+            return piece_at(sq);
     }
     __FORCEINLINE Square enpassantSq() const { return ep_square(); }
     CastlingRights clean_castling_rights() const;
-    void setFEN(const std::string &str, bool chess960);
+    void setFEN(const std::string &str, bool chess960 = false);
     __FORCEINLINE void set_fen(const std::string &str, bool chess960) { setFEN(str, chess960); }
     Move parse_uci(std::string) const;
     Move push_uci(std::string);
@@ -621,7 +623,10 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      * @return
      */
     [[nodiscard]] __FORCEINLINE bool isHalfMoveDraw() const noexcept { return halfmoveClock() >= 100; }
-    [[nodiscard]] __FORCEINLINE Bitboard getCastlingPath(Color c, bool isKingSide) const { return current_state.castlingMetadata[c].castling_paths[isKingSide]; }
+    [[nodiscard]] __FORCEINLINE Bitboard getCastlingPath(Color c, bool isKingSide) const {
+        return current_state.castlingMetadata[c].castling_paths[isKingSide];
+    }
+
   private:
     template <PieceType pt> [[nodiscard]] __FORCEINLINE Bitboard pinMask(Color c, Square sq) const {
         static_assert(pt == BISHOP || pt == ROOK, "Only bishop or rook allowed!");
@@ -647,13 +652,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
   public:
     __FORCEINLINE _Position(const _Position &other)
-        : current_state(other.current_state), history(other.history), _chess960(other._chess960)
-    {
+        : current_state(other.current_state), history(other.history), _chess960(other._chess960) {
         std::copy(std::begin(other.pieces_list), std::end(other.pieces_list), std::begin(pieces_list));
         refresh_attacks();
     }
 };
-namespace attacks{
+namespace attacks {
 /**
  * @brief Returns the attacks for a given piece on a given square
  * @param board
@@ -665,11 +669,8 @@ template <typename T, typename = std::enable_if_t<is_piece_enum<T>::value>>
 [[nodiscard]] __FORCEINLINE Bitboard attackers(const _Position<T> &board, Color color, Square square) noexcept {
     return board.attackers(color, square);
 }
-}
+} // namespace attacks
 // Aliases
 using Position = _Position<EnginePiece>;
 using Board = _Position<EnginePiece>;
 }; // namespace chess
-
-
-
