@@ -405,7 +405,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         return mv.type_of() == EN_PASSANT || (mv.type_of() != CASTLING && piece_on(mv.to_sq()) != PieceC::NO_PIECE);
     }
     inline bool is_capture(Move mv) const { return isCapture(mv); }
-    inline bool is_zeroing(Move mv) const { return isCapture(mv) || type_of(at(mv.from_sq())) == PAWN; }
+    inline bool is_zeroing(Move mv) const { return isCapture(mv) || at<PieceType>(mv.from_sq()) == PAWN; }
     std::string fen() const;
     inline uint8_t halfmoveClock() const { return current_state.halfMoveClock; }
     inline uint16_t fullmoveNumber() const { return current_state.fullMoveNumber; }
@@ -418,12 +418,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     inline const HistoryEntry<PieceC> &state() const { return current_state; }
     uint64_t zobrist() const;
     inline PieceC piece_at(Square sq) const { return piece_on(sq); }
-    template <typename T = PieceC> inline PieceC at(Square sq) const {
+    template <typename T = PieceC> inline T at(Square sq) const {
         assert(chess::is_valid(sq));
         if constexpr (std::is_same_v<T, PieceType>)
             return piece_of(piece_at(sq));
         else if constexpr (std::is_same_v<T, Color>)
-            return type_of(piece_at(sq));
+            return color_of(piece_at(sq));
         else
             return piece_at(sq);
     }
