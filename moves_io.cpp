@@ -21,7 +21,7 @@ std::string squareToString(Square sq) {
     };
     return std::string{ fileChars[sq] };
 }
-std::string moveToUci(Move mv) {
+std::string moveToUci(Move mv, bool chess960) {
     if (!mv.is_ok()) {
         // null move
         static const std::string nullMove = "0000";
@@ -49,12 +49,16 @@ std::string moveToUci(Move mv) {
             move += "c8"; // black queenside castling
             break;
         default:
+            if (chess960)
+                move += squareToString(mv.to_sq());
+            else {
 #if defined(_DEBUG) || !defined(NDEBUG)
-            assert(false && "this isn't chess960");
+                assert(false && "this isn't chess960");
 #else
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("this isn't chess960"));
-            break;
+                THROW_IF_EXCEPTIONS_ON(IllegalMoveException("this isn't chess960"));
+                break;
 #endif
+            }
         }
         break;
     case PROMOTION:
@@ -85,7 +89,7 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
         THROW_IF_EXCEPTIONS_ON(IllegalMoveException("source need to be a existing piece, got nothing"));
         return Move::NO_MOVE;
     }
-    if (pt == KING && square_distance(target, source) == 2) {
+    if (!pos.chess960() && pt == KING && square_distance(target, source) == 2) {
         target = make_sq(target > source ? File::FILE_H : File::FILE_A, rank_of(source));
         return Move::make<CASTLING>(source, target);
     }
@@ -133,16 +137,20 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
 
         // 1) Castling shortcuts
         if (san == "O-O" || san == "0-0" || san == "O-O+" || san == "0-0+" || san == "O-O#" || san == "0-0#") {
-            Move km = chess::Move::make<CASTLING>(relative_square(pos.side_to_move(), SQ_E1),
-                                                  relative_square(pos.side_to_move(), SQ_H1));
+            const auto from = pos.kingSq(pos.side_to_move());
+            const auto to = pos.state().castlingMetadata[pos.side_to_move()].rook_start_ks;
+            Move km = chess::Move::make<CASTLING>(from, to);
+
             if (std::find(moves.begin(), moves.end(), km) != moves.end())
                 return km;
             THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));
             return Move::none();
         }
         if (san == "O-O-O" || san == "0-0-0" || san == "O-O-O+" || san == "0-0-0+" || san == "O-O-O#" || san == "0-0-0#") {
-            Move qm = chess::Move::make<CASTLING>(relative_square(pos.side_to_move(), SQ_E1),
-                                                  relative_square(pos.side_to_move(), SQ_A1));
+            const auto from = pos.kingSq(pos.side_to_move());
+            const auto to = pos.state().castlingMetadata[pos.side_to_move()].rook_start_qs;
+            Move qm = chess::Move::make<CASTLING>(from, to);
+
             if (std::find(moves.begin(), moves.end(), qm) != moves.end())
                 return qm;
             THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));

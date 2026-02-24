@@ -37,13 +37,6 @@
     } while (0)
 #endif
 
-#ifdef _MSC_VER
-#define __FORCEINLINE inline __forceinline
-#elif defined(__GNUC__) || defined(__clang__)
-#define __FORCEINLINE inline __attribute__((always_inline))
-#else
-#define __FORCEINLINE inline
-#endif
 constexpr bool is_constant_evaluated() {
 #if __cpp_if_consteval >= 202106L
     if consteval {
@@ -123,8 +116,12 @@ enum Direction : int8_t {
 };
 // clang-format on
 inline constexpr Square relative_square(Color c, Square s) { return Square(s ^ (c * 56)); }
-inline constexpr Square castling_rook_square(Color c, bool is_king_side) { return relative_square(c, is_king_side ? SQ_F1 : Square::SQ_D1); }
-inline constexpr Square castling_king_square(Color c, bool is_king_side) { return relative_square(c, is_king_side ? SQ_G1 : Square::SQ_C1); }
+inline constexpr Square castling_rook_square(Color c, bool is_king_side) {
+    return relative_square(c, is_king_side ? SQ_F1 : Square::SQ_D1);
+}
+inline constexpr Square castling_king_square(Color c, bool is_king_side) {
+    return relative_square(c, is_king_side ? SQ_G1 : Square::SQ_C1);
+}
 
 inline constexpr Rank relative_rank(Color c, Rank r) { return Rank(r ^ (c * 7)); }
 
@@ -438,5 +435,3 @@ constexpr PieceType parse_pt(unsigned char c) {
 }
 
 } // namespace chess
-
-

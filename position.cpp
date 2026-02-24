@@ -14,37 +14,16 @@
 #else
 #define THROW_IF_EXCEPTIONS_ON(stuff) ((void)0)
 #endif
+#if defined(_DEBUG) || !defined(NDEBUG)
+#define INVALID_ARG_IF(c, s) assert(!(c) && s)
+#elif defined(__EXCEPTIONS)
+#define INVALID_ARG_IF(c, s)                                                                                                   \
+    if (c)                                                                                                                     \
+    THROW_IF_EXCEPTIONS_ON(std::invalid_argument(s))
+#else
+#define INVALID_ARG_IF(c, s)
+#endif
 namespace chess {
-static _POSSIBLY_CONSTEXPR CastlingRights make_clear_mask(Color c, PieceType pt, Square sq) {
-    if (pt == KING) {
-        if (c == WHITE && sq == SQ_E1)
-            return WHITE_CASTLING;
-        if (c == BLACK && sq == SQ_E8)
-            return BLACK_CASTLING;
-    } else if (pt == ROOK) {
-        if (c == WHITE && sq == SQ_H1)
-            return WHITE_OO;
-        if (c == WHITE && sq == SQ_A1)
-            return WHITE_OOO;
-        if (c == BLACK && sq == SQ_H8)
-            return BLACK_OO;
-        if (c == BLACK && sq == SQ_A8)
-            return BLACK_OOO;
-    }
-    return NO_CASTLING;
-}
-
-static _POSSIBLY_CONSTEXPR auto make_castle_masks() {
-    std::array<std::array<std::array<CastlingRights, SQUARE_NB>, PIECE_TYPE_NB>, COLOR_NB + 1> tbl{};
-
-    for (int c = 0; c <= COLOR_NB; ++c)
-        for (int pt = 0; pt < PIECE_TYPE_NB; ++pt)
-            for (int sq = 0; sq < SQUARE_NB; ++sq)
-                tbl[c][pt][sq] = make_clear_mask(Color(c), PieceType(pt), Square(sq));
-
-    return tbl;
-}
-static _POSSIBLY_CONSTEXPR auto clearCastleMask = make_castle_masks();
 
 template <typename PieceC, typename T> template <bool Strict> void _Position<PieceC, T>::doMove(const Move &move) {
     assert(move.is_ok() && "doMove called with invalid move");
@@ -62,16 +41,23 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     current_state.incr_pc[0] = current_state.incr_pc[1] = current_state.incr_pc[2] = current_state.incr_pc[3] =
         PieceC::NO_PIECE;
     current_state.mv = move; // Update the move in the current state
-#if defined(_DEBUG) || !defined(NDEBUG)
-    assert(target_piecetype != KING && "No captures");
-    assert(moving_piecetype != NO_PIECE_TYPE && "Expected a piece to move.");
-#endif
-    removePiece(moving_piecetype, from_sq, us);
+    if (target_piecetype == KING) {
+        std::cerr << *this << '\n';
+        std::cerr << "Move: " << move << "\n";
+        std::cerr << "From: " << from_sq << " To: " << to_sq << "\n";
+        std::cerr << "Target piece: " << target_piece << "\n";
+        std::cerr << "Side to move: " << us << "\n";
+        std::cerr << "movetrace: \n";
+        for (int i = 0; i < history.size(); i++)
+            std::cerr << uci::moveToUci(history[i].mv, _chess960) << '\n';
+    }
+    INVALID_ARG_IF(target_piecetype == KING, "Capturing kings is illegal");
+    INVALID_ARG_IF(moving_piecetype == NO_PIECE_TYPE, "Expected a piece to move.");
     {
-        ASSUME(move_type == NORMAL || move_type == PROMOTION || move_type == EN_PASSANT || move_type == CASTLING);
         switch (move_type) {
         case NORMAL:
             removePiece(target_piecetype, to_sq, target_color);
+            removePiece(moving_piecetype, from_sq, us);
             placePiece(moving_piecetype, to_sq, us);
             current_state.incr_sqs[0] = from_sq;
             current_state.incr_pc[0] = moving_piece;
@@ -80,6 +66,7 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
             break;
         case PROMOTION:
             removePiece(target_piecetype, to_sq, target_color);
+            removePiece(moving_piecetype, from_sq, us);
             placePiece(move.promotion_type(), to_sq, us);
             current_state.incr_sqs[0] = from_sq;
             current_state.incr_pc[0] = moving_piece;
@@ -88,6 +75,7 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
             break;
         case EN_PASSANT: {
             Square ep_capture_sq = to_sq + pawn_push(them);
+            removePiece(moving_piecetype, from_sq, us);
             removePiece<PAWN>(ep_capture_sq, them);
             placePiece<PAWN>(to_sq, us);
             current_state.incr_sqs[0] = from_sq;
@@ -99,25 +87,28 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
             break;
         }
         case CASTLING: {
-            removePiece(target_piecetype, to_sq, target_color);
-            bool is_king_side = from_sq < to_sq;
-            Square rook_dest = castling_rook_square(us, is_king_side),
-                   king_dest = castling_king_square(us, is_king_side);
-            placePiece<ROOK>(rook_dest, us);
+            const bool is_king_side = file_of(from_sq) < file_of(to_sq);
+            const Square rook_dest = castling_rook_square(us, is_king_side);
+            const Square king_dest = castling_king_square(us, is_king_side);
+
+            const PieceC prev_king_dest = piece_on(king_dest);
+            const PieceC prev_rook_dest = piece_on(rook_dest);
+
+            current_state.incr_sqs[0] = from_sq, current_state.incr_pc[0] = moving_piece;
+            current_state.incr_sqs[1] = to_sq, current_state.incr_pc[1] = target_piece;
+            current_state.incr_sqs[2] = king_dest, current_state.incr_pc[2] = prev_king_dest;
+            current_state.incr_sqs[3] = rook_dest, current_state.incr_pc[3] = prev_rook_dest;
+
+            Square rook_start = is_king_side ? current_state.castlingMetadata[us].rook_start_ks
+                                             : current_state.castlingMetadata[us].rook_start_qs;
+
+            removePiece<KING>(from_sq, us);
+            removePiece<ROOK>(rook_start, us);
+
             placePiece<KING>(king_dest, us);
-            current_state.incr_sqs[0] = from_sq;
-            current_state.incr_pc[0] = moving_piece;
-            current_state.incr_sqs[1] = to_sq;
-            current_state.incr_pc[1] = target_piece;
-            current_state.incr_sqs[2] = king_dest;
-            current_state.incr_pc[2] = PieceC::NO_PIECE;
-            current_state.incr_sqs[3] = rook_dest;
-            current_state.incr_pc[3] = PieceC::NO_PIECE;
+            placePiece<ROOK>(rook_dest, us);
             break;
         }
-        default:
-            UNREACHABLE();
-            return;
         }
     }
     {
@@ -151,8 +142,24 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
         }
     }
     {
-        CastlingRights clear_mask =
-            clearCastleMask[us][moving_piecetype][from_sq] | clearCastleMask[target_color][target_piecetype][to_sq];
+        CastlingRights clear_mask = NO_CASTLING;
+        // Moving piece
+        if (moving_piecetype == KING && from_sq == current_state.castlingMetadata[us].king_start) {
+            clear_mask |= (us == WHITE ? WHITE_CASTLING : BLACK_CASTLING);
+        } else if (moving_piecetype == ROOK) {
+            if (from_sq == current_state.castlingMetadata[us].rook_start_ks) {
+                clear_mask |= (us == WHITE ? WHITE_OO : BLACK_OO);
+            } else if (from_sq == current_state.castlingMetadata[us].rook_start_qs) {
+                clear_mask |= (us == WHITE ? WHITE_OOO : BLACK_OOO);
+            }
+        }
+        // Captured piece
+        if (target_piecetype == ROOK) {
+            if (to_sq == current_state.castlingMetadata[target_color].rook_start_ks)
+                clear_mask |= (target_color == WHITE ? WHITE_OO : BLACK_OO);
+            else if (to_sq == current_state.castlingMetadata[target_color].rook_start_qs)
+                clear_mask |= (target_color == WHITE ? WHITE_OOO : BLACK_OOO);
+        }
         CastlingRights prev = current_state.castlingRights;
         current_state.castlingRights &= ~clear_mask;
         current_state.hash ^= zobrist::RandomCastle[prev] ^ zobrist::RandomCastle[current_state.castlingRights];
@@ -164,8 +171,8 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     current_state.hash ^= zobrist::RandomTurn;
     refresh_attacks();
     // DO NOT MIX REPETITIONS
+    current_state.pliesFromNull++;
     if constexpr (Strict) {
-        current_state.pliesFromNull++;
         // Calculate the repetition info. It is the ply distance from the previous
         // occurrence of the same position, negative in the 3-fold case, or zero
         // if the position was not repeated.
@@ -185,9 +192,10 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     }
 }
 
-template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const std::string &str) {
+template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const std::string &str, bool chess960) {
     current_state = HistoryEntry<PieceC>();
     history.clear();
+    _chess960 = chess960;
     std::istringstream ss(str);
     std::string board_fen, active_color, castling, enpassant;
     int halfmove = 0, fullmove = 1;
@@ -202,44 +210,25 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
     {
         File f = FILE_A;
         Rank r = RANK_8;
-#if defined(_DEBUG) || !defined(NDEBUG) || defined(__EXCEPTIONS)
         int file_count = 0;
         int rank_count = 0;
-#endif
-
         for (char c : board_fen) {
             if (c == '/') {
-#if defined(_DEBUG) || !defined(NDEBUG)
-                assert(file_count == 8 && "Each rank must contain exactly 8 squares");
-#elif defined(__EXCEPTIONS)
-                if (file_count != 8)
-                    THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Each rank must contain exactly 8 squares"));
-#endif
+                INVALID_ARG_IF(file_count != 8, "Each rank must contain exactly 8 squares");
                 f = FILE_A;
                 --r;
-#if defined(_DEBUG) || !defined(NDEBUG) || defined(__EXCEPTIONS)
                 file_count = 0;
                 ++rank_count;
-#endif
                 continue;
             }
 
             if (c >= '1' && c <= '8') {
                 int empty_squares = c - '0';
-#if defined(_DEBUG) || !defined(NDEBUG) || defined(__EXCEPTIONS)
                 file_count += empty_squares;
-#endif
                 f = static_cast<File>(static_cast<uint8_t>(f) + empty_squares);
             } else {
-#if defined(_DEBUG) || !defined(NDEBUG)
-                assert(file_count < 8 && "Too many pieces in one rank");
-                assert(chess::is_valid(r, f) && "Invalid file/rank position");
-#elif defined(__EXCEPTIONS)
-                if (file_count >= 8)
-                    THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Too many pieces in one rank"));
-                if (!chess::is_valid(r, f))
-                    THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Invalid file/rank position"));
-#endif
+                INVALID_ARG_IF(file_count >= 8, "Too many pieces in one rank");
+                INVALID_ARG_IF(!chess::is_valid(r, f), "Invalid file/rank position");
                 switch (c) {
                 case 'p':
                     placePiece<PAWN>(make_sq(r, f), BLACK);
@@ -278,33 +267,18 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                     placePiece<KING>(make_sq(r, f), WHITE);
                     break;
                 default:
-#if defined(_DEBUG) || !defined(NDEBUG)
-                    assert(false && "Invalid FEN character");
-#elif defined(__EXCEPTIONS)
-                    THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Invalid FEN character"));
-#endif
+                    INVALID_ARG_IF(false, "Invalid FEN character");
                     break;
                 }
 
-#if defined(_DEBUG) || !defined(NDEBUG) || defined(__EXCEPTIONS)
                 ++file_count;
-#endif
                 f = static_cast<File>(static_cast<uint8_t>(f) + 1);
             }
         }
 
-#if defined(_DEBUG) || !defined(NDEBUG)
         // Final assertions after parsing
-        assert(file_count == 8 && "Last rank must have 8 squares");
-        ++rank_count;
-        assert(rank_count == 8 && "FEN must contain exactly 8 ranks");
-#elif defined(__EXCEPTIONS)
-        if (file_count != 8)
-            THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Last rank must have 8 squares"));
-        rank_count++;
-        if (rank_count != 8)
-            THROW_IF_EXCEPTIONS_ON(std::invalid_argument("FEN must contain exactly 8 ranks"));
-#endif
+        INVALID_ARG_IF(file_count != 8, "Last rank must have 8 squares");
+        INVALID_ARG_IF(rank_count != 7, "FEN must contain exactly 8 ranks");
     }
 
     // 2. Turn
@@ -314,11 +288,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
     } else if (active_color == "b") {
         current_state.turn = BLACK;
     } else {
-#if defined(_DEBUG) || !defined(NDEBUG)
-        assert(false && "Expected white or black, got something else.");
-#elif defined(__EXCEPTIONS)
-        THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Expected white or black, got something else."));
-#endif
+        INVALID_ARG_IF(active_color != "w" && active_color != "b", "Expected white or black, got something else.");
     }
 
     // 3. Castling rights
@@ -326,31 +296,85 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
     for (char c : castling) {
         switch (c) {
         case 'K':
+            INVALID_ARG_IF(chess960, "Chess960 needs specific file");
             current_state.castlingRights |= WHITE_OO;
-            current_state.hash ^= zobrist::RandomCastle[WHITE_OO];
+            current_state.castlingMetadata[WHITE].king_start = kingSq(WHITE);
+            current_state.castlingMetadata[WHITE].rook_start_ks = SQ_H1;
             break;
         case 'Q':
+            INVALID_ARG_IF(chess960, "Chess960 needs specific file");
             current_state.castlingRights |= WHITE_OOO;
-            current_state.hash ^= zobrist::RandomCastle[WHITE_OOO];
+            current_state.castlingMetadata[WHITE].king_start = kingSq(WHITE);
+            current_state.castlingMetadata[WHITE].rook_start_qs = SQ_A1;
             break;
         case 'k':
+            INVALID_ARG_IF(chess960, "Chess960 needs specific file");
             current_state.castlingRights |= BLACK_OO;
-            current_state.hash ^= zobrist::RandomCastle[BLACK_OO];
+            current_state.castlingMetadata[BLACK].king_start = kingSq(BLACK);
+            current_state.castlingMetadata[BLACK].rook_start_ks = SQ_H8;
             break;
         case 'q':
+            INVALID_ARG_IF(chess960, "Chess960 needs specific file");
             current_state.castlingRights |= BLACK_OOO;
-            current_state.hash ^= zobrist::RandomCastle[BLACK_OOO];
+            current_state.castlingMetadata[BLACK].king_start = kingSq(BLACK);
+            current_state.castlingMetadata[BLACK].rook_start_qs = SQ_A8;
             break;
         // some optional chess960? maybe not.
         case '-':
             break;
-        default:
-#if defined(_DEBUG) || !defined(NDEBUG)
-            assert(false && "Invalid castling rights, this library doesn't support Chess960");
-#elif defined(__EXCEPTIONS)
-            THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Invalid castling rights, this library doesn't support Chess960"));
-#endif
+        default: {
+            INVALID_ARG_IF(!chess960, "Invalid castling right for non-Chess960");
+            if (c >= 'A' && c <= 'H') // white-castling
+            {
+                const auto king_start = kingSq(WHITE);
+                const auto rook_start = make_sq(RANK_1, static_cast<File>(c - 'A'));
+
+                CastlingRights cr = (file_of(rook_start) > file_of(king_start) ? WHITE_OO : WHITE_OOO);
+                current_state.castlingRights |= cr;
+                current_state.castlingMetadata[WHITE].king_start = kingSq(WHITE);
+                if (cr & KING_SIDE)
+                    current_state.castlingMetadata[WHITE].rook_start_ks = rook_start;
+                else
+                    current_state.castlingMetadata[WHITE].rook_start_qs = rook_start;
+            } else if (c >= 'a' && c <= 'h') // white-castling
+            {
+                const auto king_start = kingSq(BLACK);
+                const auto rook_start = make_sq(RANK_8, static_cast<File>(c - 'a'));
+
+                CastlingRights cr = (file_of(rook_start) > file_of(king_start) ? BLACK_OO : BLACK_OOO);
+                current_state.castlingRights |= cr;
+                current_state.castlingMetadata[BLACK].king_start = king_start;
+                if (cr & KING_SIDE)
+                    current_state.castlingMetadata[BLACK].rook_start_ks = rook_start;
+                else
+                    current_state.castlingMetadata[BLACK].rook_start_qs = rook_start;
+            }
             break;
+        }
+        }
+    }
+    current_state.hash ^= zobrist::RandomCastle[current_state.castlingRights];
+
+    for (Color c : { WHITE, BLACK }) {
+        // king
+        if (castlingRights() & (c & KING_SIDE)) {
+            const auto king_from = current_state.castlingMetadata[c].king_start;
+            const auto rook_from = make_sq(file_of(current_state.castlingMetadata[c].rook_start_ks), rank_of(king_from));
+            const auto king_to = castling_king_square(c, true);
+            const auto rook_to = castling_rook_square(c, true);
+            current_state.castlingMetadata[c].castling_paths[true] =
+                (movegen::between(rook_from, rook_to) | movegen::between(king_from, king_to)) &
+                ~((1ULL << king_from) | (1ULL << rook_from));
+        }
+        // queen
+        if (castlingRights() & (c & QUEEN_SIDE)) {
+            const auto king_from = current_state.castlingMetadata[c].king_start;
+            const auto rook_from = make_sq(file_of(current_state.castlingMetadata[c].rook_start_qs), rank_of(king_from));
+            const auto king_to = castling_king_square(c, false);
+            const auto rook_to = castling_rook_square(c, false);
+            current_state.castlingMetadata[c].castling_paths[false] =
+                (movegen::between(rook_from, rook_to) | movegen::between(king_from, king_to)) &
+                ~((1ULL << king_from) | (1ULL << rook_from));
         }
     }
 
@@ -371,12 +395,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
             current_state.epIncluded = true;
         }
     } else {
-#if defined(_DEBUG) || !defined(NDEBUG)
-        assert(enpassant == "-" && "Invalid en passant FEN field");
-#elif defined(__EXCEPTIONS)
-        if (enpassant != "-")
-            THROW_IF_EXCEPTIONS_ON(std::invalid_argument("Invalid en passant FEN field"));
-#endif
+        INVALID_ARG_IF(enpassant != "-", "Invalid en passant FEN field");
         current_state.enPassant = SQ_NONE;
     }
 
@@ -421,14 +440,25 @@ template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen() c
     // 3) Castling availability
     ss << ' ';
     std::string castlingStr;
-    if (castlingRights() & WHITE_OO)
-        castlingStr += 'K';
-    if (castlingRights() & WHITE_OOO)
-        castlingStr += 'Q';
-    if (castlingRights() & BLACK_OO)
-        castlingStr += 'k';
-    if (castlingRights() & BLACK_OOO)
-        castlingStr += 'q';
+    if (chess960()) {
+        if (castlingRights() & WHITE_OO)
+            castlingStr += static_cast<char>('A' + file_of(current_state.castlingMetadata[WHITE].rook_start_ks));
+        if (castlingRights() & WHITE_OOO)
+            castlingStr += static_cast<char>('A' + file_of(current_state.castlingMetadata[WHITE].rook_start_qs));
+        if (castlingRights() & BLACK_OO)
+            castlingStr += static_cast<char>('a' + file_of(current_state.castlingMetadata[BLACK].rook_start_ks));
+        if (castlingRights() & BLACK_OOO)
+            castlingStr += static_cast<char>('a' + file_of(current_state.castlingMetadata[BLACK].rook_start_qs));
+    } else {
+        if (castlingRights() & WHITE_OO)
+            castlingStr += 'K';
+        if (castlingRights() & WHITE_OOO)
+            castlingStr += 'Q';
+        if (castlingRights() & BLACK_OO)
+            castlingStr += 'k';
+        if (castlingRights() & BLACK_OOO)
+            castlingStr += 'q';
+    }
     ss << (castlingStr.empty() ? "-" : castlingStr);
 
     // 4) En passant target square or '-'
@@ -510,7 +540,7 @@ template <typename PieceC, typename T> template <bool Strict> bool _Position<Pie
     // Too many checkers
     if (popcount(checkers()) > 2)
         return false;
-    return false;
+    return true;
 }
 template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesCheck(Move m) const {
     const static auto getSniper = [](const _Position<PieceC> *p, Square ksq, Bitboard oc) {
@@ -551,7 +581,7 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
 
     Bitboard sniper = getSniper(this, ksq, oc);
 
-    while (sniper) {
+    if (sniper) {
         Square sq = (Square)pop_lsb(sniper);
         return (!(movegen::between(ksq, sq) & toBB) || m.typeOf() == Move::CASTLING) ? CheckType::DISCOVERY_CHECK
                                                                                      : CheckType::NO_CHECK;
@@ -655,7 +685,6 @@ template <typename PieceC, typename T> uint64_t _Position<PieceC, T>::zobrist() 
     }
     return hash;
 }
-template <typename PieceC, typename T> _Position<PieceC, T>::_Position(std::string fen) { setFEN(fen); }
 
 template <typename PieceC, typename T> Move _Position<PieceC, T>::parse_uci(std::string uci) const {
     return chess::uci::uciToMove(*this, uci);
@@ -669,11 +698,12 @@ template <typename PieceC, typename T> Move _Position<PieceC, T>::push_uci(std::
 template <typename PieceC, typename T> Square _Position<PieceC, T>::_valid_ep_square() const {
     if (ep_square() == SQ_NONE)
         return SQ_NONE;
-    Rank ep_rank = sideToMove() == WHITE ? RANK_3 : RANK_6;
+    Rank ep_rank = sideToMove() == WHITE ? RANK_6 : RANK_3;
     Bitboard mask = 1ULL << ep_square();
     Bitboard pawn_mask = mask << 8;
     Bitboard org_pawn_mask = mask >> 8;
-    if (sideToMove() == BLACK) std::swap(pawn_mask, org_pawn_mask);
+    if (sideToMove() == BLACK)
+        std::swap(pawn_mask, org_pawn_mask);
     // rank 3 or rank 6, depending on color
     if (rank_of(ep_square()) != ep_rank)
         return SQ_NONE;
@@ -755,7 +785,7 @@ template <typename PieceC, typename T> CastlingRights _Position<PieceC, T>::clea
     // king exists in e1/e8 depending on color
     if (!(occ(WHITE) & pieces(KING) & (1ULL << SQ_E1)))
         white_castling = 0;
-    if (!(occ(WHITE) & pieces(KING) & (1ULL << SQ_E8)))
+    if (!(occ(BLACK) & pieces(KING) & (1ULL << SQ_E8)))
         black_castling = 0;
     castling = white_castling | black_castling;
     // Re-map
@@ -768,8 +798,7 @@ template <typename PieceC, typename T> CastlingRights _Position<PieceC, T>::clea
 }
 // clang-format off
 #define INSTANTIATE(PieceC) \
-template _Position<PieceC, void>::_Position(std::string); \
-template void _Position<PieceC, void>::setFEN(const std::string &); \
+template void _Position<PieceC, void>::setFEN(const std::string &, bool); \
 template std::string _Position<PieceC, void>::fen() const; \
 template void _Position<PieceC, void>::doMove<false>(const Move &move); \
 template void _Position<PieceC, void>::doMove<true>(const Move &move); \

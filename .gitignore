@@ -7,7 +7,12 @@ build/
 !LICENSE
 !CMakeLists.txt
 !.gitignore
+!.gitattributes
 CMakePresets.json
 CMakeSettings.json
 *.s
 .vscode
+.cache
+deps/*
+!deps/
+*
