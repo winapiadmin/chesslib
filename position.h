@@ -169,7 +169,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     Bitboard _checkers;
     Bitboard _check_mask;
     Bitboard _pin_mask;
-    alignas(64) PieceC pieces_list[SQUARE_NB + 1] = {
+    PieceC pieces_list[SQUARE_NB + 1] = {
         PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE,
         PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE,
         PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE,
@@ -186,7 +186,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
   public:
     // Legal move generation functions
-    template <MoveGenType type = MoveGenType::ALL, Color c> __FORCEINLINE void legals(Movelist &out) const {
+    template <MoveGenType type = MoveGenType::ALL, Color c> inline void legals(Movelist &out) const {
 
         constexpr uint16_t raw = static_cast<uint16_t>(type);
         constexpr uint16_t pieceBits = raw & static_cast<uint16_t>(MoveGenType::PIECE_MASK);
@@ -225,7 +225,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         }
 
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::KING)) {
-            movegen::genKingMoves<PieceC, c, captureOnly>(*this, out);
+            movegen::genKingMoves<PieceC, c, captureOnly>(*this, out, _pin_mask);
         }
 
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::BISHOP)) {
@@ -242,7 +242,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     }
 
     // Legal move generation functions
-    template <MoveGenType type = MoveGenType::ALL> __FORCEINLINE void legals(Movelist &out) const {
+    template <MoveGenType type = MoveGenType::ALL> inline void legals(Movelist &out) const {
         const Color stm = sideToMove();       // Cache it
         ASSUME(stm == WHITE || stm == BLACK); // Now clearly no side effects
 
@@ -264,7 +264,6 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
         // Restore previous state from history
         assert(current_state.mv.is_ok() && "Corrupted history entry");
-        assert(current_state.incr_pc[0] != at(current_state.mv.from()) && "Corrupted history entry");
         pieces_list[current_state.incr_sqs[0]] = current_state.incr_pc[0];
         pieces_list[current_state.incr_sqs[1]] = current_state.incr_pc[1];
         pieces_list[current_state.incr_sqs[2]] = current_state.incr_pc[2];
@@ -275,7 +274,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         }
     }
 
-    __FORCEINLINE void doNullMove() {
+    inline void doNullMove() {
         history.push_back(current_state);
         current_state.turn = ~current_state.turn;
         current_state.hash ^= zobrist::RandomTurn;
@@ -284,14 +283,14 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         current_state.mv = Move::null();
     }
 
-    __FORCEINLINE Bitboard pieces() const { return occ(); }
-    template <PieceType pt> __FORCEINLINE Bitboard pieces(Color c) const {
+    inline Bitboard pieces() const { return occ(); }
+    template <PieceType pt> inline Bitboard pieces(Color c) const {
         ASSUME(c == WHITE || c == BLACK);
         if constexpr (pt == PIECE_TYPE_NB || pt == ALL_PIECES)
             return occ(c);
         return current_state.pieces[pt] & current_state.occ[c];
     }
-    template <Color c> __FORCEINLINE Bitboard pieces(PieceType pt) const {
+    template <Color c> inline Bitboard pieces(PieceType pt) const {
         ASSUME(c == WHITE || c == BLACK);
         if (pt == PIECE_TYPE_NB || pt == ALL_PIECES)
             return occ(c);
@@ -303,7 +302,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
             return occ(c);
         return current_state.pieces[pt] & current_state.occ[c];
     }
-    __FORCEINLINE Bitboard pieces(PieceType pt, Color c) const {
+    inline Bitboard pieces(PieceType pt, Color c) const {
         ASSUME(c == WHITE || c == BLACK);
         // still branchless
         switch (pt) {
@@ -314,7 +313,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
             return current_state.pieces[pt] & current_state.occ[c];
         }
     }
-    __FORCEINLINE Bitboard pieces(PieceType pt) const {
+    inline Bitboard pieces(PieceType pt) const {
         switch (int(pt)) {
         case PIECE_TYPE_NB:
         case ALL_PIECES:
@@ -324,12 +323,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         }
     }
     template <typename... PTypes, typename = std::enable_if_t<(std::is_same_v<PTypes, PieceType> && ...)>>
-    [[nodiscard]] __FORCEINLINE Bitboard pieces(PTypes... ptypes) const {
+    [[nodiscard]] inline Bitboard pieces(PTypes... ptypes) const {
         return (current_state.pieces[static_cast<int>(ptypes)] | ...);
     }
 
     template <typename... PTypes, typename = std::enable_if_t<(std::is_same_v<PTypes, PieceType> && ...)>>
-    [[nodiscard]] __FORCEINLINE Bitboard pieces(Color c, PTypes... ptypes) const {
+    [[nodiscard]] inline Bitboard pieces(Color c, PTypes... ptypes) const {
         return (pieces(ptypes, c) | ...);
     }
 
@@ -348,7 +347,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      * @param occupied Board occupation
      * @return Attackers to the bitboard
      */
-    [[nodiscard]] __FORCEINLINE Bitboard attackers(Color color, Square square, Bitboard occupied) const {
+    [[nodiscard]] inline Bitboard attackers(Color color, Square square, Bitboard occupied) const {
         auto queens = pieces<QUEEN>(color);
 
         // using the fact that if we can attack PieceType from square, they can attack us back
@@ -367,7 +366,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      * @param color
      * @return
      */
-    [[nodiscard]] __FORCEINLINE bool isAttacked(Square sq, Color by) const noexcept {
+    [[nodiscard]] inline bool isAttacked(Square sq, Color by) const noexcept {
         const Bitboard occ_bb = occ();
         const Bitboard us_bb = occ(by);
 
@@ -385,7 +384,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      * @param occupied
      * @return
      */
-    [[nodiscard]] __FORCEINLINE bool isAttacked(Square sq, Color by, Bitboard occupied) const noexcept {
+    [[nodiscard]] inline bool isAttacked(Square sq, Color by, Bitboard occupied) const noexcept {
         const Bitboard diag_attackers = pieces(PieceType::BISHOP, by) | pieces(PieceType::QUEEN, by);
         const Bitboard ortho_attackers = pieces(PieceType::ROOK, by) | pieces(PieceType::QUEEN, by);
 
@@ -394,9 +393,9 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
                (attacks::bishop(sq, occupied) & diag_attackers) || (attacks::rook(sq, occupied) & ortho_attackers);
     }
 
-    [[nodiscard]] __FORCEINLINE Bitboard attackers(Color color, Square square) const { return attackers(color, square, occ()); }
+    [[nodiscard]] inline Bitboard attackers(Color color, Square square) const { return attackers(color, square, occ()); }
 
-    template <PieceType pt> __FORCEINLINE void placePiece(Square sq, Color c) {
+    template <PieceType pt> inline void placePiece(Square sq, Color c) {
         if constexpr (pt != NO_PIECE_TYPE) {
             Bitboard v = 1ULL << sq;
             current_state.pieces[pt] |= v;
@@ -408,7 +407,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         }
     }
 
-    template <PieceType pt> __FORCEINLINE void removePiece(Square sq, Color c) {
+    template <PieceType pt> inline void removePiece(Square sq, Color c) {
         if constexpr (pt != NO_PIECE_TYPE) {
             Bitboard v = ~(1ULL << sq);
             current_state.pieces[pt] &= v;
@@ -420,7 +419,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         }
     }
 
-    __FORCEINLINE void placePiece(PieceType pt, Square sq, Color c) {
+    inline void placePiece(PieceType pt, Square sq, Color c) {
         bool a = pt == KING;
         // if (pt == NO_PIECE_TYPE)
         //     return;
@@ -432,7 +431,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         current_state.kings[c] = a ? sq : current_state.kings[c];
     }
 
-    __FORCEINLINE void removePiece(PieceType pt, Square sq, Color c) {
+    inline void removePiece(PieceType pt, Square sq, Color c) {
         bool a = pt == KING;
         if (pt != NO_PIECE_TYPE) {
             Bitboard v = ~(1ULL << sq);
@@ -444,12 +443,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         }
     }
 
-    __FORCEINLINE Bitboard occ(Color c) const {
+    inline Bitboard occ(Color c) const {
         ASSUME(c != COLOR_NB);
         return current_state.occ[c];
     }
-    __FORCEINLINE Bitboard occ() const { return current_state.occ[0] | current_state.occ[1]; }
-    PieceC piece_on(Square s) const {
+    inline Bitboard occ() const { return current_state.occ[0] | current_state.occ[1]; }
+    inline PieceC piece_on(Square s) const {
         assert(chess::is_valid(s));
 #if !defined(_DEBUG) || defined(NDEBUG)
         return pieces_list[s];
@@ -478,78 +477,78 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         return p;
 #endif
     }
-    __FORCEINLINE Bitboard us(Color c) const { return occ(c); }
-    __FORCEINLINE Color sideToMove() const { return current_state.turn; }
-    __FORCEINLINE uint64_t hash() const { return current_state.hash; }
-    __FORCEINLINE uint64_t key() const { return current_state.hash; }
-    __FORCEINLINE Color side_to_move() const { return current_state.turn; }
-    __FORCEINLINE Square ep_square() const { return current_state.enPassant; }
-    template <PieceType pt> __FORCEINLINE Square square(Color c) const { return Square(lsb(pieces<pt>(c))); }
-    __FORCEINLINE Square kingSq(Color c) const { return current_state.kings[c]; }
-    __FORCEINLINE Bitboard checkers() const { return _checkers; }
-    __FORCEINLINE Bitboard pin_mask() const { return _pin_mask; }
-    __FORCEINLINE _Position(std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    inline Bitboard us(Color c) const { return occ(c); }
+    inline Color sideToMove() const { return current_state.turn; }
+    inline uint64_t hash() const { return current_state.hash; }
+    inline uint64_t key() const { return current_state.hash; }
+    inline Color side_to_move() const { return current_state.turn; }
+    inline Square ep_square() const { return current_state.enPassant; }
+    template <PieceType pt> inline Square square(Color c) const { return Square(lsb(pieces<pt>(c))); }
+    inline Square kingSq(Color c) const { return current_state.kings[c]; }
+    inline Bitboard checkers() const { return _checkers; }
+    inline Bitboard pin_mask() const { return _pin_mask; }
+    inline _Position(std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
                             bool chess960 = false) {
         setFEN(fen, chess960);
     }
-    __FORCEINLINE bool isCapture(Move mv) const {
+    inline bool isCapture(Move mv) const {
         return mv.type_of() == EN_PASSANT || (mv.type_of() != CASTLING && piece_on(mv.to_sq()) != PieceC::NO_PIECE);
     }
-    __FORCEINLINE bool is_capture(Move mv) const { return isCapture(mv); }
-    __FORCEINLINE bool is_zeroing(Move mv) const { return isCapture(mv) || type_of(at(mv.from_sq())) == PAWN; }
+    inline bool is_capture(Move mv) const { return isCapture(mv); }
+    inline bool is_zeroing(Move mv) const { return isCapture(mv) || type_of(at(mv.from_sq())) == PAWN; }
     std::string fen() const;
-    __FORCEINLINE uint8_t halfmoveClock() const { return current_state.halfMoveClock; }
-    __FORCEINLINE uint16_t fullmoveNumber() const { return current_state.fullMoveNumber; }
-    __FORCEINLINE uint8_t rule50_count() const { return current_state.halfMoveClock; }
-    __FORCEINLINE CastlingRights castlingRights(Color c) const {
+    inline uint8_t halfmoveClock() const { return current_state.halfMoveClock; }
+    inline uint16_t fullmoveNumber() const { return current_state.fullMoveNumber; }
+    inline uint8_t rule50_count() const { return current_state.halfMoveClock; }
+    inline CastlingRights castlingRights(Color c) const {
         return current_state.castlingRights & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING);
     }
-    __FORCEINLINE CastlingRights castlingRights() const { return current_state.castlingRights; }
-    __FORCEINLINE bool is_castling(Move mv) const { return mv.type_of() == CASTLING; }
-    __FORCEINLINE const HistoryEntry<PieceC> &state() const { return current_state; }
+    inline CastlingRights castlingRights() const { return current_state.castlingRights; }
+    inline bool is_castling(Move mv) const { return mv.type_of() == CASTLING; }
+    inline const HistoryEntry<PieceC> &state() const { return current_state; }
     uint64_t zobrist() const;
-    __FORCEINLINE PieceC piece_at(Square sq) const { return piece_on(sq); }
-    template <typename T = PieceC> __FORCEINLINE PieceC at(Square sq) const {
+    inline PieceC piece_at(Square sq) const { return piece_on(sq); }
+    template <typename T = PieceC> inline PieceC at(Square sq) const {
         assert(chess::is_valid(sq));
         if constexpr (std::is_same_v<T, PieceType>)
             return piece_of(piece_at(sq));
         else
             return piece_at(sq);
     }
-    __FORCEINLINE Square enpassantSq() const { return ep_square(); }
+    inline Square enpassantSq() const { return ep_square(); }
     CastlingRights clean_castling_rights() const;
     void setFEN(const std::string &str, bool chess960 = false);
-    __FORCEINLINE void set_fen(const std::string &str, bool chess960) { setFEN(str, chess960); }
+    inline void set_fen(const std::string &str, bool chess960) { setFEN(str, chess960); }
     Move parse_uci(std::string) const;
     Move push_uci(std::string);
     Square _valid_ep_square() const;
-    template <PieceType pt> __FORCEINLINE int count() const { return popcount(pieces(pt)); }
-    template <PieceType pt, Color c> __FORCEINLINE int count() const { return popcount(pieces<pt, c>()); }
-    template <PieceType pt> __FORCEINLINE int count(Color c) const { return popcount(pieces<pt>(c)); }
-    __FORCEINLINE int count(PieceType pt, Color c) const { return popcount(pieces(pt, c)); }
-    __FORCEINLINE int ply() const { return 2 * (current_state.fullMoveNumber - 1) + (sideToMove() == BLACK); }
+    template <PieceType pt> inline int count() const { return popcount(pieces(pt)); }
+    template <PieceType pt, Color c> inline int count() const { return popcount(pieces<pt, c>()); }
+    template <PieceType pt> inline int count(Color c) const { return popcount(pieces<pt>(c)); }
+    inline int count(PieceType pt, Color c) const { return popcount(pieces(pt, c)); }
+    inline int ply() const { return 2 * (current_state.fullMoveNumber - 1) + (sideToMove() == BLACK); }
     bool is_insufficient_material(Color c) const;
-    __FORCEINLINE bool isInsufficientMaterial(Color c) const { return is_insufficient_material(c); }
-    __FORCEINLINE bool hasInsufficientMaterial(Color c) const { return is_insufficient_material(c); }
-    __FORCEINLINE bool has_insufficient_material(Color c) const { return is_insufficient_material(c); }
-    __FORCEINLINE bool is_insufficient_material() const {
+    inline bool isInsufficientMaterial(Color c) const { return is_insufficient_material(c); }
+    inline bool hasInsufficientMaterial(Color c) const { return is_insufficient_material(c); }
+    inline bool has_insufficient_material(Color c) const { return is_insufficient_material(c); }
+    inline bool is_insufficient_material() const {
         return has_insufficient_material(WHITE) && has_insufficient_material(BLACK);
     }
-    __FORCEINLINE bool isInsufficientMaterial() const { return is_insufficient_material(); }
-    __FORCEINLINE bool hasNonPawnMaterial(Color c) const { return bool(us(c) ^ (pieces(PAWN, KING) & us(c))); }
-    __FORCEINLINE bool inCheck() const { return checkers() != 0; }
-    __FORCEINLINE bool is_check() const { return checkers() != 0; }
-    __FORCEINLINE bool has_castling_rights(Color c) const { return castlingRights(c) != 0; }
-    __FORCEINLINE bool has_kingside_castling_rights(Color c) const { return (castlingRights(c) & KING_SIDE) != 0; }
-    __FORCEINLINE bool has_queenside_castling_rights(Color c) const { return (castlingRights(c) & QUEEN_SIDE) != 0; }
+    inline bool isInsufficientMaterial() const { return is_insufficient_material(); }
+    inline bool hasNonPawnMaterial(Color c) const { return bool(us(c) ^ (pieces(PAWN, KING) & us(c))); }
+    inline bool inCheck() const { return checkers() != 0; }
+    inline bool is_check() const { return checkers() != 0; }
+    inline bool has_castling_rights(Color c) const { return castlingRights(c) != 0; }
+    inline bool has_kingside_castling_rights(Color c) const { return (castlingRights(c) & KING_SIDE) != 0; }
+    inline bool has_queenside_castling_rights(Color c) const { return (castlingRights(c) & QUEEN_SIDE) != 0; }
     // Return true if a position repeats once earlier but strictly
     // after the root, or repeats twice before or at the root.
-    __FORCEINLINE bool is_repetition(int ply) const { return current_state.repetition && current_state.repetition < ply; }
+    inline bool is_repetition(int ply) const { return current_state.repetition && current_state.repetition < ply; }
     // Test if it's draw of 75 move rule (that forces everyone to draw). Excludes checkmates, of course!
-    __FORCEINLINE bool is_draw(int ply) const { return rule50_count() > 99 || is_repetition(ply); }
+    inline bool is_draw(int ply) const { return rule50_count() > 99 || is_repetition(ply); }
     // Tests whether there has been at least one repetition
     // of positions since the last capture or pawn move.
-    __FORCEINLINE bool has_repeated() const {
+    inline bool has_repeated() const {
         auto idx = history.size() - 1;
         int end = std::min(rule50_count(), current_state.pliesFromNull);
         while (end-- >= 4) {
@@ -560,17 +559,17 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         }
         return false;
     }
-    __FORCEINLINE bool _is_halfmoves(int n) const { return rule50_count() >= n; }
-    __FORCEINLINE bool chess960() const { return _chess960; }
-    __FORCEINLINE bool is_seventyfive_moves(int n) const { return _is_halfmoves(150); }
-    __FORCEINLINE bool is_fifty_moves(int n) const { return _is_halfmoves(150); }
-    __FORCEINLINE bool is_fivefold_repetition() const { return is_repetition(5); }
-    __FORCEINLINE bool is_attacked_by(Color color, Square sq, Bitboard occupied = 0) const {
+    inline bool _is_halfmoves(int n) const { return rule50_count() >= n; }
+    inline bool chess960() const { return _chess960; }
+    inline bool is_seventyfive_moves(int n) const { return _is_halfmoves(150); }
+    inline bool is_fifty_moves(int n) const { return _is_halfmoves(150); }
+    inline bool is_fivefold_repetition() const { return is_repetition(5); }
+    inline bool is_attacked_by(Color color, Square sq, Bitboard occupied = 0) const {
         Bitboard occ_bb = occupied ? occupied : this->occ();
         return attackers_mask(color, sq, occ_bb) != 0;
     }
 
-    __FORCEINLINE bool was_into_check() const {
+    inline bool was_into_check() const {
         bool atk = false;
         Bitboard bb = pieces<KING>(~sideToMove());
         while (!atk && bb) {
@@ -578,7 +577,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         }
         return atk != 0;
     }
-    __FORCEINLINE Bitboard attackers_mask(Color color, Square square, Bitboard occupied) const {
+    inline Bitboard attackers_mask(Color color, Square square, Bitboard occupied) const {
         auto queens = pieces<QUEEN>(color);
 
         // using the fact that if we can attack PieceType from square, they can attack us back
@@ -590,25 +589,25 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
         return atks & occ(color);
     }
-    __FORCEINLINE bool _attacked_for_king(Bitboard path, Bitboard occupied) const {
+    inline bool _attacked_for_king(Bitboard path, Bitboard occupied) const {
         Bitboard b = 0;
         while (!b && path) {
             b |= attackers_mask(~sideToMove(), static_cast<Square>(pop_lsb(path)), occupied);
         }
         return b != 0;
     }
-    __FORCEINLINE bool is_checkmate() const {
+    inline bool is_checkmate() const {
         Movelist moves;
         legals(moves);
         return inCheck() && !moves.size();
     }
-    __FORCEINLINE bool is_stalemate() const {
+    inline bool is_stalemate() const {
         Movelist moves;
         legals(moves);
         return !inCheck() && !moves.size();
     }
     // Material-only key (note: Zobrist=Zpieces^Zep^Zcastling^Zturn, we just XORs the remaining, it's trivial)
-    __FORCEINLINE Key material_key() const {
+    inline Key material_key() const {
         return hash() ^ (zobrist::RandomTurn * ~sideToMove()) ^ (zobrist::RandomCastle[castlingRights()]) ^
                (zobrist::RandomEP[ep_square() == SQ_NONE ? file_of(ep_square()) : FILE_NB]);
     }
@@ -622,13 +621,16 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      * to determine whether the position is a draw or checkmate.</del>
      * @return
      */
-    [[nodiscard]] __FORCEINLINE bool isHalfMoveDraw() const noexcept { return halfmoveClock() >= 100; }
-    [[nodiscard]] __FORCEINLINE Bitboard getCastlingPath(Color c, bool isKingSide) const {
+    [[nodiscard]] inline bool isHalfMoveDraw() const noexcept { return halfmoveClock() >= 100; }
+    [[nodiscard]] inline Bitboard getCastlingPath(Color c, bool isKingSide) const {
         return current_state.castlingMetadata[c].castling_paths[isKingSide];
+    }
+    [[nodiscard]] inline auto getCastlingMetadata(Color c) const {
+        return current_state.castlingMetadata[c];
     }
 
   private:
-    template <PieceType pt> [[nodiscard]] __FORCEINLINE Bitboard pinMask(Color c, Square sq) const {
+    template <PieceType pt> [[nodiscard]] inline Bitboard pinMask(Color c, Square sq) const {
         static_assert(pt == BISHOP || pt == ROOK, "Only bishop or rook allowed!");
         Bitboard occ_opp = occ(~sideToMove());
         Bitboard occ_us = occ(sideToMove());
@@ -651,7 +653,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     void refresh_attacks();
 
   public:
-    __FORCEINLINE _Position(const _Position &other)
+    inline _Position(const _Position &other)
         : current_state(other.current_state), history(other.history), _chess960(other._chess960) {
         std::copy(std::begin(other.pieces_list), std::end(other.pieces_list), std::begin(pieces_list));
         refresh_attacks();
@@ -666,7 +668,7 @@ namespace attacks {
  * @return
  */
 template <typename T, typename = std::enable_if_t<is_piece_enum<T>::value>>
-[[nodiscard]] __FORCEINLINE Bitboard attackers(const _Position<T> &board, Color color, Square square) noexcept {
+[[nodiscard]] inline Bitboard attackers(const _Position<T> &board, Color color, Square square) noexcept {
     return board.attackers(color, square);
 }
 } // namespace attacks

@@ -43,7 +43,7 @@ constexpr int msb_constexpr(Bitboard x) noexcept {
 #if defined(__GNUG__) || defined(__clang__)
 [[gnu::const]]
 #endif
-__FORCEINLINE constexpr int popcount(Bitboard x) noexcept {
+inline constexpr int popcount(Bitboard x) noexcept {
 #if defined(__GNUG__) || defined(__clang__)
     if (!is_constant_evaluated())
         return __builtin_popcountll(x);
@@ -57,7 +57,7 @@ __FORCEINLINE constexpr int popcount(Bitboard x) noexcept {
 #if defined(__GNUG__) || defined(__clang__)
 [[gnu::const]]
 #endif
-__FORCEINLINE constexpr int lsb(Bitboard x) noexcept {
+inline constexpr int lsb(Bitboard x) noexcept {
 #if defined(__GNUG__) || defined(__clang__)
     if (!is_constant_evaluated())
         return __builtin_ctzll(x);
@@ -74,7 +74,7 @@ __FORCEINLINE constexpr int lsb(Bitboard x) noexcept {
 #if defined(__GNUG__) || defined(__clang__)
 [[gnu::const]]
 #endif
-__FORCEINLINE constexpr int msb(Bitboard x) noexcept {
+inline constexpr int msb(Bitboard x) noexcept {
 #if defined(__GNUG__) || defined(__clang__)
     if (!is_constant_evaluated())
         return 63 - __builtin_clzll(x);
@@ -91,7 +91,7 @@ __FORCEINLINE constexpr int msb(Bitboard x) noexcept {
 // -------------------------------
 // destructive variants
 // -------------------------------
-__FORCEINLINE int pop_lsb(Bitboard &b) noexcept {
+inline int pop_lsb(Bitboard &b) noexcept {
     int c = lsb(b);
 #ifndef __BMI2__
     b &= b - 1;
@@ -101,7 +101,7 @@ __FORCEINLINE int pop_lsb(Bitboard &b) noexcept {
     return c;
 }
 
-__FORCEINLINE int pop_msb(Bitboard &b) noexcept {
+inline int pop_msb(Bitboard &b) noexcept {
     int c = msb(b);
     b &= ~(1ULL << c);
     return c;

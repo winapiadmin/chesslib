@@ -4,6 +4,7 @@
 #include <iosfwd>
 #include <type_traits>
 namespace chess {
+// disclaimer: please don't pass Chess960 moves
 std::ostream &operator<<(std::ostream &os, const Move mv);
 std::ostream &operator<<(std::ostream &os, const Color c);
 std::ostream &operator<<(std::ostream &os, const CastlingRights cr);

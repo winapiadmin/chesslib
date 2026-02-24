@@ -1,12 +1,11 @@
 #define DOCTEST_CONFIG_IMPLEMENT
-#ifndef __EXCEPTIONS
 #define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
-#endif
 #include "moves_io.h"
 #include "position.h"
 #include "printers.h"
 #include <chrono>
 #include <doctest/doctest.h>
+#include <variant>
 using namespace chess;
 // --------- Color assertions ----------
 static_assert(color_of(PolyglotPiece::BPAWN) == BLACK, "BPAWN should be BLACK");
@@ -209,22 +208,22 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
         return total;
     }
 }
-template <MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false>
+template <bool chess960=false, MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false>
 void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
     uint64_t nodes = 0;
     double elapsed = 0;
     using namespace std::chrono;
     for (auto &entry : entries) {
-        std::cerr << entry.input << ' ' << entry.info.depth;
+        std::cerr << entry.input << " (chess960="<<chess960<<") " << entry.info.depth;
 #if !IS_RELEASE
-        if (entry.info.nodes > 5e7) {
-            std::cerr << "(skipped)";
+        if (entry.info.nodes > 2e7) {
+            std::cerr << "(skipped)\n";
             continue;
         }
 #endif
         std::cerr << '\n';
         {
-            _Position<PolyglotPiece> pos(entry.input);
+            _Position<PolyglotPiece> pos(entry.input, chess960);
             auto start_time = high_resolution_clock::now();
             REQUIRE(perft<PolyglotPiece, mt, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
             auto end_time = high_resolution_clock::now();
@@ -232,7 +231,7 @@ void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
             nodes += entry.info.nodes;
         }
         {
-            _Position<EnginePiece> pos(entry.input);
+            _Position<EnginePiece> pos(entry.input, chess960);
             auto start_time = high_resolution_clock::now();
             REQUIRE(perft<EnginePiece, mt, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
             auto end_time = high_resolution_clock::now();
@@ -240,7 +239,7 @@ void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
             nodes += entry.info.nodes;
         }
         {
-            _Position<ContiguousMappingPiece> pos(entry.input);
+            _Position<ContiguousMappingPiece> pos(entry.input, chess960);
             auto start_time = high_resolution_clock::now();
             REQUIRE(perft<ContiguousMappingPiece, mt, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
             auto end_time = high_resolution_clock::now();
@@ -1305,7 +1304,7 @@ TEST_CASE("Captures only?") {
         { "rn1qkbnr/ppp1pppp/3p4/6B1/6b1/3P4/PPP1PPPP/RN1QKBNR w KQkq - 2 3", 30,  360 },
         {                              "2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1",  1,    1 }
     };
-    check_perfts<MoveGenType::CAPTURE>(tests);
+    check_perfts<false, MoveGenType::CAPTURE>(tests);
 }
 TEST_CASE("Chess960") {
     std::vector<TestEntry<std::string, perft_t>> tests = {
@@ -7070,7 +7069,7 @@ TEST_CASE("Chess960") {
         {      "bbq1nr1r/pppppk1p/2n2p2/6p1/P4P2/4P1P1/1PPP3P/BBQNNRKR w HF - 1 9", 5,   10316716 },
         {      "bbq1nr1r/pppppk1p/2n2p2/6p1/P4P2/4P1P1/1PPP3P/BBQNNRKR w HF - 1 9", 6,  280056112 },
     };
-    check_perfts(tests);
+    check_perfts<true>(tests);
 }
 int main(int argc, char **argv) {
     doctest::Context ctx;
