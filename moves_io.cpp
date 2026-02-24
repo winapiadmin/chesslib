@@ -21,7 +21,7 @@ std::string squareToString(Square sq) {
     };
     return std::string{ fileChars[sq] };
 }
-std::string moveToUci(Move mv,bool chess960) {
+std::string moveToUci(Move mv, bool chess960) {
     if (!mv.is_ok()) {
         // null move
         static const std::string nullMove = "0000";
@@ -49,13 +49,14 @@ std::string moveToUci(Move mv,bool chess960) {
             move += "c8"; // black queenside castling
             break;
         default:
-            if (chess960) move += squareToString(mv.to_sq());
-            else{
+            if (chess960)
+                move += squareToString(mv.to_sq());
+            else {
 #if defined(_DEBUG) || !defined(NDEBUG)
-            assert(false && "this isn't chess960");
+                assert(false && "this isn't chess960");
 #else
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("this isn't chess960"));
-            break;
+                THROW_IF_EXCEPTIONS_ON(IllegalMoveException("this isn't chess960"));
+                break;
 #endif
             }
         }

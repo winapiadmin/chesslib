@@ -229,7 +229,8 @@ void movegen::genKnightMoves(const _Position<T, void> &pos, Movelist &list, Bitb
         list.size_ += popcount(moves);
     }
 }
-template <typename T, Color c, bool capturesOnly> void movegen::genKingMoves(const _Position<T, void> &pos, Movelist &out, Bitboard _pin_mask) {
+template <typename T, Color c, bool capturesOnly>
+void movegen::genKingMoves(const _Position<T, void> &pos, Movelist &out, Bitboard _pin_mask) {
     constexpr Color them = ~c;
     const Square kingSq = pos.kingSq(c);
     const Bitboard occAll = pos.occ();
@@ -269,19 +270,20 @@ template <typename T, Color c, bool capturesOnly> void movegen::genKingMoves(con
 
         Bitboard occupancy = pos.occ();
         Bitboard enemy_attacks = enemyAttacks;
-        constexpr CastlingRights kingRights=KING_SIDE & (c==WHITE?WHITE_CASTLING:BLACK_CASTLING),
-                                 queenRights=QUEEN_SIDE & (c==WHITE?WHITE_CASTLING:BLACK_CASTLING);
+        constexpr CastlingRights kingRights = KING_SIDE & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING),
+                                 queenRights = QUEEN_SIDE & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING);
         Bitboard OO_EMPTY = pos.getCastlingPath(c, true);
         Bitboard OO_SAFE = between(kingSq, castling_king_square(c, true));
         Bitboard OOO_EMPTY = pos.getCastlingPath(c, false);
         Bitboard OOO_SAFE = between(kingSq, castling_king_square(c, false));
-        Square rookKing=pos.getCastlingMetadata(c).rook_start_ks,
-                rookQueen=pos.getCastlingMetadata(c).rook_start_qs;
+        Square rookKing = pos.getCastlingMetadata(c).rook_start_ks, rookQueen = pos.getCastlingMetadata(c).rook_start_qs;
 
-        if ((pos.castlingRights() & kingRights) && !((occupancy & OO_EMPTY)||(enemy_attacks & OO_SAFE) || (_pin_mask & (1ULL<<rookKing)))) {
+        if ((pos.castlingRights() & kingRights) &&
+            !((occupancy & OO_EMPTY) || (enemy_attacks & OO_SAFE) || (_pin_mask & (1ULL << rookKing)))) {
             out.push_back(Move::make<CASTLING>(kingSq, rookKing));
         }
-        if ((pos.castlingRights() & queenRights) && !((occupancy & OOO_EMPTY) || (enemy_attacks & OOO_SAFE) || (_pin_mask & (1ULL<<rookQueen)))) {
+        if ((pos.castlingRights() & queenRights) &&
+            !((occupancy & OOO_EMPTY) || (enemy_attacks & OOO_SAFE) || (_pin_mask & (1ULL << rookQueen)))) {
             out.push_back(Move::make<CASTLING>(kingSq, rookQueen));
         }
     }
@@ -440,10 +442,18 @@ template Move *chess::_chess::splat_pawn_moves<SOUTH_WEST>(Move *, Bitboard);
                                                                               Movelist &,                                      \
                                                                               Bitboard,                                        \
                                                                               Bitboard);                                       \
-    template void chess::movegen::genKingMoves<PieceC, Color::WHITE, true>(const _Position<PieceC, void> &, Movelist &,Bitboard);       \
-    template void chess::movegen::genKingMoves<PieceC, Color::BLACK, true>(const _Position<PieceC, void> &, Movelist &,Bitboard);       \
-    template void chess::movegen::genKingMoves<PieceC, Color::WHITE, false>(const _Position<PieceC, void> &, Movelist &,Bitboard);      \
-    template void chess::movegen::genKingMoves<PieceC, Color::BLACK, false>(const _Position<PieceC, void> &, Movelist &,Bitboard);
+    template void chess::movegen::genKingMoves<PieceC, Color::WHITE, true>(const _Position<PieceC, void> &,                    \
+                                                                           Movelist &,                                         \
+                                                                           Bitboard);                                          \
+    template void chess::movegen::genKingMoves<PieceC, Color::BLACK, true>(const _Position<PieceC, void> &,                    \
+                                                                           Movelist &,                                         \
+                                                                           Bitboard);                                          \
+    template void chess::movegen::genKingMoves<PieceC, Color::WHITE, false>(const _Position<PieceC, void> &,                   \
+                                                                            Movelist &,                                        \
+                                                                            Bitboard);                                         \
+    template void chess::movegen::genKingMoves<PieceC, Color::BLACK, false>(const _Position<PieceC, void> &,                   \
+                                                                            Movelist &,                                        \
+                                                                            Bitboard);
 INSTANTIATE(EnginePiece)
 INSTANTIATE(PolyglotPiece)
 INSTANTIATE(ContiguousMappingPiece)

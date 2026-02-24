@@ -8,7 +8,7 @@ class Move;
 enum Square : int8_t;
 template <typename T, typename> class _Position;
 namespace uci {
-std::string moveToUci(Move move,bool chess960=false);
+std::string moveToUci(Move move, bool chess960 = false);
 
 std::string squareToString(Square sq);
 class IllegalMoveException : public std::exception {
