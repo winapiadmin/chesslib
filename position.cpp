@@ -179,7 +179,7 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
         current_state.repetition = 0;
         int end = std::min(rule50_count(), current_state.pliesFromNull);
         if (end >= 4) {
-            auto *stp = &history[history.size_ - 1];
+            auto *stp = &history[history.size() - 1];
             stp -= 1;
             for (int i = 4; i <= end; i += 2) {
                 stp -= 2;
