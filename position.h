@@ -565,7 +565,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
   public:
     inline _Position(const _Position &other)
         : current_state(other.current_state), history(other.history), _chess960(other._chess960) {
-        pieces_list=other.pieces_list;
+        std::copy(std::begin(other.pieces_list), std::end(other.pieces_list), std::begin(pieces_list));
         refresh_attacks();
     }
 };
