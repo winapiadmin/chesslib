@@ -75,23 +75,33 @@ enum Square : int8_t {
 
     SQUARE_ZERO = 0,
     SQUARE_NB = 64
+
+    operator int() const {
+        return static_cast<int>(value);
+    }
+    Square operator()(int value) const {
+        assert(0<=s && s<64);
+        return static_cast<Square>(value);
+    }
 };
 enum File : int8_t { FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, FILE_NB };
 
 enum Rank : int8_t { RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_NB };
-constexpr bool is_valid(const Rank r, const File f) { return 0 <= r && r <= 7 && 0 <= f && f <= 7; } // unsigned already fix signedness
+constexpr Square square_mirror(Square sq){return (Square)((int)sq^56);}
+constexpr Square flip_sq(Square sq){return square_mirror(sq);}
+constexpr bool is_valid(const Rank r, const File f) { return 0 <= r && r <= 7 && 0 <= f && f <= 7; }
 constexpr bool is_valid(const Square s) { return 0 <= s && s < 64; }
 constexpr File file_of(Square s) {
-    ASSUME(0 <= s && s < 64);
+    assert(0 <= s && s < 64);
     return File(s & 7);
 }
 
 constexpr Rank rank_of(Square s) {
-    ASSUME(0 <= s && s < 64);
+    assert(0 <= s && s < 64);
     return Rank(s >> 3);
 }
 constexpr Square make_sq(Rank r, File f) {
-    ASSUME(0 <= r && r <= 7 && 0 <= f && f <= 7);
+    assert(0 <= r && r <= 7 && 0 <= f && f <= 7);
     return static_cast<Square>(static_cast<uint8_t>(r * 8 + f));
 }
 constexpr Square make_sq(File f, Rank r) {
