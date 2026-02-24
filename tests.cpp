@@ -208,13 +208,13 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
         return total;
     }
 }
-template <bool chess960=false, MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false>
+template <bool chess960 = false, MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false>
 void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
     uint64_t nodes = 0;
     double elapsed = 0;
     using namespace std::chrono;
     for (auto &entry : entries) {
-        std::cerr << entry.input << " (chess960="<<chess960<<") " << entry.info.depth;
+        std::cerr << entry.input << " (chess960=" << chess960 << ") " << entry.info.depth;
 #if !IS_RELEASE
         if (entry.info.nodes > 2e7) {
             std::cerr << "(skipped)\n";

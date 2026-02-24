@@ -487,8 +487,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     inline Square kingSq(Color c) const { return current_state.kings[c]; }
     inline Bitboard checkers() const { return _checkers; }
     inline Bitboard pin_mask() const { return _pin_mask; }
-    inline _Position(std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                            bool chess960 = false) {
+    inline _Position(std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", bool chess960 = false) {
         setFEN(fen, chess960);
     }
     inline bool isCapture(Move mv) const {
@@ -625,9 +624,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     [[nodiscard]] inline Bitboard getCastlingPath(Color c, bool isKingSide) const {
         return current_state.castlingMetadata[c].castling_paths[isKingSide];
     }
-    [[nodiscard]] inline auto getCastlingMetadata(Color c) const {
-        return current_state.castlingMetadata[c];
-    }
+    [[nodiscard]] inline auto getCastlingMetadata(Color c) const { return current_state.castlingMetadata[c]; }
 
   private:
     template <PieceType pt> [[nodiscard]] inline Bitboard pinMask(Color c, Square sq) const {

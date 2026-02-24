@@ -48,8 +48,8 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
         std::cerr << "Target piece: " << target_piece << "\n";
         std::cerr << "Side to move: " << us << "\n";
         std::cerr << "movetrace: \n";
-        for (int i=0;i<history.size();i++)
-        std::cerr<<uci::moveToUci(history[i].mv,_chess960)<<'\n';
+        for (int i = 0; i < history.size(); i++)
+            std::cerr << uci::moveToUci(history[i].mv, _chess960) << '\n';
     }
     INVALID_ARG_IF(target_piecetype == KING, "Capturing kings is illegal");
     INVALID_ARG_IF(moving_piecetype == NO_PIECE_TYPE, "Expected a piece to move.");
@@ -94,14 +94,13 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
             const PieceC prev_king_dest = piece_on(king_dest);
             const PieceC prev_rook_dest = piece_on(rook_dest);
 
-            current_state.incr_sqs[0]=from_sq, current_state.incr_pc[0]=moving_piece;
-            current_state.incr_sqs[1]=to_sq, current_state.incr_pc[1]=target_piece;
-            current_state.incr_sqs[2]=king_dest, current_state.incr_pc[2]=prev_king_dest;
-            current_state.incr_sqs[3]=rook_dest, current_state.incr_pc[3]=prev_rook_dest;
+            current_state.incr_sqs[0] = from_sq, current_state.incr_pc[0] = moving_piece;
+            current_state.incr_sqs[1] = to_sq, current_state.incr_pc[1] = target_piece;
+            current_state.incr_sqs[2] = king_dest, current_state.incr_pc[2] = prev_king_dest;
+            current_state.incr_sqs[3] = rook_dest, current_state.incr_pc[3] = prev_rook_dest;
 
-            Square rook_start = is_king_side
-                ? current_state.castlingMetadata[us].rook_start_ks
-                : current_state.castlingMetadata[us].rook_start_qs;
+            Square rook_start = is_king_side ? current_state.castlingMetadata[us].rook_start_ks
+                                             : current_state.castlingMetadata[us].rook_start_qs;
 
             removePiece<KING>(from_sq, us);
             removePiece<ROOK>(rook_start, us);
@@ -110,7 +109,6 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
             placePiece<ROOK>(rook_dest, us);
             break;
         }
-
         }
     }
     {
@@ -359,7 +357,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
 
     for (Color c : { WHITE, BLACK }) {
         // king
-        if (castlingRights() & (c & KING_SIDE)){
+        if (castlingRights() & (c & KING_SIDE)) {
             const auto king_from = current_state.castlingMetadata[c].king_start;
             const auto rook_from = make_sq(file_of(current_state.castlingMetadata[c].rook_start_ks), rank_of(king_from));
             const auto king_to = castling_king_square(c, true);
@@ -369,7 +367,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                 ~((1ULL << king_from) | (1ULL << rook_from));
         }
         // queen
-        if (castlingRights() & (c & QUEEN_SIDE)){
+        if (castlingRights() & (c & QUEEN_SIDE)) {
             const auto king_from = current_state.castlingMetadata[c].king_start;
             const auto rook_from = make_sq(file_of(current_state.castlingMetadata[c].rook_start_qs), rank_of(king_from));
             const auto king_to = castling_king_square(c, false);
@@ -462,7 +460,6 @@ template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen() c
             castlingStr += 'q';
     }
     ss << (castlingStr.empty() ? "-" : castlingStr);
-
 
     // 4) En passant target square or '-'
     ss << ' ';
