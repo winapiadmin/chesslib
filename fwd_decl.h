@@ -9,7 +9,7 @@ template <typename T, typename = void> struct is_piece_enum : std::false_type {}
 
 template <typename T> struct is_piece_enum<T, std::void_t<decltype(T::PIECE_NB)>> : std::true_type {};
 enum CastlingRights : int8_t;
-enum Square : int8_t;
+enum Square;
 enum Direction : int8_t;
 enum MoveType : uint16_t;
 enum File : int8_t;
