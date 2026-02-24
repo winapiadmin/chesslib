@@ -3,10 +3,10 @@ name: clang-format
 on:
   pull_request:
     branches: [ "main" ]
-  push:
 
 jobs:
   format:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -16,9 +16,8 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Normalize line endings
-        run: |
-          git add --renormalize .
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
 
       - name: Run clang-format
         run: |
@@ -29,6 +28,6 @@ jobs:
           if ! git diff --quiet; then
             git config user.email "actions@github.com"
             git config user.name "GitHub Actions"
-            git commit -am "Normalize line endings and apply clang-format"
+            git commit -am "Apply clang-format"
             git push
           fi
