@@ -421,6 +421,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         assert(chess::is_valid(sq));
         if constexpr (std::is_same_v<T, PieceType>)
             return piece_of(piece_at(sq));
+        else if constexpr (std::is_same_v<T, Color>)
+            return type_of(piece_at(sq));
         else
             return piece_at(sq);
     }
@@ -445,8 +447,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     }
     inline bool isInsufficientMaterial() const { return is_insufficient_material(); }
     inline bool hasNonPawnMaterial(Color c) const { return bool(us(c) ^ (pieces(PAWN, KING) & us(c))); }
-    inline bool inCheck() const { return checkers() != 0; }
-    inline bool is_check() const { return checkers() != 0; }
+    inline bool inCheck() const { return checkers() != 0LL; }
+    inline bool is_check() const { return checkers() != 0LL; }
     inline bool has_castling_rights(Color c) const { return castlingRights(c) != 0; }
     inline bool has_kingside_castling_rights(Color c) const { return (castlingRights(c) & KING_SIDE) != 0; }
     inline bool has_queenside_castling_rights(Color c) const { return (castlingRights(c) & QUEEN_SIDE) != 0; }
