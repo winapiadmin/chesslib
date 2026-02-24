@@ -10,6 +10,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 namespace chess {
 
 template <typename Piece> struct alignas(64) HistoryEntry {
