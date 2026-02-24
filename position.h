@@ -38,97 +38,6 @@ template <typename Piece> struct alignas(64) HistoryEntry {
     // implementation-specific implementations goes here
 };
 
-template <typename T, std::size_t MaxSize> class HeapAllocatedValueList {
-  private:
-    constexpr static int ALIGNMENT = 64;
-
-  public:
-    using size_type = std::size_t;
-    inline HeapAllocatedValueList() {
-        values_ = reinterpret_cast<T *>(::operator new(MaxSize * sizeof(T), std::align_val_t{ ALIGNMENT }));
-        assert(values_);
-    }
-    inline ~HeapAllocatedValueList() { ::operator delete(values_, std::align_val_t{ ALIGNMENT }); }
-
-    HeapAllocatedValueList(const HeapAllocatedValueList &other) : size_(other.size_) {
-        if (values_)
-            ::operator delete(values_, std::align_val_t{ ALIGNMENT });
-        values_ = reinterpret_cast<T *>(::operator new(MaxSize * sizeof(T), std::align_val_t{ ALIGNMENT }));
-        assert(values_);
-        std::copy(other.values_, other.values_ + size_, values_);
-    }
-
-    HeapAllocatedValueList &operator=(const HeapAllocatedValueList &other) {
-        if (this != &other) {
-            ::operator delete(values_, std::align_val_t{ ALIGNMENT });
-            // Allocate new memory and copy
-            T *new_values = reinterpret_cast<T *>(::operator new(MaxSize * sizeof(T), std::align_val_t{ ALIGNMENT }));
-            assert(new_values);
-            std::copy(other.values_, other.values_ + other.size_, new_values);
-
-            // Free old memory
-            free(values_);
-
-            // Assign new data
-            values_ = new_values;
-            size_ = other.size_;
-        }
-        return *this;
-    }
-
-    HeapAllocatedValueList(HeapAllocatedValueList &&other) noexcept : size_(other.size_) {
-        ::operator delete(values_, std::align_val_t{ ALIGNMENT });
-        values_ = reinterpret_cast<T *>(::operator new(MaxSize * sizeof(T), std::align_val_t{ ALIGNMENT }));
-        assert(values_);
-        std::copy(other.values_, other.values_ + size_, values_);
-    }
-
-    HeapAllocatedValueList &operator=(HeapAllocatedValueList &&other) noexcept {
-        if (this != &other) {
-            ::operator delete(values_, std::align_val_t{ ALIGNMENT });
-            values_ = reinterpret_cast<T *>(::operator new(MaxSize * sizeof(T), std::align_val_t{ ALIGNMENT }));
-            assert(values_);
-            std::copy(other.values_, other.values_ + size_, values_);
-        }
-        return *this;
-    }
-    inline size_type size() const { return size_; }
-
-    inline void push_back(const T &value) {
-        assert(size_ < MaxSize);
-
-        values_[size_++] = value;
-    }
-    inline void clear() { size_ = 0; }
-    inline const T &pop() {
-        assert(size_ > 0);
-        return values_[--size_]; // always safe due to mask
-    }
-
-    inline void pop_back() { size_ -= (size_ > 0) ? 1 : 0; }
-
-    inline const T &front() const { return (size_ > 0) ? values_[0] : T{}; }
-
-    inline T &operator[](int index) {
-        assert(index < MaxSize); // relax the conditions, it's BRANCHLESS so forgive
-        size_type i = static_cast<size_type>(index);
-        return values_[i];
-    }
-
-    inline T &operator[](int index) const {
-        assert(index < MaxSize); // relax the conditions, it's BRANCHLESS so forgive
-        size_type i = static_cast<size_type>(index);
-        return values_[i];
-    }
-    inline const T *begin() const { return values_; }
-    inline T *data() { return values_; }
-    inline const T *end() const { return values_ + size_; }
-    size_type size_ = 0;
-
-  private:
-    T *values_ = nullptr;
-};
-
 enum class CheckType { NO_CHECK, DIRECT_CHECK, DISCOVERY_CHECK };
 enum class MoveGenType : uint16_t {
     NONE = 0,
@@ -163,7 +72,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     HistoryEntry<PieceC> current_state;
 
     // Move history stack
-    HeapAllocatedValueList<HistoryEntry<PieceC>, 6144> history;
+    std::vector<HistoryEntry<PieceC>> history;
     Bitboard _rook_pin;
     Bitboard _bishop_pin;
     Bitboard _checkers;
@@ -488,6 +397,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     inline Bitboard checkers() const { return _checkers; }
     inline Bitboard pin_mask() const { return _pin_mask; }
     inline _Position(std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", bool chess960 = false) {
+        history.reserve(6144);
         setFEN(fen, chess960);
     }
     inline bool isCapture(Move mv) const {
@@ -543,7 +453,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     // Return true if a position repeats once earlier but strictly
     // after the root, or repeats twice before or at the root.
     inline bool is_repetition(int ply) const { return current_state.repetition && current_state.repetition < ply; }
-    // Test if it's draw of 75 move rule (that forces everyone to draw). Excludes checkmates, of course!
+    // Test if it's draw of 75 move rule (that forces everyone to draw). It doesn't consider checkmates.
     inline bool is_draw(int ply) const { return rule50_count() > 99 || is_repetition(ply); }
     // Tests whether there has been at least one repetition
     // of positions since the last capture or pawn move.
@@ -652,7 +562,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
   public:
     inline _Position(const _Position &other)
         : current_state(other.current_state), history(other.history), _chess960(other._chess960) {
-        std::copy(std::begin(other.pieces_list), std::end(other.pieces_list), std::begin(pieces_list));
+        pieces_list=other.pieces_list;
         refresh_attacks();
     }
 };
