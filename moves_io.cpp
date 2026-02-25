@@ -34,7 +34,7 @@ std::string moveToUci(Move mv, bool chess960) {
     move += squareToString(mv.from_sq());
     // To square, special: castlings
     switch (mv.type_of()) {
-    case CASTLING:{
+    case CASTLING: {
         if (chess960)
             move += squareToString(mv.to_sq());
         else {
@@ -60,17 +60,16 @@ std::string moveToUci(Move mv, bool chess960) {
 #endif
             }
         }
+    } break;
+    case PROMOTION:
+        move += squareToString(mv.to_sq());
+        move += PieceTypeChar[mv.promotion_type()];
+        break;
+    default:
+        move += squareToString(mv.to_sq());
+        break;
     }
-    break;
-case PROMOTION:
-    move += squareToString(mv.to_sq());
-    move += PieceTypeChar[mv.promotion_type()];
-    break;
-default:
-    move += squareToString(mv.to_sq());
-    break;
-}
-return move;
+    return move;
 }
 template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std::string_view uci) {
     if (uci.length() < 4) {
