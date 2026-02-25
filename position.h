@@ -180,7 +180,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         pieces_list[current_state.incr_sqs[2]] = current_state.incr_pc[2];
         pieces_list[current_state.incr_sqs[3]] = current_state.incr_pc[3];
         current_state = history.back();
-        history.pop();
+        history.pop_back();
         if constexpr (RetAll) {
             return current_state;
         }
