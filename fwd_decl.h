@@ -25,7 +25,7 @@ using Movelist = ValueList<Move, 256>;
 enum class PolyglotPiece : uint8_t;
 enum class EnginePiece : uint8_t;
 enum class ContiguousMappingPiece : uint8_t;
-using Position = _Position<EnginePiece,void>;
+using Position = _Position<EnginePiece, void>;
 using Board = Position;
 
 } // namespace chess
