@@ -35,7 +35,10 @@ std::string moveToUci(Move mv, bool chess960) {
     // To square, special: castlings
     switch (mv.type_of()) {
     case CASTLING:
-        switch (mv.to_sq()) {
+        if (chess960)
+            move += squareToString(mv.to_sq());
+        else
+            switch (mv.to_sq()) {
         case SQ_H1:
             move += "g1"; // White kingside castling
             break;
@@ -49,9 +52,6 @@ std::string moveToUci(Move mv, bool chess960) {
             move += "c8"; // black queenside castling
             break;
         default:
-            if (chess960)
-                move += squareToString(mv.to_sq());
-            else {
 #if defined(_DEBUG) || !defined(NDEBUG)
                 assert(false && "this isn't chess960");
 #else
