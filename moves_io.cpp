@@ -90,8 +90,8 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
         return Move::NO_MOVE;
     }
     // castling in chess960
-    if (pos.chess960() && pt == PieceType::KING && board.at<PieceType>(target) == PieceType::ROOK &&
-        pos.at<Color>(target) == board.sideToMove()) {
+    if (pos.chess960() && pt == PieceType::KING && pos.template at<PieceType>(target) == PieceType::ROOK &&
+        pos.template at<Color>(target) == pos.sideToMove()) {
         return Move::make<Move::CASTLING>(source, target);
     }
 
