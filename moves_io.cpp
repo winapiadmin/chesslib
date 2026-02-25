@@ -37,7 +37,7 @@ std::string moveToUci(Move mv, bool chess960) {
     case CASTLING:
         if (chess960)
             move += squareToString(mv.to_sq());
-        else
+        else{
             switch (mv.to_sq()) {
         case SQ_H1:
             move += "g1"; // White kingside castling
@@ -59,6 +59,7 @@ std::string moveToUci(Move mv, bool chess960) {
                 break;
 #endif
             }
+        }
         }
         break;
     case PROMOTION:
