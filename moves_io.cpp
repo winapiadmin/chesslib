@@ -37,21 +37,21 @@ std::string moveToUci(Move mv, bool chess960) {
     case CASTLING:
         if (chess960)
             move += squareToString(mv.to_sq());
-        else{
+        else {
             switch (mv.to_sq()) {
-        case SQ_H1:
-            move += "g1"; // White kingside castling
-            break;
-        case SQ_A1:
-            move += "c1"; // white queenside castling
-            break;
-        case SQ_H8:
-            move += "g8"; // black kingside castling
-            break;
-        case SQ_A8:
-            move += "c8"; // black queenside castling
-            break;
-        default:
+            case SQ_H1:
+                move += "g1"; // White kingside castling
+                break;
+            case SQ_A1:
+                move += "c1"; // white queenside castling
+                break;
+            case SQ_H8:
+                move += "g8"; // black kingside castling
+                break;
+            case SQ_A8:
+                move += "c8"; // black queenside castling
+                break;
+            default:
 #if defined(_DEBUG) || !defined(NDEBUG)
                 assert(false && "this isn't chess960");
 #else
@@ -60,17 +60,17 @@ std::string moveToUci(Move mv, bool chess960) {
 #endif
             }
         }
-        }
-        break;
-    case PROMOTION:
-        move += squareToString(mv.to_sq());
-        move += PieceTypeChar[mv.promotion_type()];
-        break;
-    default:
-        move += squareToString(mv.to_sq());
-        break;
     }
-    return move;
+    break;
+case PROMOTION:
+    move += squareToString(mv.to_sq());
+    move += PieceTypeChar[mv.promotion_type()];
+    break;
+default:
+    move += squareToString(mv.to_sq());
+    break;
+}
+return move;
 }
 template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std::string_view uci) {
     if (uci.length() < 4) {
@@ -99,8 +99,8 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
     // convert to king captures rook
     // in chess960 the move should be sent as king captures rook already!
     if (!board.chess960() && pt == PieceType::KING && square_distance(target, source) == 2) {
-         target = make_sq(target > source ? File::FILE_H : File::FILE_A, source.rank());
-         return Move::make<Move::CASTLING>(source, target);
+        target = make_sq(target > source ? File::FILE_H : File::FILE_A, source.rank());
+        return Move::make<Move::CASTLING>(source, target);
     }
     // en passant
     if (pt == PAWN && target == pos.enpassantSq()) {

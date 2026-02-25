@@ -1,10 +1,10 @@
 #pragma once
+#include "fwd_decl.h"
 #include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include "fwd_decl.h"
-namespace chess::uci{
+namespace chess::uci {
 std::string moveToUci(Move move, bool chess960 = false);
 
 std::string squareToString(Square sq);
