@@ -171,7 +171,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     }
     template <bool Strict = true> void doMove(const Move &move);
     template <bool RetAll = false> inline auto undoMove() -> std::conditional_t<RetAll, HistoryEntry<PieceC> &, void> {
-        assert(history.size_ > 0 && "undoMove called with empty history");
+        assert(history.size() > 0 && "undoMove called with empty history");
 
         // Restore previous state from history
         assert(current_state.mv.is_ok() && "Corrupted history entry");
@@ -179,7 +179,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         pieces_list[current_state.incr_sqs[1]] = current_state.incr_pc[1];
         pieces_list[current_state.incr_sqs[2]] = current_state.incr_pc[2];
         pieces_list[current_state.incr_sqs[3]] = current_state.incr_pc[3];
-        current_state = history.pop();
+        current_state = history.back();
+        history.pop();
         if constexpr (RetAll) {
             return current_state;
         }
