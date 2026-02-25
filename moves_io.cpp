@@ -89,9 +89,17 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
         THROW_IF_EXCEPTIONS_ON(IllegalMoveException("source need to be a existing piece, got nothing"));
         return Move::NO_MOVE;
     }
-    if (!pos.chess960() && pt == KING && square_distance(target, source) == 2) {
-        target = make_sq(target > source ? File::FILE_H : File::FILE_A, rank_of(source));
-        return Move::make<CASTLING>(source, target);
+    // castling in chess960
+    if (board.chess960() && pt == PieceType::KING && board.at<PieceType>(target) == PieceType::ROOK &&
+        board.at<Color>(target) == board.sideToMove()) {
+        return Move::make<Move::CASTLING>(source, target);
+    }
+
+    // convert to king captures rook
+    // in chess960 the move should be sent as king captures rook already!
+    if (!board.chess960() && pt == PieceType::KING && square_distance(target, source) == 2) {
+         target = make_sq(target > source ? File::FILE_H : File::FILE_A, source.rank());
+         return Move::make<Move::CASTLING>(source, target);
     }
     // en passant
     if (pt == PAWN && target == pos.enpassantSq()) {
