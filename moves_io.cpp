@@ -34,7 +34,7 @@ std::string moveToUci(Move mv, bool chess960) {
     move += squareToString(mv.from_sq());
     // To square, special: castlings
     switch (mv.type_of()) {
-    case CASTLING:
+    case CASTLING:{
         if (chess960)
             move += squareToString(mv.to_sq());
         else {
