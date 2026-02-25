@@ -90,15 +90,15 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
         return Move::NO_MOVE;
     }
     // castling in chess960
-    if (board.chess960() && pt == PieceType::KING && board.at<PieceType>(target) == PieceType::ROOK &&
-        board.at<Color>(target) == board.sideToMove()) {
+    if (pos.chess960() && pt == PieceType::KING && board.at<PieceType>(target) == PieceType::ROOK &&
+        pos.at<Color>(target) == board.sideToMove()) {
         return Move::make<Move::CASTLING>(source, target);
     }
 
     // convert to king captures rook
     // in chess960 the move should be sent as king captures rook already!
-    if (!board.chess960() && pt == PieceType::KING && square_distance(target, source) == 2) {
-        target = make_sq(target > source ? File::FILE_H : File::FILE_A, source.rank());
+    if (!pos.chess960() && pt == PieceType::KING && square_distance(target, source) == 2) {
+        target = make_sq(target > source ? File::FILE_H : File::FILE_A, rank_of(source));
         return Move::make<Move::CASTLING>(source, target);
     }
     // en passant
@@ -112,9 +112,9 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
 
         if (promotion == NO_PIECE_TYPE || promotion == KING || promotion == PAWN) {
 #if defined(_DEBUG) || !defined(NDEBUG)
-            assert(false && "promotions: NRBQ");
+            assert(false && "promotions: [NRBQ]");
 #else
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("promotions: NRBQ"));
+            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("promotions: [NRBQ]"));
 #endif
             return Move::NO_MOVE;
         }
