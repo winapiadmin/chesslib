@@ -69,7 +69,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     enum class CheckType { NO_CHECK, DIRECT_CHECK, DISCOVERY_CHECK };
     enum class MoveGenType : uint16_t {
         NONE = 0,
-    
+
         // piece selectors
         PAWN = 1 << 1,
         KNIGHT = 1 << 2,
@@ -77,16 +77,16 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         ROOK = 1 << 4,
         QUEEN = 1 << 5,
         KING = 1 << 6,
-    
+
         PIECE_MASK = PAWN | KNIGHT | BISHOP | ROOK | QUEEN | KING,
-    
+
         // move-type selectors
         CAPTURE = 1 << 7,
         QUIET = 1 << 8,
-    
+
         ALL = PIECE_MASK | CAPTURE | QUIET
     };
-    
+
     template <typename MoveGenType> static constexpr MoveGenType operator&(MoveGenType a, MoveGenType b) {
         using U = std::underlying_type_t<MoveGenType>;
         return static_cast<MoveGenType>(static_cast<U>(a) & static_cast<U>(b));
