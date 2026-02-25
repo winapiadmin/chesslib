@@ -431,7 +431,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     inline Square enpassantSq() const { return ep_square(); }
     CastlingRights clean_castling_rights() const;
     void setFEN(const std::string &str, bool chess960 = false);
-    inline void set_fen(const std::string &str, bool chess960) { setFEN(str, chess960); }
+    inline void set_fen(const std::string &str, bool chess960 = false) { setFEN(str, chess960); }
+    inline void setFen(const std::string &str, bool chess960 = false) { setFEN(str, chess960); }
     Move parse_uci(std::string) const;
     Move push_uci(std::string);
     Square _valid_ep_square() const;
