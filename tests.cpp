@@ -229,6 +229,18 @@ void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
             auto end_time = high_resolution_clock::now();
             elapsed += duration<double>(end_time - start_time).count();
             nodes += entry.info.nodes;
+            if (entry.info.nodes < 5e6) {
+              _Position<PolyglotPiece> pos2=pos;
+              REQUIRE(pos.fen() == pos2.fen());
+              auto start_time = high_resolution_clock::now();
+              REQUIRE(perft<PolyglotPiece, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
+              auto end_time = high_resolution_clock::now();
+              elapsed += duration<double>(end_time - start_time).count();
+              nodes += entry.info.nodes;
+            }
+            else{
+              std::cerr << "\n(skipped copying test)\n";
+            }
         }
         {
             _Position<EnginePiece> pos(entry.input, chess960);
@@ -237,6 +249,18 @@ void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
             auto end_time = high_resolution_clock::now();
             elapsed += duration<double>(end_time - start_time).count();
             nodes += entry.info.nodes;
+            if (entry.info.nodes < 5e6) {
+              _Position<EnginePiece> pos2=pos;
+              REQUIRE(pos.fen() == pos2.fen());
+              auto start_time = high_resolution_clock::now();
+              REQUIRE(perft<EnginePiece, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
+              auto end_time = high_resolution_clock::now();
+              elapsed += duration<double>(end_time - start_time).count();
+              nodes += entry.info.nodes;
+            }
+            else{
+              std::cerr << "\n(skipped copying test)\n";
+            }
         }
         {
             _Position<ContiguousMappingPiece> pos(entry.input, chess960);
@@ -245,6 +269,18 @@ void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
             auto end_time = high_resolution_clock::now();
             elapsed += duration<double>(end_time - start_time).count();
             nodes += entry.info.nodes;
+            if (entry.info.nodes < 5e6) {
+              _Position<ContiguousMappingPiece> pos2=pos;
+              REQUIRE(pos.fen() == pos2.fen());
+              auto start_time = high_resolution_clock::now();
+              REQUIRE(perft<ContiguousMappingPiece, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
+              auto end_time = high_resolution_clock::now();
+              elapsed += duration<double>(end_time - start_time).count();
+              nodes += entry.info.nodes;
+            }
+            else{
+              std::cerr << "\n(skipped copying test)\n";
+            }
         }
     }
     double mnps = (nodes / elapsed) / 1'000'000.0;
