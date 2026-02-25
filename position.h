@@ -95,6 +95,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     bool _chess960;
 
   public:
+    constexpr std::string_view START_FEN="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     // Legal move generation functions
     template <MoveGenType type = MoveGenType::ALL, Color c> inline void legals(Movelist &out) const {
 
@@ -397,7 +398,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     inline Square kingSq(Color c) const { return current_state.kings[c]; }
     inline Bitboard checkers() const { return _checkers; }
     inline Bitboard pin_mask() const { return _pin_mask; }
-    inline _Position(std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", bool chess960 = false) {
+    inline _Position(std::string fen = START_FEN, bool chess960 = false) {
         history.reserve(6144);
         setFEN(fen, chess960);
     }
