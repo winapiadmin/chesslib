@@ -84,6 +84,7 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
         THROW_IF_EXCEPTIONS_ON(IllegalMoveException("source !in [a1, h8], target !in [a1, h8]"));
         return Move::NO_MOVE;
     }
+    auto move = (uci.length() == 4) ? Move::make(source, target) : Move::NO_MOVE;
     auto pt = piece_of(pos.at(source));
     if (pt == NO_PIECE_TYPE) {
         THROW_IF_EXCEPTIONS_ON(IllegalMoveException("source need to be a existing piece, got nothing"));
@@ -92,22 +93,22 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
     // castling in chess960
     if (pos.chess960() && pt == PieceType::KING && pos.template at<PieceType>(target) == PieceType::ROOK &&
         pos.template at<Color>(target) == pos.sideToMove()) {
-        return Move::make<Move::CASTLING>(source, target);
+        move= Move::make<Move::CASTLING>(source, target);
     }
 
     // convert to king captures rook
     // in chess960 the move should be sent as king captures rook already!
-    if (!pos.chess960() && pt == PieceType::KING && square_distance(target, source) == 2) {
+    else if (!pos.chess960() && pt == PieceType::KING && square_distance(target, source) == 2) {
         target = make_sq(target > source ? File::FILE_H : File::FILE_A, rank_of(source));
-        return Move::make<Move::CASTLING>(source, target);
+        move= Move::make<Move::CASTLING>(source, target);
     }
     // en passant
-    if (pt == PAWN && target == pos.enpassantSq()) {
-        return Move::make<EN_PASSANT>(source, target);
+    else if (pt == PAWN && target == pos.enpassantSq()) {
+        move= Move::make<EN_PASSANT>(source, target);
     }
 
     // promotion
-    if (pt == PAWN && uci.length() == 5 && (rank_of(target) == (pos.sideToMove() == WHITE ? RANK_8 : RANK_1))) {
+    else if (pt == PAWN && uci.length() == 5 && (rank_of(target) == (pos.sideToMove() == WHITE ? RANK_8 : RANK_1))) {
         auto promotion = parse_pt(uci[4]);
 
         if (promotion == NO_PIECE_TYPE || promotion == KING || promotion == PAWN) {
@@ -119,9 +120,8 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
             return Move::NO_MOVE;
         }
 
-        return Move::make<PROMOTION>(source, target, promotion);
+        move = Move::make<PROMOTION>(source, target, promotion);
     }
-    auto move = (uci.length() == 4) ? Move::make(source, target) : Move::NO_MOVE;
     Movelist moves;
     pos.legals(moves);
     auto it = std::find(moves.begin(), moves.end(), move);
