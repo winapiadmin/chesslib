@@ -93,18 +93,18 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
     // castling in chess960
     if (pos.chess960() && pt == PieceType::KING && pos.template at<PieceType>(target) == PieceType::ROOK &&
         pos.template at<Color>(target) == pos.sideToMove()) {
-        move= Move::make<Move::CASTLING>(source, target);
+        move = Move::make<Move::CASTLING>(source, target);
     }
 
     // convert to king captures rook
     // in chess960 the move should be sent as king captures rook already!
     else if (!pos.chess960() && pt == PieceType::KING && square_distance(target, source) == 2) {
         target = make_sq(target > source ? File::FILE_H : File::FILE_A, rank_of(source));
-        move= Move::make<Move::CASTLING>(source, target);
+        move = Move::make<Move::CASTLING>(source, target);
     }
     // en passant
     else if (pt == PAWN && target == pos.enpassantSq()) {
-        move= Move::make<EN_PASSANT>(source, target);
+        move = Move::make<EN_PASSANT>(source, target);
     }
 
     // promotion
