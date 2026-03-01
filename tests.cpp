@@ -1333,7 +1333,7 @@ TEST_CASE("Experienced bugs in this repo") {
     {
         Position p;
         p.setFEN("1nbqkbnr/1ppppppp/r7/8/4P3/8/PPPP1PPP/RNBQK1NR w KQk - 0 3");
-        REQUIRE(p.fen()=="1nbqkbnr/1ppppppp/r7/8/4P3/8/PPPP1PPP/RNBQK1NR w KQk - 0 3");
+        REQUIRE(p.fen() == "1nbqkbnr/1ppppppp/r7/8/4P3/8/PPPP1PPP/RNBQK1NR w KQk - 0 3");
     }
 }
 TEST_CASE("Captures only?") {
