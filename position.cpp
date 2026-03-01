@@ -196,6 +196,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
     current_state = HistoryEntry<PieceC>();
     history.clear();
     _chess960 = chess960;
+    std::fill(std::begin(pieces_list), std::end(pieces_list), PieceC::NO_PIECE);
     std::istringstream ss(str);
     std::string board_fen, active_color, castling, enpassant;
     int halfmove = 0, fullmove = 1;
