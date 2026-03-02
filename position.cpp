@@ -184,7 +184,7 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
             for (int i = 4; i <= end; i += 2) {
                 stp -= 2;
                 if (stp->hash == hash()) {
-                    current_state.repetition = stp->repetition ? -i : i;
+                    current_state.repetition++;
                     break;
                 }
             }
