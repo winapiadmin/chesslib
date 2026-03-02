@@ -458,7 +458,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     inline bool has_queenside_castling_rights(Color c) const { return (castlingRights(c) & QUEEN_SIDE) != 0; }
     // Return true if a position repeats once earlier but strictly
     // after the root, or repeats twice before or at the root.
-    inline bool is_repetition(int ply) const { return current_state.repetition && current_state.repetition < ply; }
+    inline bool is_repetition(int ply) const { return current_state.repetition + 1 >= ply; }
     // Test if it's draw of 75 move rule (that forces everyone to draw). It doesn't consider checkmates.
     inline bool is_draw(int ply) const { return rule50_count() > 99 || is_repetition(ply); }
     // Tests whether there has been at least one repetition
