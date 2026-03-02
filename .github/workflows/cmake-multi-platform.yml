@@ -1,11 +1,16 @@
-name: CMake on multiple platforms
+name: test-build
 
 on:
   pull_request:
     branches: [ "main" ]
+  workflow_run:
+    workflows: ["Compilation"]
+    types:
+      - completed
 
 jobs:
   build:
+    if: ${{ !endsWith(github.event.pull_request.title, 'no functional change') }}
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -40,40 +45,40 @@ jobs:
             c_compiler: cl
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set build dir
-      id: vars
-      shell: bash
-      run: echo "dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+      - name: Set build dir
+        id: vars
+        shell: bash
+        run: echo "dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-    - name: Configure CMake
-      shell: bash
-      run: |
-        CXX_FLAGS=""
-        LINK_FLAGS=""
-        if [[ "${{ matrix.os }}" == "ubuntu-latest" && "${{ matrix.build_type }}" == "Debug" ]]; then
-          CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g"
-          LINK_FLAGS="-fsanitize=address,undefined"
-        fi
+      - name: Configure CMake
+        shell: bash
+        run: |
+          CXX_FLAGS=""
+          LINK_FLAGS=""
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" && "${{ matrix.build_type }}" == "Debug" ]]; then
+            CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g"
+            LINK_FLAGS="-fsanitize=address,undefined"
+          fi
 
-        cmake -B "${{ steps.vars.outputs.dir }}" \
-              -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
-              -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
-              -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-              -DCMAKE_CXX_FLAGS_DEBUG="$CXX_FLAGS" \
-              -DCMAKE_EXE_LINKER_FLAGS="$LINK_FLAGS" \
-              -S "${{ github.workspace }}"
+          cmake -B "${{ steps.vars.outputs.dir }}" \
+                -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+                -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+                -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+                -DCMAKE_CXX_FLAGS_DEBUG="$CXX_FLAGS" \
+                -DCMAKE_EXE_LINKER_FLAGS="$LINK_FLAGS" \
+                -S "${{ github.workspace }}"
 
-    - name: Build
-      run: cmake --build ${{ steps.vars.outputs.dir }} --config ${{ matrix.build_type }}
+      - name: Build
+        run: cmake --build ${{ steps.vars.outputs.dir }} --config ${{ matrix.build_type }}
 
-    - name: Test
-      working-directory: ${{ steps.vars.outputs.dir }}
-      shell: bash
-      run: |
-        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          ctest --build-config ${{ matrix.build_type }} --verbose -j 4
-        else
-          ctest --verbose -j 4
-        fi
+      - name: Test
+        working-directory: ${{ steps.vars.outputs.dir }}
+        shell: bash
+        run: |
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            ctest --build-config ${{ matrix.build_type }} --verbose -j 4
+          else
+            ctest --verbose -j 4
+          fi
