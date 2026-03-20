@@ -41,7 +41,7 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     current_state.incr_pc[0] = current_state.incr_pc[1] = current_state.incr_pc[2] = current_state.incr_pc[3] =
         PieceC::NO_PIECE;
     current_state.mv = move; // Update the move in the current state
-    #if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) || !defined(NDEBUG)
     if (target_piecetype == KING) {
         std::cerr << *this << '\n';
         std::cerr << "Move: " << move << "\n";
@@ -537,9 +537,10 @@ template <typename PieceC, typename T> template <bool Strict> bool _Position<Pie
     // Too many checkers
     if (popcount(checkers()) > 2)
         return false;
-    if (_valid_ep_square()!=ep_square())
+    if (_valid_ep_square() != ep_square())
         return false;
-    if (clean_castling_rights()!=castlingRights()) return false;
+    if (clean_castling_rights() != castlingRights())
+        return false;
     return true;
 }
 template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesCheck(Move move) const {
@@ -582,7 +583,7 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
     if (Bitboard sniper = getSniper(this, ksq, oc)) {
         const auto sq = static_cast<Square>(pop_lsb(sniper));
         return (!(movegen::between(ksq, sq) & toBB) || move.typeOf() == Move::CASTLING) ? CheckType::DISCOVERY_CHECK
-                                                                                     : CheckType::NO_CHECK;
+                                                                                        : CheckType::NO_CHECK;
     }
 
     switch (move.typeOf()) {
@@ -733,8 +734,7 @@ template <typename PieceC, typename T> bool _Position<PieceC, T>::is_insufficien
     if (count == 4) {
         // bishops on same color (one per side)
         if (pieces(BISHOP, WHITE) && pieces(BISHOP, BLACK)) {
-            if (auto w = static_cast<Square>(lsb(pieces(BISHOP, WHITE))),
-                b = static_cast<Square>(lsb(pieces(BISHOP, BLACK)));
+            if (auto w = static_cast<Square>(lsb(pieces(BISHOP, WHITE))), b = static_cast<Square>(lsb(pieces(BISHOP, BLACK)));
                 ((9 * (w ^ b)) & 8) == 0)
                 return true;
         }

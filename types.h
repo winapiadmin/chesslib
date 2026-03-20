@@ -51,7 +51,7 @@ constexpr bool is_constant_evaluated() {
 #elif _MSC_VER >= 1925
     return __builtin_is_constant_evaluated();
 #else
-# warning "NAWH we don't think we can detect compile time in this compiler";
+#warning "NAWH we don't think we can detect compile time in this compiler";
 #endif
     return false;
 }

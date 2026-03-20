@@ -895,7 +895,7 @@ TEST_SUITE("SAN Parser") {
 TEST_SUITE("misc tests") {
     TEST_CASE("FEN reconstruction") {
         Position pos(Position::START_CHESS960_FEN, true);
-        REQUIRE(pos.fen()==Position::START_CHESS960_FEN);
+        REQUIRE(pos.fen() == Position::START_CHESS960_FEN);
     }
 }
 int main(int argc, char **argv) {

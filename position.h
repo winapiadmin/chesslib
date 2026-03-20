@@ -196,25 +196,25 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     [[nodiscard]] inline Bitboard pieces() const { return occ(); }
     template <PieceType pt> [[nodiscard]] inline Bitboard pieces(Color c) const {
-        assert(c!=COLOR_NB);
+        assert(c != COLOR_NB);
         if constexpr (pt == PIECE_TYPE_NB || pt == ALL_PIECES)
             return occ(c);
         return current_state.pieces[pt] & current_state.occ[c];
     }
     template <Color c> [[nodiscard]] inline Bitboard pieces(PieceType pt) const {
-        static_assert(c!=COLOR_NB);
+        static_assert(c != COLOR_NB);
         if (pt == PIECE_TYPE_NB || pt == ALL_PIECES)
             return occ(c);
         return current_state.pieces[pt] & current_state.occ[c];
     }
     template <PieceType pt, Color c> [[nodiscard]] inline Bitboard pieces() const {
-        static_assert(c!=COLOR_NB);
+        static_assert(c != COLOR_NB);
         if constexpr (pt == PIECE_TYPE_NB || pt == ALL_PIECES)
             return occ(c);
         return current_state.pieces[pt] & current_state.occ[c];
     }
     [[nodiscard]] inline Bitboard pieces(PieceType pt, Color c) const {
-        assert(c!=COLOR_NB);
+        assert(c != COLOR_NB);
         // still branchless
         switch (pt) {
         case PIECE_TYPE_NB:
@@ -394,7 +394,9 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     [[nodiscard]] inline uint64_t key() const { return current_state.hash; }
     [[nodiscard]] inline Color side_to_move() const { return current_state.turn; }
     [[nodiscard]] inline Square ep_square() const { return current_state.enPassant; }
-    template <PieceType pt> [[nodiscard]] inline Square square(Color c) const { return static_cast<Square>(lsb(pieces<pt>(c))); }
+    template <PieceType pt> [[nodiscard]] inline Square square(Color c) const {
+        return static_cast<Square>(lsb(pieces<pt>(c)));
+    }
     [[nodiscard]] inline Square kingSq(Color c) const { return current_state.kings[c]; }
     [[nodiscard]] inline Bitboard checkers() const { return _checkers; }
     [[nodiscard]] inline Bitboard pin_mask() const { return _pin_mask; }
