@@ -3,10 +3,6 @@ name: test
 on:
   pull_request:
     branches: [ "main" ]
-  workflow_run:
-    workflows: ["Compilation"]
-    types:
-      - completed
 
 jobs:
   build:
