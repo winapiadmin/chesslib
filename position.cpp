@@ -1,8 +1,8 @@
 #include "position.h"
 #include "movegen.h"
 #include "moves_io.h"
-#include "position.h"
 #include <sstream>
+#include <utility>
 #ifndef GENERATE_AT_RUNTIME
 #define _POSSIBLY_CONSTEXPR constexpr
 #else
@@ -41,6 +41,7 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     current_state.incr_pc[0] = current_state.incr_pc[1] = current_state.incr_pc[2] = current_state.incr_pc[3] =
         PieceC::NO_PIECE;
     current_state.mv = move; // Update the move in the current state
+    #if defined(_DEBUG) || !defined(NDEBUG)
     if (target_piecetype == KING) {
         std::cerr << *this << '\n';
         std::cerr << "Move: " << move << "\n";
@@ -51,6 +52,7 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
         for (int i = 0; i < history.size(); i++)
             std::cerr << uci::moveToUci(history[i].mv, _chess960) << '\n';
     }
+#endif
     INVALID_ARG_IF(target_piecetype == KING, "Capturing kings is illegal");
     INVALID_ARG_IF(moving_piecetype == NO_PIECE_TYPE, "Expected a piece to move.");
     {
@@ -296,25 +298,21 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
     for (char c : castling) {
         switch (c) {
         case 'K':
-            INVALID_ARG_IF(chess960, "Chess960 needs specific file");
             current_state.castlingRights |= WHITE_OO;
             current_state.castlingMetadata[WHITE].king_start = kingSq(WHITE);
             current_state.castlingMetadata[WHITE].rook_start_ks = SQ_H1;
             break;
         case 'Q':
-            INVALID_ARG_IF(chess960, "Chess960 needs specific file");
             current_state.castlingRights |= WHITE_OOO;
             current_state.castlingMetadata[WHITE].king_start = kingSq(WHITE);
             current_state.castlingMetadata[WHITE].rook_start_qs = SQ_A1;
             break;
         case 'k':
-            INVALID_ARG_IF(chess960, "Chess960 needs specific file");
             current_state.castlingRights |= BLACK_OO;
             current_state.castlingMetadata[BLACK].king_start = kingSq(BLACK);
             current_state.castlingMetadata[BLACK].rook_start_ks = SQ_H8;
             break;
         case 'q':
-            INVALID_ARG_IF(chess960, "Chess960 needs specific file");
             current_state.castlingRights |= BLACK_OOO;
             current_state.castlingMetadata[BLACK].king_start = kingSq(BLACK);
             current_state.castlingMetadata[BLACK].rook_start_qs = SQ_A8;
@@ -530,8 +528,7 @@ template <typename PieceC, typename T> template <bool Strict> bool _Position<Pie
     if (Square ep_sq = ep_square(); ep_sq != SQ_NONE) {
         if ((stm == WHITE && rank_of(ep_sq) != RANK_6) || (stm == BLACK && rank_of(ep_sq) != RANK_3))
             return false;
-        Square behind = ep_sq + ((stm == WHITE) ? SOUTH : NORTH);
-        if (piece_at(behind) != make_piece<PieceC>(PAWN, ~stm))
+        if (piece_at(ep_sq - pawn_push(stm)) != make_piece<PieceC>(PAWN, ~stm))
             return false;
 
         if (!(attacks::pawn(~stm, ep_sq) & pieces<PAWN>(stm)))
@@ -540,35 +537,38 @@ template <typename PieceC, typename T> template <bool Strict> bool _Position<Pie
     // Too many checkers
     if (popcount(checkers()) > 2)
         return false;
+    if (_valid_ep_square()!=ep_square())
+        return false;
+    if (clean_castling_rights()!=castlingRights()) return false;
     return true;
 }
-template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesCheck(Move m) const {
-    const static auto getSniper = [](const _Position<PieceC> *p, Square ksq, Bitboard oc) {
+template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesCheck(Move move) const {
+    const static auto getSniper = [](const _Position<PieceC> *p, const Square ksq, Bitboard oc) {
         const auto us_occ = p->us(p->sideToMove());
         const auto bishop = attacks::bishop(ksq, oc) & p->pieces(PieceType::BISHOP, PieceType::QUEEN) & us_occ;
         const auto rook = attacks::rook(ksq, oc) & p->pieces(PieceType::ROOK, PieceType::QUEEN) & us_occ;
         return (bishop | rook);
     };
 
-    assert(color_of(at(m.from())) == sideToMove());
+    assert(color_of(at(move.from())) == sideToMove());
 
-    const Square from = m.from();
-    const Square to = m.to();
+    const Square from = move.from();
+    const Square to = move.to();
     const Square ksq = kingSq(~sideToMove());
     const Bitboard toBB = 1ULL << (to);
     const PieceType pt = piece_of(at(from));
 
     Bitboard fromKing = 0ull;
 
-    if (pt == PieceType::PAWN) {
+    if (pt == PAWN) {
         fromKing = attacks::pawn(~side_to_move(), ksq);
-    } else if (pt == PieceType::KNIGHT) {
+    } else if (pt == KNIGHT) {
         fromKing = attacks::knight(ksq);
-    } else if (pt == PieceType::BISHOP) {
+    } else if (pt == BISHOP) {
         fromKing = attacks::bishop(ksq, occ());
-    } else if (pt == PieceType::ROOK) {
+    } else if (pt == ROOK) {
         fromKing = attacks::rook(ksq, occ());
-    } else if (pt == PieceType::QUEEN) {
+    } else if (pt == QUEEN) {
         fromKing = attacks::queen(ksq, occ());
     }
 
@@ -579,22 +579,20 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
     const Bitboard fromBB = 1ULL << (from);
     const Bitboard oc = occ() ^ fromBB;
 
-    Bitboard sniper = getSniper(this, ksq, oc);
-
-    if (sniper) {
-        Square sq = (Square)pop_lsb(sniper);
-        return (!(movegen::between(ksq, sq) & toBB) || m.typeOf() == Move::CASTLING) ? CheckType::DISCOVERY_CHECK
+    if (Bitboard sniper = getSniper(this, ksq, oc)) {
+        const auto sq = static_cast<Square>(pop_lsb(sniper));
+        return (!(movegen::between(ksq, sq) & toBB) || move.typeOf() == Move::CASTLING) ? CheckType::DISCOVERY_CHECK
                                                                                      : CheckType::NO_CHECK;
     }
 
-    switch (m.typeOf()) {
+    switch (move.typeOf()) {
     case Move::NORMAL:
         return CheckType::NO_CHECK;
 
     case Move::PROMOTION: {
         Bitboard attacks = 0ull;
 
-        switch (m.promotionType()) {
+        switch (move.promotionType()) {
         case KNIGHT:
             attacks = attacks::knight(to);
             break;
@@ -620,7 +618,7 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
     }
 
     case Move::CASTLING: {
-        Square rookTo = relative_square(side_to_move(), to > from ? SQ_F1 : SQ_D1);
+        const Square rookTo = relative_square(side_to_move(), to > from ? SQ_F1 : SQ_D1);
         return (attacks::rook(ksq, occ()) & (1ULL << rookTo)) ? CheckType::DISCOVERY_CHECK : CheckType::NO_CHECK;
     }
     }
@@ -629,7 +627,7 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
     return CheckType::NO_CHECK; // Prevent a compiler warning
 }
 template <typename PieceC, typename T> void _Position<PieceC, T>::refresh_attacks() {
-    Color c = sideToMove();
+    const Color c = sideToMove();
 
     Square king_sq = kingSq(c);
     _bishop_pin = pinMask<BISHOP>(c, king_sq);
@@ -638,17 +636,14 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::refresh_attack
 
     _checkers = attackers(~c, king_sq);
 
-    int num_checks = popcount(_checkers);
-
-    switch (num_checks) {
+    switch (popcount(_checkers)) {
     case 0:
         _check_mask = ~0ULL; // no checks, full mask
         break;
 
     case 1: {
-        Square sq = static_cast<Square>(lsb(_checkers));
-        Bitboard mask = (1ULL << sq) | movegen::between(king_sq, sq);
-        _check_mask = mask;
+        auto sq = static_cast<Square>(lsb(_checkers));
+        _check_mask = 1ULL << sq | movegen::between(king_sq, sq);
         break;
     }
 
@@ -660,20 +655,20 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::refresh_attack
 template <typename PieceC, typename T> uint64_t _Position<PieceC, T>::zobrist() const {
     uint64_t hash = 0;
     for (int sq = 0; sq < 64; ++sq) {
-        auto p = piece_on((Square)sq);
-        hash ^= (p == PieceC::NO_PIECE) ? 0 : zobrist::RandomPiece[enum_idx<PieceC>()][(int)p][sq];
+        auto p = piece_on(static_cast<Square>(sq));
+        hash ^= (p == PieceC::NO_PIECE) ? 0 : zobrist::RandomPiece[enum_idx<PieceC>()][static_cast<int>(p)][sq];
     }
     hash ^= (current_state.turn == WHITE) ? zobrist::RandomTurn : 0;
     hash ^= zobrist::RandomCastle[current_state.castlingRights];
     auto ep_sq = current_state.enPassant;
     if (ep_sq == SQ_NONE)
         return hash;
-    if (ep_sq != SQ_NONE) {
-        File f = file_of(ep_sq);
+    {
+        const File f = file_of(ep_sq);
         Bitboard ep_mask = (1ULL << ep_sq);
 
         // Shift to the rank where the opposing pawn sits
-        Color stm = sideToMove();
+        const Color stm = sideToMove();
         // Color them = ~stm;
         ep_mask = (stm == WHITE) ? (ep_mask >> 8) : (ep_mask << 8);
 
@@ -687,19 +682,20 @@ template <typename PieceC, typename T> uint64_t _Position<PieceC, T>::zobrist() 
 }
 
 template <typename PieceC, typename T> Move _Position<PieceC, T>::parse_uci(std::string uci) const {
-    return chess::uci::uciToMove(*this, uci);
+    return uci::uciToMove(*this, uci);
 }
 
 template <typename PieceC, typename T> Move _Position<PieceC, T>::push_uci(std::string uci) {
-    auto mv = parse_uci(uci);
+    const auto mv = parse_uci(std::move(uci));
     doMove(mv);
     return mv;
 }
 template <typename PieceC, typename T> Square _Position<PieceC, T>::_valid_ep_square() const {
     if (ep_square() == SQ_NONE)
         return SQ_NONE;
-    Rank ep_rank = sideToMove() == WHITE ? RANK_6 : RANK_3;
-    Bitboard mask = 1ULL << ep_square();
+    Rank ep_rank;
+    ep_rank = sideToMove() == WHITE ? RANK_6 : RANK_3;
+    const Bitboard mask = 1ULL << ep_square();
     Bitboard pawn_mask = mask << 8;
     Bitboard org_pawn_mask = mask >> 8;
     if (sideToMove() == BLACK)
@@ -727,35 +723,33 @@ template <typename PieceC, typename T> bool _Position<PieceC, T>::is_insufficien
 
     // only bishop + knight, can't mate
     if (count == 3) {
-        if (pieces(PieceType::BISHOP, Color::WHITE) || pieces(PieceType::BISHOP, Color::BLACK))
+        if (pieces(BISHOP, WHITE) || pieces(BISHOP, BLACK))
             return true;
-        if (pieces(PieceType::KNIGHT, Color::WHITE) || pieces(PieceType::KNIGHT, Color::BLACK))
+        if (pieces(KNIGHT, WHITE) || pieces(KNIGHT, BLACK))
             return true;
     }
 
     // same-colored bishops, can't mate
     if (count == 4) {
         // bishops on same color (one per side)
-        if (pieces(PieceType::BISHOP, Color::WHITE) && pieces(PieceType::BISHOP, Color::BLACK)) {
-            Square w = (Square)lsb(pieces(PieceType::BISHOP, Color::WHITE));
-            Square b = (Square)lsb(pieces(PieceType::BISHOP, Color::BLACK));
-            if (((9 * (w ^ b)) & 8) == 0)
+        if (pieces(BISHOP, WHITE) && pieces(BISHOP, BLACK)) {
+            if (auto w = static_cast<Square>(lsb(pieces(BISHOP, WHITE))),
+                b = static_cast<Square>(lsb(pieces(BISHOP, BLACK)));
+                ((9 * (w ^ b)) & 8) == 0)
                 return true;
         }
 
         // one side with two bishops on same color
-        auto white_bishops = pieces(PieceType::BISHOP, Color::WHITE);
-        auto black_bishops = pieces(PieceType::BISHOP, Color::BLACK);
+        auto white_bishops = pieces(BISHOP, WHITE);
+        auto black_bishops = pieces(BISHOP, BLACK);
 
         if (popcount(white_bishops) == 2) {
-            Square b1 = (Square)lsb(white_bishops);
-            Square b2 = (Square)msb(white_bishops);
-            if (((9 * (b1 ^ b2)) & 8) == 0)
+            if (auto b1 = static_cast<Square>(lsb(white_bishops)), b2 = static_cast<Square>(msb(white_bishops));
+                ((9 * (b1 ^ b2)) & 8) == 0)
                 return true;
         } else if (popcount(black_bishops) == 2) {
-            Square b1 = (Square)lsb(black_bishops);
-            Square b2 = (Square)msb(black_bishops);
-            if (((9 * (b1 ^ b2)) & 8) == 0)
+            if (auto b1 = static_cast<Square>(lsb(black_bishops)), b2 = static_cast<Square>(msb(black_bishops));
+                ((9 * (b1 ^ b2)) & 8) == 0)
                 return true;
         }
     }
@@ -763,12 +757,10 @@ template <typename PieceC, typename T> bool _Position<PieceC, T>::is_insufficien
     return false;
 }
 template <typename PieceC, typename T> CastlingRights _Position<PieceC, T>::clean_castling_rights() const {
-    constexpr Bitboard cr_WOO = 1ULL << SQ_H1;
-    constexpr Bitboard cr_WOOO = 1ULL << SQ_A1;
-    constexpr Bitboard cr_BOO = 1ULL << SQ_H8;
-    constexpr Bitboard cr_BOOO = 1ULL << SQ_A8;
-    if (history.size())
-        return castlingRights();
+    const Bitboard cr_BOO = current_state.castlingMetadata[BLACK].rook_start_ks;
+    const Bitboard cr_BOOO = current_state.castlingMetadata[BLACK].rook_start_qs;
+    const Bitboard cr_WOO = current_state.castlingMetadata[WHITE].rook_start_ks;
+    const Bitboard cr_WOOO = current_state.castlingMetadata[WHITE].rook_start_qs;
     Bitboard castling = 0;
     // mappings
     castling |= (castlingRights() & WHITE_OO) ? cr_WOO : 0;
@@ -783,9 +775,9 @@ template <typename PieceC, typename T> CastlingRights _Position<PieceC, T>::clea
     white_castling &= (cr_WOO | cr_WOOO);
     black_castling &= (cr_BOO | cr_BOOO);
     // king exists in e1/e8 depending on color
-    if (!(occ(WHITE) & pieces(KING) & (1ULL << SQ_E1)))
+    if (!(occ(WHITE) & pieces(KING) & (1ULL << current_state.castlingMetadata[WHITE].king_start)))
         white_castling = 0;
-    if (!(occ(BLACK) & pieces(KING) & (1ULL << SQ_E8)))
+    if (!(occ(BLACK) & pieces(KING) & (1ULL << current_state.castlingMetadata[BLACK].king_start)))
         black_castling = 0;
     castling = white_castling | black_castling;
     // Re-map

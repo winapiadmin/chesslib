@@ -45,16 +45,13 @@ constexpr bool is_constant_evaluated() {
     // both MSVC (non-comformant __cplusplus) and by-default _MSVC_LANG and other compiles with
     // conformant __cplusplus
 #elif __cplusplus >= 202002L || _MSVC_LANG >= 202002L
-    if (std::is_constant_evaluated())
-        return true;
+    return std::is_constant_evaluated();
 #elif defined(__GNUC__) // defined for both GCC and clang
-    if (__builtin_is_constant_evaluated())
-        return true;
+    return __builtin_is_constant_evaluated();
 #elif _MSC_VER >= 1925
-    if (__builtin_is_constant_evaluated())
-        return true;
+    return __builtin_is_constant_evaluated();
 #else
-#error "NAWH we don't think we can detect compile time in this compiler";
+# warning "NAWH we don't think we can detect compile time in this compiler";
 #endif
     return false;
 }
@@ -79,30 +76,30 @@ enum Square : int8_t {
 enum File : int8_t { FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, FILE_NB };
 
 enum Rank : int8_t { RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, RANK_NB };
-constexpr Square square_mirror(Square sq){return (Square)((int)sq^56);}
-constexpr Square flip_sq(Square sq){return square_mirror(sq);}
+constexpr Square square_mirror(const Square sq){return static_cast<Square>(static_cast<int>(sq)^56);}
+constexpr Square flip_sq(const Square sq){return square_mirror(sq);}
 constexpr bool is_valid(const Rank r, const File f) { return 0 <= r && r <= 7 && 0 <= f && f <= 7; }
 constexpr bool is_valid(const Square s) { return 0 <= s && s < 64; }
-constexpr File file_of(Square s) {
+constexpr File file_of(const Square s) {
     assert(0 <= s && s < 64);
-    return File(s & 7);
+    return static_cast<File>(s & 7);
 }
 
-constexpr Rank rank_of(Square s) {
+constexpr Rank rank_of(const Square s) {
     assert(0 <= s && s < 64);
-    return Rank(s >> 3);
+    return static_cast<Rank>(s >> 3);
 }
-constexpr Square make_sq(Rank r, File f) {
+constexpr Square make_sq(const Rank r, const File f) {
     assert(0 <= r && r <= 7 && 0 <= f && f <= 7);
     return static_cast<Square>(static_cast<uint8_t>(r * 8 + f));
 }
-constexpr Square make_sq(File f, Rank r) {
+constexpr Square make_sq(const File f, const Rank r) {
     ASSUME(0 <= r && r <= 7 && 0 <= f && f <= 7);
     return static_cast<Square>(static_cast<uint8_t>(r * 8 + f));
 }
 enum Color : uint8_t { WHITE = 0, BLACK = 1, COLOR_NB = 2 };
 // Toggle color
-constexpr Color operator~(Color c) { return Color(c ^ BLACK); }
+constexpr Color operator~(const Color c) { return static_cast<Color>(c ^ BLACK); }
 enum PieceType : std::int8_t { NO_PIECE_TYPE = 0, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, ALL_PIECES = 0, PIECE_TYPE_NB = 8 };
 enum Direction : int8_t {
     NORTH = 8,
@@ -117,11 +114,11 @@ enum Direction : int8_t {
     DIR_NONE = 0
 };
 // clang-format on
-inline constexpr Square relative_square(Color c, Square s) { return Square(s ^ (c * 56)); }
-inline constexpr Square castling_rook_square(Color c, bool is_king_side) {
+inline constexpr Square relative_square(const Color c, const Square s) { return static_cast<Square>(s ^ (c * 56)); }
+inline constexpr Square castling_rook_square(const Color c, const bool is_king_side) {
     return relative_square(c, is_king_side ? SQ_F1 : Square::SQ_D1);
 }
-inline constexpr Square castling_king_square(Color c, bool is_king_side) {
+inline constexpr Square castling_king_square(const Color c, const bool is_king_side) {
     return relative_square(c, is_king_side ? SQ_G1 : Square::SQ_C1);
 }
 

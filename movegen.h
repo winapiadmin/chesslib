@@ -1,10 +1,6 @@
 #pragma once
 #include "fwd_decl.h"
 #include <array>
-namespace chess::_chess {
-template <Direction offset> extern Move *splat_pawn_moves(Move *moveList, Bitboard to_bb);
-extern Move *splat_moves(Move *moveList, Square from, Bitboard to_bb);
-} // namespace chess::_chess
 namespace chess::movegen {
 
 template <typename T, Color c> void genEP(const _Position<T, void> &, Movelist &);

@@ -362,9 +362,8 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
     }
 }
 template <typename T, typename P> std::string moveToSan(const _Position<T, P> &pos, Move move, bool long_, bool suffix) {
-    const char FILE_NAMES[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' };
+    constexpr char FILE_NAMES[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' };
 
-    const char RANK_NAMES[] = { '1', '2', '3', '4', '5', '6', '7', '8' };
     constexpr char PieceTypeChar[] = " pnbrqk";
     // Null move. (or none)
     if (!move.is_ok()) {
@@ -385,7 +384,7 @@ template <typename T, typename P> std::string moveToSan(const _Position<T, P> &p
         }
     }
     if (piece_type == NO_PIECE_TYPE) {
-        THROW_IF_EXCEPTIONS_ON(IllegalMoveException("san() and lan() expect move to be pseudo-legal or null, but got " +
+        THROW_IF_EXCEPTIONS_ON(IllegalMoveException("moveToSan() expect move to be pseudo-legal or null, but got " +
                                                     moveToUci(move) + " in " + pos.fen()));
         return "";
     }
@@ -414,6 +413,7 @@ template <typename T, typename P> std::string moveToSan(const _Position<T, P> &p
 
         // Disambiguate only if there are other candidates that can move to the same square.
         if (others) {
+            const char RANK_NAMES[] = { '1', '2', '3', '4', '5', '6', '7', '8' };
             bool need_file = false, need_rank = false;
             for (Square sq = SQ_A1; sq < SQ_NONE; ++sq) {
                 if (others & (1ULL << sq)) {
@@ -454,7 +454,7 @@ appendCheck:
         return san;
     _Position<T> p = pos;
     p.doMove(move);
-    bool _check = p.is_check();
+    const bool _check = p.is_check();
     Movelist moves;
     p.legals(moves);
     // Checkmate: no legal moves and in check; Stalemate: no legal moves and not in check
