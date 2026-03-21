@@ -3,6 +3,8 @@
 #include "bitboard.h"
 #include "movegen.h"
 #include "types.h"
+#include "zobrist.h"
+#include <stdexcept>
 #include <string>
 #include <vector>
 namespace chess {

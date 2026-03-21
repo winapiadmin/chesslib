@@ -44,24 +44,33 @@ set(SOURCES
 add_library(chesslib STATIC ${SOURCES})
 target_include_directories(chesslib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # --- Enable CTest integration ---
-enable_testing()
-include(FetchContent)
-FetchContent_Declare(
-    doctest
-    GIT_REPOSITORY https://github.com/doctest/doctest.git
-    GIT_TAG v2.4.12
-)
-FetchContent_MakeAvailable(doctest)
-# --- Test executable ---
-add_executable(test_chess
-    tests.cpp
-)
-add_executable(NonImportantTests
-    non_core_tests.cpp
-)
-target_link_libraries(test_chess PRIVATE chesslib)
-target_include_directories(test_chess PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${doctest_SOURCE_DIR})
-target_link_libraries(NonImportantTests PRIVATE chesslib)
-target_include_directories(NonImportantTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${doctest_SOURCE_DIR})
-add_test(NAME test_core COMMAND test_chess)
-add_test(NAME api_tests COMMAND NonImportantTests)
+include(CTest)
+
+if(BUILD_TESTING)
+    include(FetchContent)
+    FetchContent_Declare(
+        doctest
+        GIT_REPOSITORY https://github.com/doctest/doctest.git
+        GIT_TAG v2.4.12
+    )
+    FetchContent_MakeAvailable(doctest)
+
+    # --- Test executable ---
+    add_executable(test_chess tests.cpp)
+    add_executable(NonImportantTests non_core_tests.cpp)
+
+    target_link_libraries(test_chess PRIVATE chesslib doctest::doctest)
+    target_link_libraries(NonImportantTests PRIVATE chesslib doctest::doctest)
+
+    add_test(NAME test_core COMMAND test_chess)
+    add_test(NAME api_tests COMMAND NonImportantTests)
+    if (UNIX AND CMAKE_BUILD_TYPE MATCHES "Debug")
+        set(SANITIZERS "" CACHE STRING "sanitizers such as undefined,address")
+    
+        if (NOT "${SANITIZERS}" STREQUAL "")
+            add_compile_options(-fsanitize=${SANITIZERS} -fno-omit-frame-pointer)
+            add_link_options(-fsanitize=${SANITIZERS})
+        endif()
+    endif()
+
+endif()
