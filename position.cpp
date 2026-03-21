@@ -1,11 +1,11 @@
 #include "position.h"
 #include "movegen.h"
 #include "moves_io.h"
-#include "zobrist.h"
 #include "printers.h"
+#include "zobrist.h"
+#include <iostream>
 #include <sstream>
 #include <utility>
-#include <iostream>
 #ifndef GENERATE_AT_RUNTIME
 #define _POSSIBLY_CONSTEXPR constexpr
 #else

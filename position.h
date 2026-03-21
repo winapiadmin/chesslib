@@ -552,7 +552,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         while (pt_attacks) {
             const auto possible_pin = movegen::between(sq, Square(pop_lsb(pt_attacks)));
             Bitboard tmp = possible_pin & occ_us;
-            bool v = tmp && (tmp &(tmp-1))==0;
+            bool v = tmp && (tmp & (tmp - 1)) == 0;
             pin |= v ? possible_pin : 0;
         }
 
