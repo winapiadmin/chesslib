@@ -1,8 +1,11 @@
 #include "position.h"
 #include "movegen.h"
 #include "moves_io.h"
+#include "zobrist.h"
+#include "printers.h"
 #include <sstream>
 #include <utility>
+#include <iostream>
 #ifndef GENERATE_AT_RUNTIME
 #define _POSSIBLY_CONSTEXPR constexpr
 #else
@@ -170,10 +173,10 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     // Update halfmoves, fullmoves and stm
     current_state.fullMoveNumber += (current_state.turn == WHITE);
     current_state.halfMoveClock = (is_capture || moving_piecetype == PAWN) ? 0 : (current_state.halfMoveClock + 1);
+    current_state.pliesFromNull++;
     current_state.hash ^= zobrist::RandomTurn;
     refresh_attacks();
     // DO NOT MIX REPETITIONS
-    current_state.pliesFromNull++;
     if constexpr (Strict) {
         // Calculate the repetition info. It is the ply distance from the previous
         // occurrence of the same position, negative in the 3-fold case, or zero
@@ -420,14 +423,14 @@ template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen() c
                 emptyCount++;
             } else {
                 if (emptyCount > 0) {
-                    ss << std::to_string(emptyCount);
+                    ss << emptyCount;
                     emptyCount = 0;
                 }
                 ss << piece;
             }
         }
         if (emptyCount > 0)
-            ss << std::to_string(emptyCount);
+            ss << emptyCount;
         if (rank > 0)
             ss << '/';
     }

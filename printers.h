@@ -4,7 +4,7 @@
 #include <iosfwd>
 #include <type_traits>
 namespace chess {
-// disclaimer: please don't pass Chess960 moves
+// disclaimer: please don't pass Chess960 moves for move functions, use uci::uciToMove
 std::ostream &operator<<(std::ostream &os, const Move mv);
 std::ostream &operator<<(std::ostream &os, const Color c);
 std::ostream &operator<<(std::ostream &os, const CastlingRights cr);

@@ -26,3 +26,7 @@ Test log from the tester.
 **Hardware/Software info**
 
 List about the OS, hardware, compiler and tester.
+
+**Specifically, if the issue is reported by logic analysis, provide solution if applicable.**
+
+solution to the issue if applicable. If not, please provide the logic analysis data and your interpretation of it.

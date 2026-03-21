@@ -2,14 +2,8 @@
 #include "attacks.h"
 #include "bitboard.h"
 #include "movegen.h"
-#include "printers.h"
 #include "types.h"
-#include "zobrist.h"
-#include <cstdlib>
-#include <iostream>
 #include <string>
-#include <string_view>
-#include <utility>
 #include <vector>
 namespace chess {
 
@@ -546,8 +540,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
   private:
     template <PieceType pt> [[nodiscard]] inline Bitboard pinMask(Color c, Square sq) const {
         static_assert(pt == BISHOP || pt == ROOK, "Only bishop or rook allowed!");
-        Bitboard occ_opp = occ(~sideToMove());
-        Bitboard occ_us = occ(sideToMove());
+        Bitboard occ_opp = occ(~c);
+        Bitboard occ_us = occ(c);
         Bitboard opp_sliders;
         opp_sliders = (pieces<pt>(~c) | pieces(QUEEN, ~c)) & occ_opp;
 
@@ -558,7 +552,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         while (pt_attacks) {
             const auto possible_pin = movegen::between(sq, Square(pop_lsb(pt_attacks)));
             Bitboard tmp = possible_pin & occ_us;
-            bool v = popcount(tmp) == 1;
+            bool v = tmp && (tmp &(tmp-1))==0;
             pin |= v ? possible_pin : 0;
         }
 
