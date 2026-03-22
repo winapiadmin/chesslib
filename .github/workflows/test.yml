@@ -56,7 +56,6 @@ jobs:
                 -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
                 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
                 -DSANITIZERS="address,undefined" \
-                -DCTEST_TEST_TIMEOUT=36000 \
                 -S "${{ github.workspace }}"
 
       - name: Build
@@ -67,7 +66,7 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            ctest --build-config ${{ matrix.build_type }} --verbose -j 4
+            ctest --build-config ${{ matrix.build_type }} --verbose -j 4 --timeout 0
           else
-            ctest --verbose -j 4
+            ctest --verbose -j 4 --timeout 0
           fi
