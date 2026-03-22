@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <utility>
+#include <algorithm>
 #ifndef GENERATE_AT_RUNTIME
 #define _POSSIBLY_CONSTEXPR constexpr
 #else
@@ -297,11 +298,11 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
 
     // 3. Castling rights
     current_state.castlingRights = NO_CASTLING;
-    {
+    if (castling!="-"){
         for (Color color : { WHITE, BLACK }) {
             auto findKing = [&]() -> Square {
                 auto it = std::find_if(std::begin(pieces_list), std::end(pieces_list), [&](PieceC p) {
-                    return p == make_piece<KING>(color);
+                    return p == make_piece<PieceC>(KING, color);
                 });
                 INVALID_ARG_IF(it == std::end(pieces_list), "No king found for castling");
                 return static_cast<Square>(it - pieces_list);
@@ -309,7 +310,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
 
             auto findRookKS = [&](Square king_sq) -> Square {
                 auto it = std::find_if(pieces_list + king_sq + 1, std::end(pieces_list), [&](PieceC p) {
-                    return p == make_piece<ROOK>(color);
+                    return p == make_piece<PieceC>(ROOK, color);
                 });
                 return (it != std::end(pieces_list)) ? static_cast<Square>(it - pieces_list) : SQ_NONE;
             };
@@ -317,16 +318,16 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
             auto findRookQS = [&](Square king_sq) -> Square {
                 auto it = std::find_if(std::reverse_iterator(pieces_list + king_sq),
                                        std::reverse_iterator(pieces_list),
-                                       [&](PieceC p) { return p == make_piece<ROOK>(color); });
+                                       [&](PieceC p) { return p == make_piece<PieceC>(ROOK, color); });
                 return (it != std::reverse_iterator(pieces_list)) ? static_cast<Square>((it.base() - 1) - pieces_list)
                                                                   : SQ_NONE;
             };
 
-            Square king_sq = findKing();
-            Square rook_ks = findRookKS(king_sq);
-            Square rook_qs = findRookQS(king_sq);
-
-            auto validate = [&](char c) {
+            auto apply = [&](char c) {
+                Square king_sq = findKing();
+                Square rook_ks = findRookKS(king_sq);
+                Square rook_qs = findRookQS(king_sq);
+                
                 if (color == WHITE) {
                     if (c == 'K')
                         INVALID_ARG_IF(rook_ks == SQ_NONE, "White KS castling illegal: no rook");
@@ -341,10 +342,6 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
 
                 INVALID_ARG_IF(rank_of(king_sq) != rank_of(rook_ks) && (c == 'K' || c == 'k'), "KS rook not on same rank");
                 INVALID_ARG_IF(rank_of(king_sq) != rank_of(rook_qs) && (c == 'Q' || c == 'q'), "QS rook not on same rank");
-            };
-
-            auto apply = [&](char c) {
-                validate(c);
                 if (color == WHITE) {
                     if (c == 'K') {
                         current_state.castlingRights |= WHITE_OO;
