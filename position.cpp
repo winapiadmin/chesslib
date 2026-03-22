@@ -3,10 +3,10 @@
 #include "moves_io.h"
 #include "printers.h"
 #include "zobrist.h"
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <utility>
-#include <algorithm>
 #ifndef GENERATE_AT_RUNTIME
 #define _POSSIBLY_CONSTEXPR constexpr
 #else
@@ -298,7 +298,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
 
     // 3. Castling rights
     current_state.castlingRights = NO_CASTLING;
-    if (castling!="-"){
+    if (castling != "-") {
         for (Color color : { WHITE, BLACK }) {
             auto findKing = [&]() -> Square {
                 auto it = std::find_if(std::begin(pieces_list), std::end(pieces_list), [&](PieceC p) {
@@ -327,7 +327,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                 Square king_sq = findKing();
                 Square rook_ks = findRookKS(king_sq);
                 Square rook_qs = findRookQS(king_sq);
-                
+
                 if (color == WHITE) {
                     if (c == 'K')
                         INVALID_ARG_IF(rook_ks == SQ_NONE, "White KS castling illegal: no rook");
