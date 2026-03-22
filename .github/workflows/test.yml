@@ -56,7 +56,7 @@ jobs:
                 -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
                 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
                 -DSANITIZERS="address,undefined" \
-                -DCTEST_TEST_TIMEOUT=0 \
+                -DDART_TESTING_TIMEOUT=0 \
                 -S "${{ github.workspace }}"
 
       - name: Build
