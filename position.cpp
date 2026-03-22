@@ -367,14 +367,26 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                     }
                 };
 
-                if (c == 'K' && color == WHITE)
+                if (c == 'K' && color == WHITE) {
+                    if (rook_ks == SQ_NONE) return;
+                    if (rank_of(king_sq) != rank_of(rook_ks)) return;
                     setKS(rook_ks);
-                else if (c == 'Q' && color == WHITE)
+                }
+                else if (c == 'Q' && color == WHITE) {
+                    if (rook_qs == SQ_NONE) return;
+                    if (rank_of(king_sq) != rank_of(rook_qs)) return;
                     setQS(rook_qs);
-                else if (c == 'k' && color == BLACK)
+                }
+                else if (c == 'k' && color == BLACK) {
+                    if (rook_ks == SQ_NONE) return;
+                    if (rank_of(king_sq) != rank_of(rook_ks)) return;
                     setKS(rook_ks);
-                else if (c == 'q' && color == BLACK)
+                }
+                else if (c == 'q' && color == BLACK) {
+                    if (rook_qs == SQ_NONE) return;
+                    if (rank_of(king_sq) != rank_of(rook_qs)) return;
                     setQS(rook_qs);
+                }
 
                 else if (c >= 'A' && c <= 'H' && color == WHITE) {
                     File f = static_cast<File>(c - 'A');
