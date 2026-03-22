@@ -331,15 +331,16 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
             };
             auto apply = [&](char c) {
                 Square king_sq = findKing();
-                if (king_sq == SQ_NONE) return;
-            
+                if (king_sq == SQ_NONE)
+                    return;
+
                 Square rook_ks = findRookKS(king_sq, color);
                 Square rook_qs = findRookQS(king_sq, color);
-            
+
                 auto setKS = [&](Square rook_sq) {
                     INVALID_ARG_IF(rook_sq == SQ_NONE, "kingside rook not found");
                     INVALID_ARG_IF(rank_of(king_sq) != rank_of(rook_sq), "kingside rook not on same rank");
-            
+
                     if (color == WHITE) {
                         current_state.castlingRights |= WHITE_OO;
                         current_state.castlingMetadata[WHITE].king_start = king_sq;
@@ -350,11 +351,11 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                         current_state.castlingMetadata[BLACK].rook_start_ks = rook_sq;
                     }
                 };
-            
+
                 auto setQS = [&](Square rook_sq) {
                     INVALID_ARG_IF(rook_sq == SQ_NONE, "queenside rook not found");
                     INVALID_ARG_IF(rank_of(king_sq) != rank_of(rook_sq), "queenside rook not on same rank");
-            
+
                     if (color == WHITE) {
                         current_state.castlingRights |= WHITE_OOO;
                         current_state.castlingMetadata[WHITE].king_start = king_sq;
@@ -365,33 +366,36 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                         current_state.castlingMetadata[BLACK].rook_start_qs = rook_sq;
                     }
                 };
-            
-                if (c == 'K' && color == WHITE) setKS(rook_ks);
-                else if (c == 'Q' && color == WHITE) setQS(rook_qs);
-                else if (c == 'k' && color == BLACK) setKS(rook_ks);
-                else if (c == 'q' && color == BLACK) setQS(rook_qs);
-            
+
+                if (c == 'K' && color == WHITE)
+                    setKS(rook_ks);
+                else if (c == 'Q' && color == WHITE)
+                    setQS(rook_qs);
+                else if (c == 'k' && color == BLACK)
+                    setKS(rook_ks);
+                else if (c == 'q' && color == BLACK)
+                    setQS(rook_qs);
+
                 else if (c >= 'A' && c <= 'H' && color == WHITE) {
                     File f = static_cast<File>(c - 'A');
                     Square rook_sq = make_sq(RANK_1, f);
-            
+
                     PieceC p = pieces_list[rook_sq];
                     INVALID_ARG_IF(p == PieceC::NO_PIECE || type_of(p) != ROOK || color_of(p) != WHITE,
                                    "Invalid white Chess960 rook");
-            
+
                     (f > file_of(king_sq)) ? setKS(rook_sq) : setQS(rook_sq);
-                }
-                else if (c >= 'a' && c <= 'h' && color == BLACK) {
+                } else if (c >= 'a' && c <= 'h' && color == BLACK) {
                     File f = static_cast<File>(c - 'a');
                     Square rook_sq = make_sq(RANK_8, f);
-            
+
                     PieceC p = pieces_list[rook_sq];
                     INVALID_ARG_IF(p == PieceC::NO_PIECE || type_of(p) != ROOK || color_of(p) != BLACK,
                                    "Invalid black Chess960 rook");
-            
+
                     (f > file_of(king_sq)) ? setKS(rook_sq) : setQS(rook_sq);
                 }
-            
+
                 // ignore '-'
             };
 
