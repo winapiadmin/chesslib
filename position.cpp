@@ -332,8 +332,8 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
 
             auto apply = [&](char c) {
                 Square king_sq = findKing();
-                Square rook_ks = findRookKS(king_sq,color);
-                Square rook_qs = findRookQS(king_sq,color);
+                Square rook_ks = findRookKS(king_sq, color);
+                Square rook_qs = findRookQS(king_sq, color);
 
                 if (color == WHITE) {
                     if (c == 'K')
@@ -348,11 +348,9 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                 }
 
                 if (c == 'K' || c == 'k')
-                    INVALID_ARG_IF(rook_ks != SQ_NONE && rank_of(king_sq) != rank_of(rook_ks),
-                                "KS rook not on same rank");
+                    INVALID_ARG_IF(rook_ks != SQ_NONE && rank_of(king_sq) != rank_of(rook_ks), "KS rook not on same rank");
                 if (c == 'Q' || c == 'q')
-                    INVALID_ARG_IF(rook_qs != SQ_NONE && rank_of(king_sq) != rank_of(rook_qs),
-                                "QS rook not on same rank");
+                    INVALID_ARG_IF(rook_qs != SQ_NONE && rank_of(king_sq) != rank_of(rook_qs), "QS rook not on same rank");
                 if (color == WHITE) {
                     if (c == 'K') {
                         current_state.castlingRights |= WHITE_OO;
