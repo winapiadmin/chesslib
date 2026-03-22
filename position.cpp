@@ -281,7 +281,6 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
             }
         }
 
-        // Final assertions after parsing
         INVALID_ARG_IF(file_count != 8, "Last rank must have 8 squares");
         INVALID_ARG_IF(rank_count != 7, "FEN must contain exactly 8 ranks");
     }
@@ -298,60 +297,57 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
 
     // 3. Castling rights
     current_state.castlingRights = NO_CASTLING;
-    for (char c : castling) {
-        switch (c) {
-        case 'K':
-            current_state.castlingRights |= WHITE_OO;
-            current_state.castlingMetadata[WHITE].king_start = kingSq(WHITE);
-            current_state.castlingMetadata[WHITE].rook_start_ks = SQ_H1;
-            break;
-        case 'Q':
-            current_state.castlingRights |= WHITE_OOO;
-            current_state.castlingMetadata[WHITE].king_start = kingSq(WHITE);
-            current_state.castlingMetadata[WHITE].rook_start_qs = SQ_A1;
-            break;
-        case 'k':
-            current_state.castlingRights |= BLACK_OO;
-            current_state.castlingMetadata[BLACK].king_start = kingSq(BLACK);
-            current_state.castlingMetadata[BLACK].rook_start_ks = SQ_H8;
-            break;
-        case 'q':
-            current_state.castlingRights |= BLACK_OOO;
-            current_state.castlingMetadata[BLACK].king_start = kingSq(BLACK);
-            current_state.castlingMetadata[BLACK].rook_start_qs = SQ_A8;
-            break;
-        // some optional chess960? maybe not.
-        case '-':
-            break;
-        default: {
-            INVALID_ARG_IF(!chess960, "Invalid castling right for non-Chess960");
-            if (c >= 'A' && c <= 'H') // white-castling
-            {
-                const auto king_start = kingSq(WHITE);
-                const auto rook_start = make_sq(RANK_1, static_cast<File>(c - 'A'));
-
-                CastlingRights cr = (file_of(rook_start) > file_of(king_start) ? WHITE_OO : WHITE_OOO);
-                current_state.castlingRights |= cr;
-                current_state.castlingMetadata[WHITE].king_start = kingSq(WHITE);
-                if (cr & KING_SIDE)
-                    current_state.castlingMetadata[WHITE].rook_start_ks = rook_start;
-                else
-                    current_state.castlingMetadata[WHITE].rook_start_qs = rook_start;
-            } else if (c >= 'a' && c <= 'h') // white-castling
-            {
-                const auto king_start = kingSq(BLACK);
-                const auto rook_start = make_sq(RANK_8, static_cast<File>(c - 'a'));
-
-                CastlingRights cr = (file_of(rook_start) > file_of(king_start) ? BLACK_OO : BLACK_OOO);
-                current_state.castlingRights |= cr;
-                current_state.castlingMetadata[BLACK].king_start = king_start;
-                if (cr & KING_SIDE)
-                    current_state.castlingMetadata[BLACK].rook_start_ks = rook_start;
-                else
-                    current_state.castlingMetadata[BLACK].rook_start_qs = rook_start;
-            }
-            break;
-        }
+    {
+        for (Color color : {WHITE, BLACK}) {
+            auto findKing = [&]() -> Square {
+                auto it = std::find_if(std::begin(pieces_list), std::end(pieces_list),
+                                       [&](PieceC p) { return p == make_piece<KING>(color); });
+                INVALID_ARG_IF(it == std::end(pieces_list), "No king found for castling");
+                return static_cast<Square>(it - pieces_list);
+            };
+    
+            auto findRookKS = [&](Square king_sq) -> Square {
+                auto it = std::find_if(pieces_list + king_sq + 1, std::end(pieces_list),
+                                       [&](PieceC p) { return p == make_piece<ROOK>(color); });
+                return (it != std::end(pieces_list)) ? static_cast<Square>(it - pieces_list) : SQ_NONE;
+            };
+    
+            auto findRookQS = [&](Square king_sq) -> Square {
+                auto it = std::find_if(std::reverse_iterator(pieces_list + king_sq),
+                                       std::reverse_iterator(pieces_list),
+                                       [&](PieceC p) { return p == make_piece<ROOK>(color); });
+                return (it != std::reverse_iterator(pieces_list)) ? static_cast<Square>((it.base() - 1) - pieces_list) : SQ_NONE;
+            };
+    
+            Square king_sq = findKing();
+            Square rook_ks = findRookKS(king_sq);
+            Square rook_qs = findRookQS(king_sq);
+    
+            auto validate = [&](char c) {    
+                if(color == WHITE) {
+                    if(c == 'K') INVALID_ARG_IF(rook_ks == SQ_NONE, "White KS castling illegal: no rook");
+                    if(c == 'Q') INVALID_ARG_IF(rook_qs == SQ_NONE, "White QS castling illegal: no rook");
+                } else {
+                    if(c == 'k') INVALID_ARG_IF(rook_ks == SQ_NONE, "Black KS castling illegal: no rook");
+                    if(c == 'q') INVALID_ARG_IF(rook_qs == SQ_NONE, "Black QS castling illegal: no rook");
+                }
+    
+                INVALID_ARG_IF(rank_of(king_sq) != rank_of(rook_ks) && (c=='K'||c=='k'), "KS rook not on same rank");
+                INVALID_ARG_IF(rank_of(king_sq) != rank_of(rook_qs) && (c=='Q'||c=='q'), "QS rook not on same rank");
+            };
+    
+            auto apply = [&](char c) {
+                validate(c);
+                if(color == WHITE) {
+                    if(c == 'K') { current_state.castlingRights |= WHITE_OO; current_state.castlingMetadata[WHITE].king_start = king_sq; current_state.castlingMetadata[WHITE].rook_start_ks = rook_ks; }
+                    if(c == 'Q') { current_state.castlingRights |= WHITE_OOO; current_state.castlingMetadata[WHITE].king_start = king_sq; current_state.castlingMetadata[WHITE].rook_start_qs = rook_qs; }
+                } else {
+                    if(c == 'k') { current_state.castlingRights |= BLACK_OO; current_state.castlingMetadata[BLACK].king_start = king_sq; current_state.castlingMetadata[BLACK].rook_start_ks = rook_ks; }
+                    if(c == 'q') { current_state.castlingRights |= BLACK_OOO; current_state.castlingMetadata[BLACK].king_start = king_sq; current_state.castlingMetadata[BLACK].rook_start_qs = rook_qs; }
+                }
+            };
+    
+            std::for_each(castling.begin(), castling.end(), apply);
         }
     }
     current_state.hash ^= zobrist::RandomCastle[current_state.castlingRights];
