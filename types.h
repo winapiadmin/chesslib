@@ -94,7 +94,7 @@ constexpr Square make_sq(const Rank r, const File f) {
     return static_cast<Square>(static_cast<uint8_t>(r * 8 + f));
 }
 constexpr Square make_sq(const File f, const Rank r) {
-    ASSUME(0 <= r && r <= 7 && 0 <= f && f <= 7);
+    assert(0 <= r && r <= 7 && 0 <= f && f <= 7);
     return static_cast<Square>(static_cast<uint8_t>(r * 8 + f));
 }
 enum Color : uint8_t { WHITE = 0, BLACK = 1, COLOR_NB = 2 };

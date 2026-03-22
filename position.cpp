@@ -308,25 +308,32 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                 return static_cast<Square>(it - pieces_list);
             };
 
-            auto findRookKS = [&](Square king_sq) -> Square {
-                auto it = std::find_if(pieces_list + king_sq + 1, std::end(pieces_list), [&](PieceC p) {
-                    return p == make_piece<PieceC>(ROOK, color);
-                });
-                return (it != std::end(pieces_list)) ? static_cast<Square>(it - pieces_list) : SQ_NONE;
+            auto findRookQS = [&](Square king_sq, Color color) -> Square {
+                Rank r = rank_of(king_sq);
+                for (int f = file_of(king_sq) - 1; f >= FILE_A; --f) {
+                    Square sq = make_sq(r, static_cast<File>(f));
+                    PieceC p = pieces_list[sq];
+                    if (p != PieceC::NO_PIECE && type_of(p) == ROOK && color_of(p) == color)
+                        return sq;
+                }
+                return SQ_NONE;
             };
 
-            auto findRookQS = [&](Square king_sq) -> Square {
-                auto it = std::find_if(std::reverse_iterator(pieces_list + king_sq),
-                                       std::reverse_iterator(pieces_list),
-                                       [&](PieceC p) { return p == make_piece<PieceC>(ROOK, color); });
-                return (it != std::reverse_iterator(pieces_list)) ? static_cast<Square>((it.base() - 1) - pieces_list)
-                                                                  : SQ_NONE;
+            auto findRookKS = [&](Square king_sq, Color color) -> Square {
+                Rank r = rank_of(king_sq);
+                for (int f = file_of(king_sq) + 1; f <= FILE_H; ++f) {
+                    Square sq = make_sq(r, static_cast<File>(f));
+                    PieceC p = pieces_list[sq];
+                    if (p != PieceC::NO_PIECE && type_of(p) == ROOK && color_of(p) == color)
+                        return sq;
+                }
+                return SQ_NONE;
             };
 
             auto apply = [&](char c) {
                 Square king_sq = findKing();
-                Square rook_ks = findRookKS(king_sq);
-                Square rook_qs = findRookQS(king_sq);
+                Square rook_ks = findRookKS(king_sq,color);
+                Square rook_qs = findRookQS(king_sq,color);
 
                 if (color == WHITE) {
                     if (c == 'K')
@@ -340,8 +347,12 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                         INVALID_ARG_IF(rook_qs == SQ_NONE, "Black QS castling illegal: no rook");
                 }
 
-                INVALID_ARG_IF(rank_of(king_sq) != rank_of(rook_ks) && (c == 'K' || c == 'k'), "KS rook not on same rank");
-                INVALID_ARG_IF(rank_of(king_sq) != rank_of(rook_qs) && (c == 'Q' || c == 'q'), "QS rook not on same rank");
+                if (c == 'K' || c == 'k')
+                    INVALID_ARG_IF(rook_ks != SQ_NONE && rank_of(king_sq) != rank_of(rook_ks),
+                                "KS rook not on same rank");
+                if (c == 'Q' || c == 'q')
+                    INVALID_ARG_IF(rook_qs != SQ_NONE && rank_of(king_sq) != rank_of(rook_qs),
+                                "QS rook not on same rank");
                 if (color == WHITE) {
                     if (c == 'K') {
                         current_state.castlingRights |= WHITE_OO;
