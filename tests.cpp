@@ -423,7 +423,7 @@ TEST_CASE("Captures only?") {
     };
     check_perfts<false, MoveGenType::CAPTURE>(tests);
 }
-TEST_CASE("Perfts") {
+TEST_CASE("Perfts" * doctest::timeout(36000)) {
     std::vector<TestEntry<std::string, perft_t>> tests = {
         {                                            "5k2/8/8/8/3K4/8/8/8 w - - 0 1",  1,         8 },
         {                                            "5k2/8/8/8/3K4/8/8/8 w - - 0 1",  3,       310 },
@@ -1345,7 +1345,7 @@ TEST_CASE("Perfts") {
     };
     check_perfts(tests);
 }
-TEST_CASE("Chess960") {
+TEST_CASE("Chess960" * doctest::timeout(36000)) {
     std::vector<TestEntry<std::string, perft_t>> tests = {
         {      "bqnb1rkr/pp3ppp/3ppn2/2p5/5P2/P2P4/NPP1P1PP/BQ1BNRKR w HFhf - 2 9", 1,         21 },
         {      "bqnb1rkr/pp3ppp/3ppn2/2p5/5P2/P2P4/NPP1P1PP/BQ1BNRKR w HFhf - 2 9", 2,        528 },
