@@ -1,13 +1,10 @@
 #pragma once
+#include "fwd_decl.h"
 #include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-namespace chess {
-class Move;
-enum Square : int8_t;
-template <typename T, typename> class _Position;
-namespace uci {
+namespace chess::uci {
 std::string moveToUci(Move move, bool chess960 = false);
 
 std::string squareToString(Square sq);
@@ -32,5 +29,4 @@ template <typename T, typename P = void>
 Move parseSan(const _Position<T, P> &pos, std::string_view uci, bool remove_illegals = false);
 template <typename T, typename P = void>
 std::string moveToSan(const _Position<T, P> &pos, Move move, bool long_ = false, bool suffix = true);
-} // namespace uci
-} // namespace chess
+} // namespace chess::uci

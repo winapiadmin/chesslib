@@ -3,7 +3,7 @@ project(chesslib LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-option(ENABLE_COVERAGE "Enable coverage reporting" OFF)
+
 # --- Compiler tuning ---
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
@@ -32,10 +32,6 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   add_compile_options(/constexpr:steps2000000000 /constexpr:depth1024 ${ARCH_FLAG})
 endif()
 
-if(ENABLE_COVERAGE)
-    set(CMAKE_BUILD_TYPE Debug CACHE STRING "" FORCE)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
-endif()
 add_compile_definitions(GENERATE_AT_RUNTIME)
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
   add_compile_definitions(_DEBUG)
@@ -48,125 +44,32 @@ set(SOURCES
 add_library(chesslib STATIC ${SOURCES})
 target_include_directories(chesslib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # --- Enable CTest integration ---
-enable_testing()
-include(FetchContent)
-FetchContent_Declare(
-    doctest
-    GIT_REPOSITORY https://github.com/doctest/doctest.git
-    GIT_TAG v2.4.12
-)
-FetchContent_MakeAvailable(doctest)
-# --- Test executable ---
-add_executable(test_chess
-    tests.cpp
-)
-add_executable(NonImportantTests
-    non_core_tests.cpp
-)
-target_link_libraries(test_chess PRIVATE chesslib)
-target_include_directories(test_chess PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${doctest_SOURCE_DIR})
-target_link_libraries(NonImportantTests PRIVATE chesslib)
-target_include_directories(NonImportantTests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${doctest_SOURCE_DIR})
-add_test(NAME test_core COMMAND test_chess)
-add_test(NAME api_tests COMMAND NonImportantTests)
-if(ENABLE_COVERAGE)
+include(CTest)
 
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        foreach(t chesslib test_chess NonImportantTests)
-            target_compile_options(${t} PRIVATE
-                --coverage
-                -O0
-            )
-            target_link_options(${t} PRIVATE
-                --coverage
-            )
-        endforeach()
+if(BUILD_TESTING)
+    include(FetchContent)
+    FetchContent_Declare(
+        doctest
+        GIT_REPOSITORY https://github.com/doctest/doctest.git
+        GIT_TAG v2.4.12
+    )
+    FetchContent_MakeAvailable(doctest)
 
-        find_program(GCOVR gcovr REQUIRED)
+    # --- Test executable ---
+    add_executable(test_chess tests.cpp)
+    add_executable(NonImportantTests non_core_tests.cpp)
 
-        add_custom_target(coverage
-            COMMAND ${CMAKE_COMMAND} -E make_directory coverage
-            COMMAND ${CMAKE_CTEST_COMMAND}
-            COMMAND ${GCOVR}
-                -r ${CMAKE_SOURCE_DIR}
-                --html
-                --html-details
-                -o coverage/index.html
-                --exclude-directories tests
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-            COMMENT "Generating GCC coverage report"
-        )
-    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        foreach(t chesslib test_chess NonImportantTests)
-            target_compile_options(${t} PRIVATE
-                -fprofile-instr-generate
-                -fcoverage-mapping
-                -O0
-            )
-            target_link_options(${t} PRIVATE
-                -fprofile-instr-generate
-            )
-        endforeach()
+    target_link_libraries(test_chess PRIVATE chesslib doctest::doctest)
+    target_link_libraries(NonImportantTests PRIVATE chesslib doctest::doctest)
 
-        if(WIN32)
-
-            find_program(LLVM_PROFDATA llvm-profdata REQUIRED)
-            find_program(LLVM_COV llvm-cov REQUIRED)
-
-            add_custom_target(coverage
-                COMMAND ${CMAKE_COMMAND} -E make_directory coverage
-
-                COMMAND ${CMAKE_COMMAND} -E env
-                    LLVM_PROFILE_FILE=coverage/coverage.profraw
-                    CTEST_PARALLEL_LEVEL=1
-                    ${CMAKE_CTEST_COMMAND}
-
-                COMMAND ${LLVM_PROFDATA} merge
-                    -sparse
-                    coverage/coverage.profraw
-                    -o coverage/coverage.profdata
-
-                COMMAND ${LLVM_COV} show
-                    $<TARGET_FILE:test_chess>
-                    $<TARGET_FILE:NonImportantTests>
-                    -instr-profile=coverage/coverage.profdata
-                    -format=html
-                    -output-dir=coverage
-                    -ignore-filename-regex="tests|doctest"
-                    -Xdemangler=llvm-cxxfilt
-
-                WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-                COMMENT "Generating Clang coverage report (Windows)"
-            )
-        else()
-
-            find_program(LLVM_PROFDATA llvm-profdata REQUIRED)
-            find_program(LLVM_COV llvm-cov REQUIRED)
-
-            add_custom_target(coverage
-                COMMAND ${CMAKE_COMMAND} -E make_directory coverage
-
-                COMMAND ${CMAKE_COMMAND} -E env
-                    LLVM_PROFILE_FILE=coverage/%m.profraw
-                    ${CMAKE_CTEST_COMMAND}
-
-                COMMAND ${LLVM_PROFDATA} merge
-                    -sparse
-                    coverage
-                    -o coverage/coverage.profdata
-
-                COMMAND ${LLVM_COV} show
-                    $<TARGET_FILE:test_chess>
-                    $<TARGET_FILE:NonImportantTests>
-                    -instr-profile=coverage/coverage.profdata
-                    -format=html
-                    -output-dir=coverage
-                    -ignore-filename-regex="tests|doctest"
-                    -Xdemangler=c++filt
-
-                WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-                COMMENT "Generating Clang coverage report"
-            )
+    add_test(NAME test_core COMMAND test_chess)
+    add_test(NAME api_tests COMMAND NonImportantTests)
+    if (UNIX AND CMAKE_BUILD_TYPE MATCHES "Debug")
+        set(SANITIZERS "" CACHE STRING "sanitizers such as undefined,address")
+    
+        if (NOT "${SANITIZERS}" STREQUAL "")
+            add_compile_options(-fsanitize=${SANITIZERS} -fno-omit-frame-pointer)
+            add_link_options(-fsanitize=${SANITIZERS})
         endif()
     endif()
 

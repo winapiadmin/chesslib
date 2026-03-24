@@ -843,12 +843,12 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_C4, Square::SQ_E5);
 
-        // CHECK(uci::moveToSan(b, m) == "Nxe5");
+        CHECK(uci::moveToSan(b, m) == "Nxe5");
         REQUIRE(uci::parseSan(b, "Nxe5") == m);
     }
 
     TEST_CASE("Parse No Move") {
-        Position b = Position();
+        Position b;
 
         REQUIRE(uci::parseSan(b, "") == Move::NO_MOVE);
     }
@@ -889,6 +889,13 @@ TEST_SUITE("SAN Parser") {
 
         CHECK(uci::moveToSan(b, m) == "O-O+");
         REQUIRE(uci::parseSan(b, "O-O+") == m);
+    }
+}
+
+TEST_SUITE("misc tests") {
+    TEST_CASE("FEN reconstruction") {
+        Position pos(Position::START_CHESS960_FEN, true);
+        REQUIRE(pos.fen() == Position::START_CHESS960_FEN);
     }
 }
 int main(int argc, char **argv) {

@@ -1,18 +1,22 @@
-out/
-build/
-.vs/
+# Ignore everything
+*
+
+# Allow source and essential files
 !*.cpp
 !*.h
+!CMakeLists.txt
 !README.md
 !LICENSE
-!CMakeLists.txt
 !.gitignore
 !.gitattributes
-CMakePresets.json
-CMakeSettings.json
+!.github/**
+!.github/
+# Ignore build/editor junk
+build/
+out/
+.vs/
+.vscode/
+.cache/
+cmake-*/
+# Ignore asm outputs
 *.s
-.vscode
-.cache
-deps/*
-!deps/
-*

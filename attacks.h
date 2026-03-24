@@ -144,9 +144,7 @@ extern const std::array<Bitboard, 0x1480> BishopAttacks;
  * @param b
  * @return
  */
-template <Direction direction> [[nodiscard]] static constexpr Bitboard shift(const Bitboard b) {
-    ASSUME(direction == NORTH || direction == EAST || direction == SOUTH || direction == WEST || direction == NORTH_EAST ||
-           direction == SOUTH_EAST || direction == SOUTH_WEST || direction == NORTH_WEST);
+[[nodiscard]] static constexpr Bitboard shift(const Bitboard b, Direction direction) {
     switch (direction) {
     case Direction::NORTH:
         return b << 8;
@@ -166,8 +164,16 @@ template <Direction direction> [[nodiscard]] static constexpr Bitboard shift(con
         return (b & ~MASK_FILE[7]) >> 7;
     default:
         UNREACHABLE();
+        return 0;
     }
 }
+/**
+ * @brief  Shifts a bitboard in a given direction
+ * @tparam direction
+ * @param b
+ * @return
+ */
+template <Direction direction> [[nodiscard]] static constexpr Bitboard shift(const Bitboard b) { return shift(b, direction); }
 
 /**
  * @brief

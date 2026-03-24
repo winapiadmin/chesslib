@@ -34,24 +34,24 @@ std::string moveToUci(Move mv, bool chess960) {
     move += squareToString(mv.from_sq());
     // To square, special: castlings
     switch (mv.type_of()) {
-    case CASTLING:
-        switch (mv.to_sq()) {
-        case SQ_H1:
-            move += "g1"; // White kingside castling
-            break;
-        case SQ_A1:
-            move += "c1"; // white queenside castling
-            break;
-        case SQ_H8:
-            move += "g8"; // black kingside castling
-            break;
-        case SQ_A8:
-            move += "c8"; // black queenside castling
-            break;
-        default:
-            if (chess960)
-                move += squareToString(mv.to_sq());
-            else {
+    case CASTLING: {
+        if (chess960)
+            move += squareToString(mv.to_sq());
+        else {
+            switch (mv.to_sq()) {
+            case SQ_H1:
+                move += "g1"; // White kingside castling
+                break;
+            case SQ_A1:
+                move += "c1"; // white queenside castling
+                break;
+            case SQ_H8:
+                move += "g8"; // black kingside castling
+                break;
+            case SQ_A8:
+                move += "c8"; // black queenside castling
+                break;
+            default:
 #if defined(_DEBUG) || !defined(NDEBUG)
                 assert(false && "this isn't chess960");
 #else
@@ -60,7 +60,7 @@ std::string moveToUci(Move mv, bool chess960) {
 #endif
             }
         }
-        break;
+    } break;
     case PROMOTION:
         move += squareToString(mv.to_sq());
         move += PieceTypeChar[mv.promotion_type()];
@@ -84,36 +84,44 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
         THROW_IF_EXCEPTIONS_ON(IllegalMoveException("source !in [a1, h8], target !in [a1, h8]"));
         return Move::NO_MOVE;
     }
+    auto move = (uci.length() == 4) ? Move::make(source, target) : Move::NO_MOVE;
     auto pt = piece_of(pos.at(source));
     if (pt == NO_PIECE_TYPE) {
         THROW_IF_EXCEPTIONS_ON(IllegalMoveException("source need to be a existing piece, got nothing"));
         return Move::NO_MOVE;
     }
-    if (!pos.chess960() && pt == KING && square_distance(target, source) == 2) {
+    // castling in chess960
+    if (pos.chess960() && pt == PieceType::KING && pos.template at<PieceType>(target) == PieceType::ROOK &&
+        pos.template at<Color>(target) == pos.sideToMove()) {
+        move = Move::make<Move::CASTLING>(source, target);
+    }
+
+    // convert to king captures rook
+    // in chess960 the move should be sent as king captures rook already!
+    else if (!pos.chess960() && pt == PieceType::KING && square_distance(target, source) == 2) {
         target = make_sq(target > source ? File::FILE_H : File::FILE_A, rank_of(source));
-        return Move::make<CASTLING>(source, target);
+        move = Move::make<Move::CASTLING>(source, target);
     }
     // en passant
-    if (pt == PAWN && target == pos.enpassantSq()) {
-        return Move::make<EN_PASSANT>(source, target);
+    else if (pt == PAWN && target == pos.enpassantSq()) {
+        move = Move::make<EN_PASSANT>(source, target);
     }
 
     // promotion
-    if (pt == PAWN && uci.length() == 5 && (rank_of(target) == (pos.sideToMove() == WHITE ? RANK_8 : RANK_1))) {
+    else if (pt == PAWN && uci.length() == 5 && (rank_of(target) == (pos.sideToMove() == WHITE ? RANK_8 : RANK_1))) {
         auto promotion = parse_pt(uci[4]);
 
         if (promotion == NO_PIECE_TYPE || promotion == KING || promotion == PAWN) {
 #if defined(_DEBUG) || !defined(NDEBUG)
-            assert(false && "promotions: NRBQ");
+            assert(false && "promotions: [NRBQ]");
 #else
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("promotions: NRBQ"));
+            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("promotions: [NRBQ]"));
 #endif
             return Move::NO_MOVE;
         }
 
-        return Move::make<PROMOTION>(source, target, promotion);
+        move = Move::make<PROMOTION>(source, target, promotion);
     }
-    auto move = (uci.length() == 4) ? Move::make(source, target) : Move::NO_MOVE;
     Movelist moves;
     pos.legals(moves);
     auto it = std::find(moves.begin(), moves.end(), move);
@@ -354,9 +362,8 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
     }
 }
 template <typename T, typename P> std::string moveToSan(const _Position<T, P> &pos, Move move, bool long_, bool suffix) {
-    const char FILE_NAMES[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' };
+    constexpr char FILE_NAMES[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' };
 
-    const char RANK_NAMES[] = { '1', '2', '3', '4', '5', '6', '7', '8' };
     constexpr char PieceTypeChar[] = " pnbrqk";
     // Null move. (or none)
     if (!move.is_ok()) {
@@ -377,7 +384,7 @@ template <typename T, typename P> std::string moveToSan(const _Position<T, P> &p
         }
     }
     if (piece_type == NO_PIECE_TYPE) {
-        THROW_IF_EXCEPTIONS_ON(IllegalMoveException("san() and lan() expect move to be pseudo-legal or null, but got " +
+        THROW_IF_EXCEPTIONS_ON(IllegalMoveException("moveToSan() expect move to be pseudo-legal or null, but got " +
                                                     moveToUci(move) + " in " + pos.fen()));
         return "";
     }
@@ -406,6 +413,7 @@ template <typename T, typename P> std::string moveToSan(const _Position<T, P> &p
 
         // Disambiguate only if there are other candidates that can move to the same square.
         if (others) {
+            const char RANK_NAMES[] = { '1', '2', '3', '4', '5', '6', '7', '8' };
             bool need_file = false, need_rank = false;
             for (Square sq = SQ_A1; sq < SQ_NONE; ++sq) {
                 if (others & (1ULL << sq)) {
@@ -446,7 +454,7 @@ appendCheck:
         return san;
     _Position<T> p = pos;
     p.doMove(move);
-    bool _check = p.is_check();
+    const bool _check = p.is_check();
     Movelist moves;
     p.legals(moves);
     // Checkmate: no legal moves and in check; Stalemate: no legal moves and not in check

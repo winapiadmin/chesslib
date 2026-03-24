@@ -20,13 +20,13 @@ template <int Offset = 0> struct alignas(64) SplatTable {
 constexpr SplatTable<> SPLAT_TABLE{};
 template <int Offset> constexpr SplatTable<Offset> SPLAT_PAWN_TABLE{};
 // AVX-512 (32 lanes of uint16_t)
-static Move *write_moves(Move *moveList, uint32_t mask, __m512i vector) {
+static inline Move *write_moves(Move *moveList, uint32_t mask, __m512i vector) {
     // Avoid _mm512_mask_compressstoreu_epi16() as it's 256 uOps on Zen4
     _mm512_storeu_si512(reinterpret_cast<__m512i *>(moveList), _mm512_maskz_compress_epi16(mask, vector));
     return moveList + popcount(mask);
 }
 
-Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
+inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
     const auto *table = reinterpret_cast<const __m512i *>(SPLAT_TABLE.data.data());
     __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
     // two 32-lane blocks (0..31, 32..63)
@@ -37,7 +37,7 @@ Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
     return moveList;
 }
 
-template <Direction offset> Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
+template <Direction offset> inline Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
     const auto *table = reinterpret_cast<const __m512i *>(SPLAT_PAWN_TABLE<offset>.data.data());
     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0), _mm512_load_si512(table + 0));
     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), _mm512_load_si512(table + 1));
@@ -45,9 +45,9 @@ template <Direction offset> Move *splat_pawn_moves(Move *moveList, Bitboard to_b
     return moveList;
 }
 #else
-template <Direction offset> Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
+template <Direction offset> inline Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
     while (to_bb) {
-        Square to = (Square)pop_lsb(to_bb);
+        auto to = static_cast<Square>(pop_lsb(to_bb));
 #if defined(_DEBUG) || !defined(NDEBUG)
         Square from = to - offset;
         assert(from >= 0 && from < 64); // sanity check
@@ -59,9 +59,9 @@ template <Direction offset> Move *splat_pawn_moves(Move *moveList, Bitboard to_b
     return moveList;
 }
 
-Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
+inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
     while (to_bb)
-        *moveList++ = Move(from, (Square)pop_lsb(to_bb));
+        *moveList++ = Move(from, static_cast<Square>(pop_lsb(to_bb)));
     return moveList;
 }
 #endif
@@ -79,7 +79,7 @@ template <typename T, Color c> void movegen::genEP(const _Position<T, void> &pos
     if (!candidates)
         return;
 
-    const Square ep_pawn_sq = static_cast<Square>(ep_sq - pawn_push(c));
+    const Square ep_pawn_sq = ep_sq - pawn_push(c);
     const Bitboard ep_mask = (1ULL << ep_pawn_sq) | (1ULL << ep_sq);
     // ASSUME(popcount(candidates) <= 32);
 
@@ -131,14 +131,9 @@ template <typename T, Color c, bool capturesOnly>
 void movegen::genPawnSingleMoves(
     const _Position<T, void> &pos, Movelist &moves, Bitboard _rook_pin, Bitboard _bishop_pin, Bitboard _check_mask) {
     constexpr auto UP = relative_direction(c, NORTH);
-    constexpr auto DOWN = relative_direction(c, SOUTH);
-    constexpr auto DOWN_LEFT = relative_direction(c, SOUTH_WEST);
-    constexpr auto DOWN_RIGHT = relative_direction(c, SOUTH_EAST);
     constexpr auto UP_LEFT = relative_direction(c, NORTH_WEST);
     constexpr auto UP_RIGHT = relative_direction(c, NORTH_EAST);
-    constexpr auto RANK_B_PROMO = attacks::MASK_RANK[relative_rank(c, RANK_7)];
     constexpr auto RANK_PROMO = attacks::MASK_RANK[relative_rank(c, RANK_8)];
-    constexpr auto DOUBLE_PUSH_RANK = attacks::MASK_RANK[relative_rank(c, RANK_3)];
 
     const auto pawns = pos.template pieces<PAWN, c>();
     const auto occ_opp = pos.occ(~c);
@@ -237,7 +232,7 @@ void movegen::genKingMoves(const _Position<T, void> &pos, Movelist &out, Bitboar
     const Bitboard myOcc = pos.occ(c);
 
     // Remove king from board when computing enemy attacks
-    const Bitboard occWithoutKing = occAll ^ (1ULL << kingSq);
+    const Bitboard occWithoutKing = occAll ^ 1ULL << kingSq;
     Bitboard enemyAttacks = 0ULL;
 
     // Sliding pieces
@@ -278,12 +273,12 @@ void movegen::genKingMoves(const _Position<T, void> &pos, Movelist &out, Bitboar
         Bitboard OOO_SAFE = between(kingSq, castling_king_square(c, false));
         Square rookKing = pos.getCastlingMetadata(c).rook_start_ks, rookQueen = pos.getCastlingMetadata(c).rook_start_qs;
 
-        if ((pos.castlingRights() & kingRights) &&
-            !((occupancy & OO_EMPTY) || (enemy_attacks & OO_SAFE) || (_pin_mask & (1ULL << rookKing)))) {
+        if (pos.castlingRights() & kingRights &&
+            !(occupancy & OO_EMPTY || enemy_attacks & OO_SAFE || _pin_mask & 1ULL << rookKing)) {
             out.push_back(Move::make<CASTLING>(kingSq, rookKing));
         }
-        if ((pos.castlingRights() & queenRights) &&
-            !((occupancy & OOO_EMPTY) || (enemy_attacks & OOO_SAFE) || (_pin_mask & (1ULL << rookQueen)))) {
+        if (pos.castlingRights() & queenRights &&
+            !(occupancy & OOO_EMPTY || enemy_attacks & OOO_SAFE || _pin_mask & 1ULL << rookQueen)) {
             out.push_back(Move::make<CASTLING>(kingSq, rookQueen));
         }
     }
@@ -312,9 +307,9 @@ void movegen::genSlidingMoves(
 
         // Bitboard blockers = occ() ^ from_bb; // remove piece temporarily
         auto func = attacks::queen;
-        if constexpr (pt == PieceType::BISHOP)
+        if constexpr (pt == BISHOP)
             func = attacks::bishop;
-        else if constexpr (pt == PieceType::ROOK)
+        else if constexpr (pt == ROOK)
             func = attacks::rook;
         func = rook_hit ? attacks::rook : bishop_hit ? attacks::bishop : func;
         Bitboard filtered_pin = pin_mask & filter_list;
@@ -325,16 +320,6 @@ void movegen::genSlidingMoves(
         moves.size_ += popcount(targets);
     }
 }
-template Move *chess::_chess::splat_pawn_moves<NORTH>(Move *, Bitboard);
-template Move *chess::_chess::splat_pawn_moves<EAST>(Move *, Bitboard);
-template Move *chess::_chess::splat_pawn_moves<SOUTH>(Move *, Bitboard);
-template Move *chess::_chess::splat_pawn_moves<WEST>(Move *, Bitboard);
-template Move *chess::_chess::splat_pawn_moves<(Direction)16>(Move *, Bitboard);
-template Move *chess::_chess::splat_pawn_moves<(Direction)-16>(Move *, Bitboard);
-template Move *chess::_chess::splat_pawn_moves<NORTH_EAST>(Move *, Bitboard);
-template Move *chess::_chess::splat_pawn_moves<NORTH_WEST>(Move *, Bitboard);
-template Move *chess::_chess::splat_pawn_moves<SOUTH_EAST>(Move *, Bitboard);
-template Move *chess::_chess::splat_pawn_moves<SOUTH_WEST>(Move *, Bitboard);
 #define INSTANTIATE(PieceC)                                                                                                    \
     template void chess::movegen::genEP<PieceC, Color::WHITE>(const _Position<PieceC, void> &, Movelist &);                    \
     template void chess::movegen::genEP<PieceC, Color::BLACK>(const _Position<PieceC, void> &, Movelist &);                    \

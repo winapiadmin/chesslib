@@ -229,6 +229,17 @@ void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
             auto end_time = high_resolution_clock::now();
             elapsed += duration<double>(end_time - start_time).count();
             nodes += entry.info.nodes;
+            if (entry.info.nodes < 5e6) {
+                _Position<PolyglotPiece> pos2 = pos;
+                REQUIRE(pos.fen() == pos2.fen());
+                auto start_time = high_resolution_clock::now();
+                REQUIRE(perft<PolyglotPiece, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
+                auto end_time = high_resolution_clock::now();
+                elapsed += duration<double>(end_time - start_time).count();
+                nodes += entry.info.nodes;
+            } else {
+                std::cerr << "\n(skipped copying test)\n";
+            }
         }
         {
             _Position<EnginePiece> pos(entry.input, chess960);
@@ -237,6 +248,17 @@ void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
             auto end_time = high_resolution_clock::now();
             elapsed += duration<double>(end_time - start_time).count();
             nodes += entry.info.nodes;
+            if (entry.info.nodes < 5e6) {
+                _Position<EnginePiece> pos2 = pos;
+                REQUIRE(pos.fen() == pos2.fen());
+                auto start_time = high_resolution_clock::now();
+                REQUIRE(perft<EnginePiece, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
+                auto end_time = high_resolution_clock::now();
+                elapsed += duration<double>(end_time - start_time).count();
+                nodes += entry.info.nodes;
+            } else {
+                std::cerr << "\n(skipped copying test)\n";
+            }
         }
         {
             _Position<ContiguousMappingPiece> pos(entry.input, chess960);
@@ -245,6 +267,17 @@ void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
             auto end_time = high_resolution_clock::now();
             elapsed += duration<double>(end_time - start_time).count();
             nodes += entry.info.nodes;
+            if (entry.info.nodes < 5e6) {
+                _Position<ContiguousMappingPiece> pos2 = pos;
+                REQUIRE(pos.fen() == pos2.fen());
+                auto start_time = high_resolution_clock::now();
+                REQUIRE(perft<ContiguousMappingPiece, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
+                auto end_time = high_resolution_clock::now();
+                elapsed += duration<double>(end_time - start_time).count();
+                nodes += entry.info.nodes;
+            } else {
+                std::cerr << "\n(skipped copying test)\n";
+            }
         }
     }
     double mnps = (nodes / elapsed) / 1'000'000.0;
@@ -331,7 +364,66 @@ TEST_CASE("Move making pin update") {
         REQUIRE(pin_mask == 0x8040201000000ULL);
     }
 }
-TEST_CASE("Perfts") {
+
+TEST_CASE("Experienced bugs in this repo") {
+    {
+        Position p("rnbqkbnr/pp1p1ppp/8/2pPp3/8/8/PPP1PPPP/RNBQKBNR w KQkq e6 0 3");
+        REQUIRE(p.zobrist() == p.hash());
+        REQUIRE(p.hash() == 11114434025341711937ULL);
+    }
+    {
+        Position p("rnbqkbnr/pppp1ppp/8/3PpP2/8/8/PPP2PPP/RNBQKBNR w KQkq e6 0 2");
+        REQUIRE(p.zobrist() == p.hash());
+        REQUIRE(p.hash() == 11926398512926811756ULL);
+    }
+    {
+        Position p("r4rk1/2p1qpp1/p1np1n1p/1pb1p1B1/P1B1P1b1/1PNP1N2/2P1QPPP/R4RK1 w - - 0 12");
+        REQUIRE(p.zobrist() == p.hash());
+        REQUIRE(p.hash() == 221975837765752100ULL);
+    }
+    {
+        Position p("rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3");
+        REQUIRE(p.zobrist() == p.hash());
+        p.push_uci("e5d6");
+        REQUIRE(p.zobrist() == p.hash());
+    }
+    {
+        Position p("rnbqkbnr/ppppp1pp/8/4Pp2/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2");
+        REQUIRE(p.zobrist() == p.hash());
+        p.push_uci("d7d5");
+        REQUIRE(p.zobrist() == p.hash());
+    }
+    {
+        Position p;
+        p.doMove<false>(Move(SQ_A2, SQ_A3));
+        p.doMove<false>(Move(SQ_B8, SQ_A6));
+        p.doMove<false>(Move(SQ_F2, SQ_F3));
+        p.doMove<false>(Move(SQ_F7, SQ_F5));
+        REQUIRE(p.zobrist() == p.hash());
+        REQUIRE(p.hash() == 4177524090105507023);
+    }
+    {
+        Position p;
+        REQUIRE(p.getCastlingPath(WHITE, true) == 0x60);
+        REQUIRE(p.getCastlingPath(WHITE, false) == 0xe);
+        REQUIRE(p.getCastlingPath(BLACK, true) == 0x6000000000000000ULL);
+        REQUIRE(p.getCastlingPath(BLACK, false) == 0xe00000000000000ULL);
+    }
+    {
+        Position p;
+        p.setFEN("1nbqkbnr/1ppppppp/r7/8/4P3/8/PPPP1PPP/RNBQK1NR w KQk - 0 3");
+        REQUIRE(p.fen() == "1nbqkbnr/1ppppppp/r7/8/4P3/8/PPPP1PPP/RNBQK1NR w KQk - 0 3");
+    }
+}
+TEST_CASE("Captures only?") {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
+        { "rn1qkbnr/ppp1pppp/3p4/6B1/6b1/3P4/PPP1PPPP/RN1QKBNR w KQkq - 2 3", 17, 6732 },
+        { "rn1qkbnr/ppp1pppp/3p4/6B1/6b1/3P4/PPP1PPPP/RN1QKBNR w KQkq - 2 3", 30,  360 },
+        {                              "2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1",  1,    1 }
+    };
+    check_perfts<false, MoveGenType::CAPTURE>(tests);
+}
+TEST_CASE("Perfts" * doctest::timeout(36000)) {
     std::vector<TestEntry<std::string, perft_t>> tests = {
         {                                            "5k2/8/8/8/3K4/8/8/8 w - - 0 1",  1,         8 },
         {                                            "5k2/8/8/8/3K4/8/8/8 w - - 0 1",  3,       310 },
@@ -1253,60 +1345,7 @@ TEST_CASE("Perfts") {
     };
     check_perfts(tests);
 }
-TEST_CASE("Experienced bugs in this repo") {
-    {
-        Position p("rnbqkbnr/pp1p1ppp/8/2pPp3/8/8/PPP1PPPP/RNBQKBNR w KQkq e6 0 3");
-        REQUIRE(p.zobrist() == p.hash());
-        REQUIRE(p.hash() == 11114434025341711937ULL);
-    }
-    {
-        Position p("rnbqkbnr/pppp1ppp/8/3PpP2/8/8/PPP2PPP/RNBQKBNR w KQkq e6 0 2");
-        REQUIRE(p.zobrist() == p.hash());
-        REQUIRE(p.hash() == 11926398512926811756ULL);
-    }
-    {
-        Position p("r4rk1/2p1qpp1/p1np1n1p/1pb1p1B1/P1B1P1b1/1PNP1N2/2P1QPPP/R4RK1 w - - 0 12");
-        REQUIRE(p.zobrist() == p.hash());
-        REQUIRE(p.hash() == 221975837765752100ULL);
-    }
-    {
-        Position p("rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3");
-        REQUIRE(p.zobrist() == p.hash());
-        p.push_uci("e5d6");
-        REQUIRE(p.zobrist() == p.hash());
-    }
-    {
-        Position p("rnbqkbnr/ppppp1pp/8/4Pp2/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2");
-        REQUIRE(p.zobrist() == p.hash());
-        p.push_uci("d7d5");
-        REQUIRE(p.zobrist() == p.hash());
-    }
-    {
-        Position p;
-        p.doMove<false>(Move(SQ_A2, SQ_A3));
-        p.doMove<false>(Move(SQ_B8, SQ_A6));
-        p.doMove<false>(Move(SQ_F2, SQ_F3));
-        p.doMove<false>(Move(SQ_F7, SQ_F5));
-        REQUIRE(p.zobrist() == p.hash());
-        REQUIRE(p.hash() == 4177524090105507023);
-    }
-    {
-        Position p;
-        REQUIRE(p.getCastlingPath(WHITE, true) == 0x60);
-        REQUIRE(p.getCastlingPath(WHITE, false) == 0xe);
-        REQUIRE(p.getCastlingPath(BLACK, true) == 0x6000000000000000ULL);
-        REQUIRE(p.getCastlingPath(BLACK, false) == 0xe00000000000000ULL);
-    }
-}
-TEST_CASE("Captures only?") {
-    std::vector<TestEntry<std::string, perft_t>> tests = {
-        { "rn1qkbnr/ppp1pppp/3p4/6B1/6b1/3P4/PPP1PPPP/RN1QKBNR w KQkq - 2 3", 17, 6732 },
-        { "rn1qkbnr/ppp1pppp/3p4/6B1/6b1/3P4/PPP1PPPP/RN1QKBNR w KQkq - 2 3", 30,  360 },
-        {                              "2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1",  1,    1 }
-    };
-    check_perfts<false, MoveGenType::CAPTURE>(tests);
-}
-TEST_CASE("Chess960") {
+TEST_CASE("Chess960" * doctest::timeout(36000)) {
     std::vector<TestEntry<std::string, perft_t>> tests = {
         {      "bqnb1rkr/pp3ppp/3ppn2/2p5/5P2/P2P4/NPP1P1PP/BQ1BNRKR w HFhf - 2 9", 1,         21 },
         {      "bqnb1rkr/pp3ppp/3ppn2/2p5/5P2/P2P4/NPP1P1PP/BQ1BNRKR w HFhf - 2 9", 2,        528 },
@@ -7075,5 +7114,6 @@ int main(int argc, char **argv) {
     doctest::Context ctx;
     ctx.setOption("success", true);
     ctx.setOption("no-breaks", true);
+    ctx.setOption("abort-after", 1);
     return ctx.run();
 }
