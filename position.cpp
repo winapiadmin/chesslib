@@ -371,28 +371,28 @@ void _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
                 };
 
                 if (c == 'K' && color == WHITE) {
-                    INVALID_ARG_IF(chess960() && !allow_xfen, "shredder fen into xfen parser");
+                    INVALID_ARG_IF(chess960 && !allow_xfen, "shredder fen into xfen parser");
                     if (rook_ks == SQ_NONE)
                         return;
                     if (rank_of(king_sq) != rank_of(rook_ks))
                         return;
                     setKS(rook_ks);
                 } else if (c == 'Q' && color == WHITE) {
-                    INVALID_ARG_IF(chess960() && !allow_xfen, "shredder fen into xfen parser");
+                    INVALID_ARG_IF(chess960 && !allow_xfen, "shredder fen into xfen parser");
                     if (rook_qs == SQ_NONE)
                         return;
                     if (rank_of(king_sq) != rank_of(rook_qs))
                         return;
                     setQS(rook_qs);
                 } else if (c == 'k' && color == BLACK) {
-                    INVALID_ARG_IF(chess960() && !allow_xfen, "shredder fen into xfen parser");
+                    INVALID_ARG_IF(chess960 && !allow_xfen, "shredder fen into xfen parser");
                     if (rook_ks == SQ_NONE)
                         return;
                     if (rank_of(king_sq) != rank_of(rook_ks))
                         return;
                     setKS(rook_ks);
                 } else if (c == 'q' && color == BLACK) {
-                    INVALID_ARG_IF(chess960() && !allow_xfen, "shredder fen into xfen parser");
+                    INVALID_ARG_IF(chess960 && !allow_xfen, "shredder fen into xfen parser");
                     if (rook_qs == SQ_NONE)
                         return;
                     if (rank_of(king_sq) != rank_of(rook_qs))
@@ -401,7 +401,7 @@ void _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
                 }
 
                 else if (c >= 'A' && c <= 'H' && color == WHITE) {
-                    INVALID_ARG_IF(chess960() && !allow_smk, "xfen into shredder fen parser");
+                    INVALID_ARG_IF(chess960 && !allow_smk, "xfen into shredder fen parser");
                     File f = static_cast<File>(c - 'A');
                     Square rook_sq = make_sq(RANK_1, f);
 
@@ -411,7 +411,7 @@ void _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
 
                     (f > file_of(king_sq)) ? setKS(rook_sq) : setQS(rook_sq);
                 } else if (c >= 'a' && c <= 'h' && color == BLACK) {
-                    INVALID_ARG_IF(chess960() && !allow_smk, "xfen into shredder fen parser");
+                    INVALID_ARG_IF(chess960 && !allow_smk, "xfen into shredder fen parser");
                     File f = static_cast<File>(c - 'a');
                     Square rook_sq = make_sq(RANK_8, f);
 
