@@ -876,7 +876,7 @@ template <typename PieceC, typename T> CastlingRights _Position<PieceC, T>::clea
 // clang-format off
 #define INSTANTIATE(PieceC) \
 template void _Position<PieceC, void>::setFEN(const std::string &, bool, FENParsingMode); \
-template std::string _Position<PieceC, void>::fen() const; \
+template std::string _Position<PieceC, void>::fen(bool) const; \
 template void _Position<PieceC, void>::doMove<false>(const Move &move); \
 template void _Position<PieceC, void>::doMove<true>(const Move &move); \
 template void _Position<PieceC, void>::refresh_attacks(); \
