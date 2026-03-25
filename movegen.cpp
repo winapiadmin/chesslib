@@ -14,26 +14,22 @@ const __m512i AllSquares = _mm512_set_epi8(
   17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
 // clang-format on
 
-template<Direction offset>
-inline Move* splat_pawn_moves(Move* moveList, Bitboard to_bb) {
-    assert(popcount(to_bb) <= 8);  // <= 8 pawns per side
+template <Direction offset> inline Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
+    assert(popcount(to_bb) <= 8); // <= 8 pawns per side
 
-    const __m128i toSquares =
-      _mm_cvtepi8_epi16(_mm512_castsi512_si128(_mm512_maskz_compress_epi8(to_bb, AllSquares)));
+    const __m128i toSquares = _mm_cvtepi8_epi16(_mm512_castsi512_si128(_mm512_maskz_compress_epi8(to_bb, AllSquares)));
     const __m128i fromSquares = _mm_subs_epi16(toSquares, _mm_set1_epi16(offset));
-    const __m128i moves       = _mm_or_si128(_mm_slli_epi16(fromSquares, 6),
-                                             _mm_slli_epi16(toSquares, 0));
+    const __m128i moves = _mm_or_si128(_mm_slli_epi16(fromSquares, 6), _mm_slli_epi16(toSquares, 0));
 
-    _mm_storeu_si128(reinterpret_cast<__m128i*>(moveList), moves);
+    _mm_storeu_si128(reinterpret_cast<__m128i *>(moveList), moves);
     return moveList + popcount(to_bb);
 }
 
-inline Move* splat_moves(Move* moveList, Square from, Bitboard to_bb) {
-    assert(popcount(to_bb) <= 32);  // Q can attack up to 27 squares
+inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
+    assert(popcount(to_bb) <= 32); // Q can attack up to 27 squares
 
     const __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
-    const __m512i toSquares =
-      _mm512_cvtepi8_epi16(_mm512_castsi512_si256(_mm512_maskz_compress_epi8(to_bb, AllSquares)));
+    const __m512i toSquares = _mm512_cvtepi8_epi16(_mm512_castsi512_si256(_mm512_maskz_compress_epi8(to_bb, AllSquares)));
     const __m512i moves = _mm512_or_si512(fromVec, _mm512_slli_epi16(toSquares, Move::ToSqShift));
 
     _mm512_storeu_si512(moveList, moves);
