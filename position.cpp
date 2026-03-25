@@ -197,7 +197,8 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     }
 }
 
-template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENParsingMode mode) {
+template <typename PieceC, typename T>
+void _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENParsingMode mode) {
     current_state = HistoryEntry<PieceC>();
     history.clear();
     _chess960 = chess960;
@@ -330,7 +331,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                 return SQ_NONE;
             };
             bool allow_xfen = (mode == MODE_XFEN || mode == AUTO);
-            bool allow_smk  = (mode == MODE_SMK  || mode == AUTO);
+            bool allow_smk = (mode == MODE_SMK || mode == AUTO);
             auto apply = [&](char c) {
                 Square king_sq = findKing();
                 if (king_sq == SQ_NONE)
@@ -516,17 +517,21 @@ template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen(boo
     std::string castlingStr;
     if (chess960()) {
         if (castlingRights() & WHITE_OO)
-            castlingStr += (xfen && current_state.castlingMetadata[WHITE].rook_start_ks==SQ_H1)?"K":
-                static_cast<char>('A' + file_of(current_state.castlingMetadata[WHITE].rook_start_ks));
+            castlingStr += (xfen && current_state.castlingMetadata[WHITE].rook_start_ks == SQ_H1)
+                               ? "K"
+                               : static_cast<char>('A' + file_of(current_state.castlingMetadata[WHITE].rook_start_ks));
         if (castlingRights() & WHITE_OOO)
-            castlingStr += (xfen && current_state.castlingMetadata[WHITE].rook_start_qs==SQ_A1)?"Q":
-                static_cast<char>('A' + file_of(current_state.castlingMetadata[WHITE].rook_start_qs));
+            castlingStr += (xfen && current_state.castlingMetadata[WHITE].rook_start_qs == SQ_A1)
+                               ? "Q"
+                               : static_cast<char>('A' + file_of(current_state.castlingMetadata[WHITE].rook_start_qs));
         if (castlingRights() & BLACK_OO)
-            castlingStr += (xfen && current_state.castlingMetadata[BLACK].rook_start_ks==SQ_H8)?"k":
-                static_cast<char>('a' + file_of(current_state.castlingMetadata[BLACK].rook_start_qs));
+            castlingStr += (xfen && current_state.castlingMetadata[BLACK].rook_start_ks == SQ_H8)
+                               ? "k"
+                               : static_cast<char>('a' + file_of(current_state.castlingMetadata[BLACK].rook_start_qs));
         if (castlingRights() & BLACK_OOO)
-            castlingStr += (xfen && current_state.castlingMetadata[BLACK].rook_start_qs==SQ_A8)?"q":
-                static_cast<char>('a' + file_of(current_state.castlingMetadata[BLACK].rook_start_qs));
+            castlingStr += (xfen && current_state.castlingMetadata[BLACK].rook_start_qs == SQ_A8)
+                               ? "q"
+                               : static_cast<char>('a' + file_of(current_state.castlingMetadata[BLACK].rook_start_qs));
     } else {
         if (castlingRights() & WHITE_OO)
             castlingStr += 'K';

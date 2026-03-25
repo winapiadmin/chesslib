@@ -432,8 +432,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     inline Square enpassantSq() const { return ep_square(); }
     CastlingRights clean_castling_rights() const;
     void setFEN(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_XFEN);
-    inline void set_fen(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_XFEN) { setFEN(str, chess960, xfen); }
-    inline void setFen(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_XFEN) { setFEN(str, chess960, xfen); }
+    inline void set_fen(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_XFEN) {
+        setFEN(str, chess960, xfen);
+    }
+    inline void setFen(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_XFEN) {
+        setFEN(str, chess960, xfen);
+    }
     Move parse_uci(std::string) const;
     Move push_uci(std::string);
     Square _valid_ep_square() const;
