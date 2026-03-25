@@ -396,16 +396,16 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     [[nodiscard]] inline Square kingSq(Color c) const { return current_state.kings[c]; }
     [[nodiscard]] inline Bitboard checkers() const { return _checkers; }
     [[nodiscard]] inline Bitboard pin_mask() const { return _pin_mask; }
-    inline _Position(std::string fen = START_FEN, bool chess960 = false, bool xfen=true) {
+    inline _Position(std::string fen = START_FEN, bool chess960 = false, bool xfen = true) {
         history.reserve(6144);
-        setFEN(fen, chess960,xfen);
+        setFEN(fen, chess960, xfen);
     }
     [[nodiscard]] inline bool isCapture(Move mv) const {
         return mv.type_of() == EN_PASSANT || (mv.type_of() != CASTLING && piece_on(mv.to_sq()) != PieceC::NO_PIECE);
     }
     [[nodiscard]] inline bool is_capture(Move mv) const { return isCapture(mv); }
     [[nodiscard]] inline bool is_zeroing(Move mv) const { return isCapture(mv) || at<PieceType>(mv.from_sq()) == PAWN; }
-    [[nodiscard]] std::string fen(bool xfen=true) const;
+    [[nodiscard]] std::string fen(bool xfen = true) const;
     [[nodiscard]] inline uint8_t halfmoveClock() const { return current_state.halfMoveClock; }
     [[nodiscard]] inline uint16_t fullmoveNumber() const { return current_state.fullMoveNumber; }
     [[nodiscard]] inline uint8_t rule50_count() const { return current_state.halfMoveClock; }
@@ -429,8 +429,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     inline Square enpassantSq() const { return ep_square(); }
     CastlingRights clean_castling_rights() const;
     void setFEN(const std::string &str, bool chess960 = false, bool xfen = true);
-    inline void set_fen(const std::string &str, bool chess960 = false, bool xfen = true) { setFEN(str, chess960,xfen); }
-    inline void setFen(const std::string &str, bool chess960 = false, bool xfen=true) { setFEN(str, chess960,xfen); }
+    inline void set_fen(const std::string &str, bool chess960 = false, bool xfen = true) { setFEN(str, chess960, xfen); }
+    inline void setFen(const std::string &str, bool chess960 = false, bool xfen = true) { setFEN(str, chess960, xfen); }
     Move parse_uci(std::string) const;
     Move push_uci(std::string);
     Square _valid_ep_square() const;
