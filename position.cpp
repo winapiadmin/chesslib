@@ -330,8 +330,8 @@ void _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
                 }
                 return SQ_NONE;
             };
-            bool allow_xfen = (mode == MODE_XFEN || mode == AUTO);
-            bool allow_smk = (mode == MODE_SMK || mode == AUTO);
+            bool allow_xfen = (mode == MODE_XFEN || mode == MODE_AUTO);
+            bool allow_smk = (mode == MODE_SMK || mode == MODE_AUTO);
             auto apply = [&](char c) {
                 Square king_sq = findKing();
                 if (king_sq == SQ_NONE)
