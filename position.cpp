@@ -518,19 +518,19 @@ template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen(boo
     if (chess960()) {
         if (castlingRights() & WHITE_OO)
             castlingStr += (xfen && current_state.castlingMetadata[WHITE].rook_start_ks == SQ_H1)
-                               ? "K"
+                               ? 'K'
                                : static_cast<char>('A' + file_of(current_state.castlingMetadata[WHITE].rook_start_ks));
         if (castlingRights() & WHITE_OOO)
             castlingStr += (xfen && current_state.castlingMetadata[WHITE].rook_start_qs == SQ_A1)
-                               ? "Q"
+                               ? 'Q'
                                : static_cast<char>('A' + file_of(current_state.castlingMetadata[WHITE].rook_start_qs));
         if (castlingRights() & BLACK_OO)
             castlingStr += (xfen && current_state.castlingMetadata[BLACK].rook_start_ks == SQ_H8)
-                               ? "k"
+                               ? 'k'
                                : static_cast<char>('a' + file_of(current_state.castlingMetadata[BLACK].rook_start_qs));
         if (castlingRights() & BLACK_OOO)
             castlingStr += (xfen && current_state.castlingMetadata[BLACK].rook_start_qs == SQ_A8)
-                               ? "q"
+                               ? 'q'
                                : static_cast<char>('a' + file_of(current_state.castlingMetadata[BLACK].rook_start_qs));
     } else {
         if (castlingRights() & WHITE_OO)
