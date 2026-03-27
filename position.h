@@ -399,7 +399,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     [[nodiscard]] inline Square kingSq(Color c) const { return current_state.kings[c]; }
     [[nodiscard]] inline Bitboard checkers() const { return _checkers; }
     [[nodiscard]] inline Bitboard pin_mask() const { return _pin_mask; }
-    inline _Position(std::string fen = START_FEN, bool chess960 = false, FENParsingMode xfen = MODE_XFEN) {
+    inline _Position(std::string fen = START_FEN, bool chess960 = false, FENParsingMode xfen = MODE_AUTO) {
         history.reserve(6144);
         setFEN(fen, chess960, xfen);
     }
@@ -431,11 +431,11 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     }
     inline Square enpassantSq() const { return ep_square(); }
     CastlingRights clean_castling_rights() const;
-    void setFEN(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_XFEN);
-    inline void set_fen(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_XFEN) {
+    void setFEN(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_AUTO);
+    inline void set_fen(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_AUTO) {
         setFEN(str, chess960, xfen);
     }
-    inline void setFen(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_XFEN) {
+    inline void setFen(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_AUTO) {
         setFEN(str, chess960, xfen);
     }
     Move parse_uci(std::string) const;
