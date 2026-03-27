@@ -51,11 +51,18 @@ jobs:
       - name: Configure CMake
         shell: bash
         run: |
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            if "${{ matrix.cpp_compiler }}" == "clang++" ]]; then
+              SANITIZERS="memory,undefined"
+            else
+              SANITIZERS="address,undefined"
+            fi
+          fi
           cmake -B "${{ steps.vars.outputs.dir }}" \
                 -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
                 -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
                 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-                -DSANITIZERS="address,undefined" \
+                -DSANITIZERS=${SANITIZERS} \
                 -DDART_TESTING_TIMEOUT=0 \
                 -S "${{ github.workspace }}"
 
