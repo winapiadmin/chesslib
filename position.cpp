@@ -197,7 +197,8 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     }
 }
 
-template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const std::string &str, bool chess960) {
+template <typename PieceC, typename T>
+void _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENParsingMode mode) {
     current_state = HistoryEntry<PieceC>();
     history.clear();
     _chess960 = chess960;
@@ -329,6 +330,8 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                 }
                 return SQ_NONE;
             };
+            bool allow_xfen = (mode == MODE_XFEN || mode == MODE_AUTO);
+            bool allow_smk = (mode == MODE_SMK || mode == MODE_AUTO);
             auto apply = [&](char c) {
                 Square king_sq = findKing();
                 if (king_sq == SQ_NONE)
@@ -368,24 +371,28 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                 };
 
                 if (c == 'K' && color == WHITE) {
+                    INVALID_ARG_IF(chess960 && !allow_xfen, "shredder fen into xfen parser");
                     if (rook_ks == SQ_NONE)
                         return;
                     if (rank_of(king_sq) != rank_of(rook_ks))
                         return;
                     setKS(rook_ks);
                 } else if (c == 'Q' && color == WHITE) {
+                    INVALID_ARG_IF(chess960 && !allow_xfen, "shredder fen into xfen parser");
                     if (rook_qs == SQ_NONE)
                         return;
                     if (rank_of(king_sq) != rank_of(rook_qs))
                         return;
                     setQS(rook_qs);
                 } else if (c == 'k' && color == BLACK) {
+                    INVALID_ARG_IF(chess960 && !allow_xfen, "shredder fen into xfen parser");
                     if (rook_ks == SQ_NONE)
                         return;
                     if (rank_of(king_sq) != rank_of(rook_ks))
                         return;
                     setKS(rook_ks);
                 } else if (c == 'q' && color == BLACK) {
+                    INVALID_ARG_IF(chess960 && !allow_xfen, "shredder fen into xfen parser");
                     if (rook_qs == SQ_NONE)
                         return;
                     if (rank_of(king_sq) != rank_of(rook_qs))
@@ -394,6 +401,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
                 }
 
                 else if (c >= 'A' && c <= 'H' && color == WHITE) {
+                    INVALID_ARG_IF(chess960 && !allow_smk, "xfen into shredder fen parser");
                     File f = static_cast<File>(c - 'A');
                     Square rook_sq = make_sq(RANK_1, f);
 
@@ -403,6 +411,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
 
                     (f > file_of(king_sq)) ? setKS(rook_sq) : setQS(rook_sq);
                 } else if (c >= 'a' && c <= 'h' && color == BLACK) {
+                    INVALID_ARG_IF(chess960 && !allow_smk, "xfen into shredder fen parser");
                     File f = static_cast<File>(c - 'a');
                     Square rook_sq = make_sq(RANK_8, f);
 
@@ -474,7 +483,7 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::setFEN(const s
     current_state.repetition = current_state.pliesFromNull = 0;
 }
 
-template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen() const {
+template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen(bool xfen) const {
     std::ostringstream ss;
 
     // 1) Piece placement
@@ -508,13 +517,21 @@ template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen() c
     std::string castlingStr;
     if (chess960()) {
         if (castlingRights() & WHITE_OO)
-            castlingStr += static_cast<char>('A' + file_of(current_state.castlingMetadata[WHITE].rook_start_ks));
+            castlingStr += (xfen && current_state.castlingMetadata[WHITE].rook_start_ks == SQ_H1)
+                               ? 'K'
+                               : static_cast<char>('A' + file_of(current_state.castlingMetadata[WHITE].rook_start_ks));
         if (castlingRights() & WHITE_OOO)
-            castlingStr += static_cast<char>('A' + file_of(current_state.castlingMetadata[WHITE].rook_start_qs));
+            castlingStr += (xfen && current_state.castlingMetadata[WHITE].rook_start_qs == SQ_A1)
+                               ? 'Q'
+                               : static_cast<char>('A' + file_of(current_state.castlingMetadata[WHITE].rook_start_qs));
         if (castlingRights() & BLACK_OO)
-            castlingStr += static_cast<char>('a' + file_of(current_state.castlingMetadata[BLACK].rook_start_ks));
+            castlingStr += (xfen && current_state.castlingMetadata[BLACK].rook_start_ks == SQ_H8)
+                               ? 'k'
+                               : static_cast<char>('a' + file_of(current_state.castlingMetadata[BLACK].rook_start_ks));
         if (castlingRights() & BLACK_OOO)
-            castlingStr += static_cast<char>('a' + file_of(current_state.castlingMetadata[BLACK].rook_start_qs));
+            castlingStr += (xfen && current_state.castlingMetadata[BLACK].rook_start_qs == SQ_A8)
+                               ? 'q'
+                               : static_cast<char>('a' + file_of(current_state.castlingMetadata[BLACK].rook_start_qs));
     } else {
         if (castlingRights() & WHITE_OO)
             castlingStr += 'K';
@@ -858,8 +875,8 @@ template <typename PieceC, typename T> CastlingRights _Position<PieceC, T>::clea
 }
 // clang-format off
 #define INSTANTIATE(PieceC) \
-template void _Position<PieceC, void>::setFEN(const std::string &, bool); \
-template std::string _Position<PieceC, void>::fen() const; \
+template void _Position<PieceC, void>::setFEN(const std::string &, bool, FENParsingMode); \
+template std::string _Position<PieceC, void>::fen(bool) const; \
 template void _Position<PieceC, void>::doMove<false>(const Move &move); \
 template void _Position<PieceC, void>::doMove<true>(const Move &move); \
 template void _Position<PieceC, void>::refresh_attacks(); \

@@ -893,9 +893,13 @@ TEST_SUITE("SAN Parser") {
 }
 
 TEST_SUITE("misc tests") {
-    TEST_CASE("FEN reconstruction") {
+    TEST_CASE("FEN reconstruction (Chess960)") {
         Position pos(Position::START_CHESS960_FEN, true);
-        REQUIRE(pos.fen() == Position::START_CHESS960_FEN);
+        REQUIRE(pos.fen(false) == Position::START_CHESS960_FEN);
+        REQUIRE(pos.fen() == Position::START_FEN);
+        pos.setFEN(Position::START_CHESS960_FEN, true, chess::MODE_SMK);
+        REQUIRE(pos.fen(false) == Position::START_CHESS960_FEN);
+        REQUIRE(pos.fen() == Position::START_FEN);
     }
 }
 int main(int argc, char **argv) {

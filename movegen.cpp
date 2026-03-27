@@ -4,7 +4,39 @@
 namespace chess {
 
 namespace _chess {
-#if defined(__AVX512BW__)
+
+#if defined(USE_AVX512ICL)
+
+// clang-format off
+const __m512i AllSquares = _mm512_set_epi8(
+  63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 50, 49, 48, 47, 46, 45, 44, 43, 42, 41,
+  40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18,
+  17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+// clang-format on
+
+template <Direction offset> inline Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
+    assert(popcount(to_bb) <= 8); // <= 8 pawns per side
+
+    const __m128i toSquares = _mm_cvtepi8_epi16(_mm512_castsi512_si128(_mm512_maskz_compress_epi8(to_bb, AllSquares)));
+    const __m128i fromSquares = _mm_subs_epi16(toSquares, _mm_set1_epi16(offset));
+    const __m128i moves = _mm_or_si128(_mm_slli_epi16(fromSquares, 6), _mm_slli_epi16(toSquares, 0));
+
+    _mm_storeu_si128(reinterpret_cast<__m128i *>(moveList), moves);
+    return moveList + popcount(to_bb);
+}
+
+inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
+    assert(popcount(to_bb) <= 32); // Q can attack up to 27 squares
+
+    const __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
+    const __m512i toSquares = _mm512_cvtepi8_epi16(_mm512_castsi512_si256(_mm512_maskz_compress_epi8(to_bb, AllSquares)));
+    const __m512i moves = _mm512_or_si512(fromVec, _mm512_slli_epi16(toSquares, Move::ToSqShift));
+
+    _mm512_storeu_si512(moveList, moves);
+    return moveList + popcount(to_bb);
+}
+
+#elif defined(__AVX512BW__)
 template <int Offset = 0> struct alignas(64) SplatTable {
     std::array<uint16_t, 64> data;
     constexpr int clamp64(int x) { return (x < 0) ? 0 : (x > 63 ? 63 : x); }
@@ -213,7 +245,7 @@ void movegen::genPawnSingleMoves(
 }
 template <typename T, Color c, bool capturesOnly>
 void movegen::genKnightMoves(const _Position<T, void> &pos, Movelist &list, Bitboard _pin_mask, Bitboard _check_mask) {
-    Bitboard knights = pos.template pieces<KNIGHT, c>() & ~_pin_mask; // yes, unconditionally.
+    Bitboard knights = pos.template pieces<KNIGHT, c>() & ~_pin_mask;
     while (knights) {
         Square x = static_cast<Square>(pop_lsb(knights));
         Bitboard moves = attacks::knight(x) & ~pos.occ(c);
@@ -253,7 +285,6 @@ void movegen::genKingMoves(const _Position<T, void> &pos, Movelist &out, Bitboar
     // Enemy king (adjacent control squares)
     enemyAttacks |= attacks::king(pos.kingSq(them));
 
-    // Candidate king moves = legal squares not attacked by enemy
     Bitboard moves = attacks::king(kingSq) & ~myOcc & ~enemyAttacks;
     if constexpr (capturesOnly)
         moves &= pos.occ(~c);
@@ -289,8 +320,7 @@ void movegen::genSlidingMoves(
     static_assert(pt == BISHOP || pt == ROOK || pt == QUEEN, "Sliding pieces only.");
     Bitboard sliders = pos.template pieces<pt, c>();
     Bitboard occ_all = pos.occ();
-    // Square king_sq = current_state.kings[c];
-    Bitboard rook_pinners = _rook_pin; // bitboard of enemy rooks/queens pinning
+    Bitboard rook_pinners = _rook_pin;
     Bitboard bishop_pinners = _bishop_pin;
     if constexpr (pt == BISHOP)
         sliders &= ~rook_pinners;
@@ -305,7 +335,6 @@ void movegen::genSlidingMoves(
         Bitboard bishop_hit = bishop_pinners & from_bb;
         Bitboard pin_mask = rook_hit ? rook_pinners : bishop_hit ? bishop_pinners : ~0ULL;
 
-        // Bitboard blockers = occ() ^ from_bb; // remove piece temporarily
         auto func = attacks::queen;
         if constexpr (pt == BISHOP)
             func = attacks::bishop;
