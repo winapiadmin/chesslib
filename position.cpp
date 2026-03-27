@@ -527,7 +527,7 @@ template <typename PieceC, typename T> std::string _Position<PieceC, T>::fen(boo
         if (castlingRights() & BLACK_OO)
             castlingStr += (xfen && current_state.castlingMetadata[BLACK].rook_start_ks == SQ_H8)
                                ? 'k'
-                               : static_cast<char>('a' + file_of(current_state.castlingMetadata[BLACK].rook_start_qs));
+                               : static_cast<char>('a' + file_of(current_state.castlingMetadata[BLACK].rook_start_ks));
         if (castlingRights() & BLACK_OOO)
             castlingStr += (xfen && current_state.castlingMetadata[BLACK].rook_start_qs == SQ_A8)
                                ? 'q'
