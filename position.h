@@ -94,8 +94,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     bool _chess960{};
 
   public:
-    static inline const std::string START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    static inline const std::string START_CHESS960_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w HAha - 0 1";
+    static inline auto START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    static inline auto START_CHESS960_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w HAha - 0 1";
     // Legal move generation functions
     template <MoveGenType type = MoveGenType::ALL, Color c> void legals(Movelist &out) const {
 
