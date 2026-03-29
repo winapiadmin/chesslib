@@ -404,9 +404,21 @@ TEST_CASE("Experienced bugs in this repo") {
     }
     {
         Position p;
+        p.doMove<false>(Move(SQ_A2, SQ_A3));
+        REQUIRE(p.zobrist() == p.hash());
+        p.doMove<false>(Move(SQ_B8, SQ_A6));
+        REQUIRE(p.zobrist() == p.hash());
+        p.doMove<false>(Move(SQ_F2, SQ_F3));
+        REQUIRE(p.zobrist() == p.hash());
         p.doMove<false>(Move(SQ_F7, SQ_F5));
         REQUIRE(p.zobrist() == p.hash());
         p.doNullMove();
+        REQUIRE(p.zobrist() == p.hash());
+        p.undoMove();
+        REQUIRE(p.zobrist() == p.hash());
+        p.undoMove();
+        REQUIRE(p.zobrist() == p.hash());
+        p.undoMove();
         REQUIRE(p.zobrist() == p.hash());
         p.undoMove();
         REQUIRE(p.zobrist() == p.hash());
