@@ -190,7 +190,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         current_state.enPassant = SQ_NONE;
         current_state.turn = ~current_state.turn;
         current_state.hash ^= zobrist::RandomCastle[current_state.castlingRights];
-        current_state.castlingRights = static_cast<CastlingRights>(current_state.castlingRights & (current_state.turn == WHITE ? BLACK_CASTLING : WHITE_CASTLING));
+        current_state.castlingRights = static_cast<CastlingRights>(
+            current_state.castlingRights & (current_state.turn == WHITE ? BLACK_CASTLING : WHITE_CASTLING));
         current_state.hash ^= zobrist::RandomTurn;
         current_state.fullMoveNumber += (current_state.turn == WHITE);
         current_state.pliesFromNull = current_state.repetition = 0;
