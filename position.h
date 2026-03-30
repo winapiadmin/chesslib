@@ -182,6 +182,13 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     inline void doNullMove() {
         history.push_back(current_state);
+        current_state.incr_sqs[0] = current_state.incr_sqs[1] = current_state.incr_sqs[2] = current_state.incr_sqs[3] = SQ_NONE;
+        current_state.incr_pc[0] = current_state.incr_pc[1] = current_state.incr_pc[2] = current_state.incr_pc[3] =
+            PieceC::NO_PIECE;
+        if (current_state.epIncluded)
+            current_state.hash ^= zobrist::RandomEP[file_of(ep_square())];
+        current_state.epIncluded = false;
+        current_state.enPassant = SQ_NONE;
         current_state.turn = ~current_state.turn;
         current_state.hash ^= zobrist::RandomTurn;
         current_state.fullMoveNumber += (current_state.turn == WHITE);
