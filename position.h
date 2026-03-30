@@ -185,15 +185,18 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         current_state.incr_sqs[0] = current_state.incr_sqs[1] = current_state.incr_sqs[2] = current_state.incr_sqs[3] = SQ_NONE;
         current_state.incr_pc[0] = current_state.incr_pc[1] = current_state.incr_pc[2] = current_state.incr_pc[3] =
             PieceC::NO_PIECE;
-        if (current_state.epIncluded)
-            current_state.hash ^= zobrist::RandomEP[file_of(ep_square())];
+        current_state.hash ^= current_state.epIncluded * zobrist::RandomEP[file_of(ep_square())];
         current_state.epIncluded = false;
         current_state.enPassant = SQ_NONE;
         current_state.turn = ~current_state.turn;
+        current_state.hash ^= zobrist::RandomCastle[current_state.castlingRights];
+        current_state.castlingRights = static_cast<CastlingRights>(current_state.castlingRights & (current_state.turn == WHITE ? BLACK_CASTLING : WHITE_CASTLING));
         current_state.hash ^= zobrist::RandomTurn;
         current_state.fullMoveNumber += (current_state.turn == WHITE);
         current_state.pliesFromNull = current_state.repetition = 0;
         current_state.mv = Move::null();
+        current_state.halfMoveClock++;
+        refresh_attacks();
     }
 
     [[nodiscard]] inline Bitboard pieces() const { return occ(); }
