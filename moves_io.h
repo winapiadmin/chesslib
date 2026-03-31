@@ -1,9 +1,11 @@
 #pragma once
+#include "types.h"
 #include <exception>
 #include <string>
 #include <string_view>
-#include "types.h"
-namespace chess { template <typename T, typename> class _Position; }
+namespace chess {
+template <typename T, typename> class _Position;
+}
 namespace chess::uci {
 std::string moveToUci(Move move, bool chess960 = false);
 
