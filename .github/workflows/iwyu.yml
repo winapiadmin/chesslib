@@ -34,7 +34,6 @@ jobs:
           cmake -G "Ninja" -DCMAKE_PREFIX_PATH="/usr/lib/llvm-17" ../include-what-you-use
           ninja
           sudo ninja install
-        working-directory: include-what-you-use
 
       - name: Check IWYU version
         run: include-what-you-use --version
