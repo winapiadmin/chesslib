@@ -1,17 +1,17 @@
 #pragma once
 #include "attacks.h"
 #include "bitboard.h"
+#include "fwd_decl.h"
 #include "movegen.h"
 #include "types.h"
 #include "zobrist.h"
-#include <string>
-#include <vector>
-#include <cstdint>
-#include <cassert>
 #include <algorithm>
 #include <array>
+#include <cassert>
+#include <cstdint>
+#include <string>
 #include <type_traits>
-#include "fwd_decl.h"
+#include <vector>
 namespace chess {
 
 template <typename Piece> struct alignas(64) HistoryEntry {
