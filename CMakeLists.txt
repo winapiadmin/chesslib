@@ -56,14 +56,17 @@ if(BUILD_TESTING)
     FetchContent_MakeAvailable(doctest)
 
     # --- Test executable ---
-    add_executable(test_chess tests.cpp)
+    add_executable(test_normal tests.cpp)
+    add_executable(test_chess960 chess960_tests.cpp)
     add_executable(NonImportantTests non_core_tests.cpp)
 
-    target_link_libraries(test_chess PRIVATE chesslib doctest::doctest)
+    target_link_libraries(test_normal PRIVATE chesslib doctest::doctest)
     target_link_libraries(NonImportantTests PRIVATE chesslib doctest::doctest)
+    target_link_libraries(test_chess960 PRIVATE chesslib doctest::doctest)
 
-    add_test(NAME test_core COMMAND test_chess)
-    add_test(NAME api_tests COMMAND NonImportantTests)
+    add_test(NAME test_normal COMMAND test_normal)
+    add_test(NAME test_api COMMAND NonImportantTests)
+    add_test(NAME test_chess960 COMMAND test_chess960)
     if (UNIX AND CMAKE_BUILD_TYPE MATCHES "Debug")
         set(SANITIZERS "" CACHE STRING "sanitizers such as undefined,address")
     
