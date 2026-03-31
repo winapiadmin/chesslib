@@ -5,6 +5,8 @@
 #include <iomanip>
 #include <iostream>
 #include <unordered_map>
+#include <cctype>
+#include <string>
 namespace chess {
 template <typename T> using DescriptiveNameNotation = std::unordered_map<T, std::string>;
 
