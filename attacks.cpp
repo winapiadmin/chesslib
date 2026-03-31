@@ -1,5 +1,8 @@
 #include "attacks.h"
-
+#include "bitboard.h"
+#include <cstddef>
+#include <initializer_list>
+#include <utility>
 namespace chess::_chess {
 // [INTERNAL]
 

@@ -1,6 +1,4 @@
 #pragma once
-#include "bitboard.h"
-#include "fwd_decl.h"
 #include "types.h"
 #include <array>
 #include <immintrin.h>

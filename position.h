@@ -1,11 +1,17 @@
 #pragma once
 #include "attacks.h"
 #include "bitboard.h"
+#include "fwd_decl.h"
 #include "movegen.h"
 #include "types.h"
 #include "zobrist.h"
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdint>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 namespace chess {
 
