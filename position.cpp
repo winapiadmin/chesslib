@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <initializer_list>
 #include <iostream>
+#include <sstream>
 #include <utility>
 #ifndef GENERATE_AT_RUNTIME
 #define _POSSIBLY_CONSTEXPR constexpr
