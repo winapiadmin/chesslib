@@ -146,7 +146,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
         // 1) Castling shortcuts
         if (san == "O-O" || san == "0-0" || san == "O-O+" || san == "0-0+" || san == "O-O#" || san == "0-0#") {
             const auto from = pos.kingSq(pos.side_to_move());
-            const auto to = pos.state().castlingMetadata[pos.side_to_move()].rook_start_ks;
+            const auto to = pos.getCastlingMetadata(pos.sideToMove()).rook_start_ks;
             Move km = chess::Move::make<CASTLING>(from, to);
 
             if (std::find(moves.begin(), moves.end(), km) != moves.end())
@@ -156,7 +156,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
         }
         if (san == "O-O-O" || san == "0-0-0" || san == "O-O-O+" || san == "0-0-0+" || san == "O-O-O#" || san == "0-0-0#") {
             const auto from = pos.kingSq(pos.side_to_move());
-            const auto to = pos.state().castlingMetadata[pos.side_to_move()].rook_start_qs;
+            const auto to = pos.getCastlingMetadata(pos.sideToMove()).rook_start_qs;
             Move qm = chess::Move::make<CASTLING>(from, to);
 
             if (std::find(moves.begin(), moves.end(), qm) != moves.end())

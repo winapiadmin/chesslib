@@ -241,6 +241,7 @@ TEST_CASE("was_into_check") {
     };
     check_was_into_check<PolyglotPiece>(tests);
     check_was_into_check<EnginePiece>(tests);
+    check_was_into_check<ContiguousMappingPiece>(tests);
 }
 TEST_CASE("Zobrist mapping?") {
     REQUIRE(zobrist::RandomPiece[enum_idx<PolyglotPiece>()][(int)PolyglotPiece::BPAWN][0] == 0x9D39247E33776D41);
@@ -252,16 +253,24 @@ struct repetitions_t {
 };
 void check_repetitions(std::vector<TestEntry<repetitions_t, bool>> &tests) {
     for (auto &tc : tests) {
-        _Position<PolyglotPiece> pos(tc.input.FEN);
-        for (auto &move : tc.input.moves)
-            pos.doMove(move);
-        REQUIRE(pos.is_repetition(tc.input.repetition) == tc.info);
-    }
-    for (auto &tc : tests) {
-        _Position<EnginePiece> pos(tc.input.FEN);
-        for (auto &move : tc.input.moves)
-            pos.doMove(move);
-        REQUIRE(pos.is_repetition(tc.input.repetition) == tc.info);
+        {
+            _Position<PolyglotPiece> pos(tc.input.FEN);
+            for (auto &move : tc.input.moves)
+                pos.doMove(move);
+            REQUIRE(pos.is_repetition(tc.input.repetition) == tc.info);
+        }
+        {
+            _Position<EnginePiece> pos(tc.input.FEN);
+            for (auto &move : tc.input.moves)
+                pos.doMove(move);
+            REQUIRE(pos.is_repetition(tc.input.repetition) == tc.info);
+        }
+        {
+            _Position<ContiguousMappingPiece> pos(tc.input.FEN);
+            for (auto &move : tc.input.moves)
+                pos.doMove(move);
+            REQUIRE(pos.is_repetition(tc.input.repetition) == tc.info);
+        }
     }
 }
 TEST_CASE("is_repetition") {
