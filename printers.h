@@ -1,6 +1,5 @@
 #pragma once
-#include "fwd_decl.h"
-#include <cstdint>
+#include "types.h"
 #include <iosfwd>
 #include <type_traits>
 namespace chess {
