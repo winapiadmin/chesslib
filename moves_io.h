@@ -1,9 +1,9 @@
 #pragma once
-#include "fwd_decl.h"
-#include <cstdint>
-#include <stdexcept>
+#include <exception>
 #include <string>
 #include <string_view>
+#include "types.h"
+namespace chess { template <typename T, typename> class _Position; }
 namespace chess::uci {
 std::string moveToUci(Move move, bool chess960 = false);
 
