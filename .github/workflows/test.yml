@@ -15,7 +15,7 @@ jobs:
       - id: check
         run: |
           # Check if PR body contains "no functional change"
-          if echo "${{ github.event.pull_request.body }}" | grep -iq "no functional change"; then
+          if echo "${{ github.event.pull_request.body }}" | grep -iq "no functional changes"; then
             echo "skip_full_tests=true" >> $GITHUB_OUTPUT
             exit 0
           fi
