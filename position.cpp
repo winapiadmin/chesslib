@@ -5,7 +5,7 @@
 #include "zobrist.h"
 #include <algorithm>
 #include <iostream>
-#include <sstream>
+#include <initializer_list>
 #include <utility>
 #ifndef GENERATE_AT_RUNTIME
 #define _POSSIBLY_CONSTEXPR constexpr
