@@ -1,11 +1,11 @@
 #include "moves_io.h"
-#include <cassert>
-#include <algorithm>
-#include <cctype>
-#include <string_view>
 #include "attacks.h"
 #include "position.h"
 #include "types.h"
+#include <algorithm>
+#include <cassert>
+#include <cctype>
+#include <string_view>
 #define THROW_IF_EXCEPTIONS_ON(stuff) throw stuff
 #else
 #define THROW_IF_EXCEPTIONS_ON(stuff) ((void)0)
