@@ -2,7 +2,7 @@ name: IWYU
 
 on:
   workflow_call:  # Can also run on PRs by changing this to 'pull_request'
-
+  pull_request: 
 jobs:
   Analyzers:
     name: Check headers (IWYU)
