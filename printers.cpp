@@ -2,11 +2,11 @@
 #include "moves_io.h"
 #include "position.h"
 #include <algorithm>
+#include <cctype>
 #include <iomanip>
 #include <iostream>
-#include <unordered_map>
-#include <cctype>
 #include <string>
+#include <unordered_map>
 namespace chess {
 template <typename T> using DescriptiveNameNotation = std::unordered_map<T, std::string>;
 
