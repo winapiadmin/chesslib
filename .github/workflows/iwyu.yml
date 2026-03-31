@@ -1,0 +1,48 @@
+name: IWYU
+
+on:
+  workflow_call:  # Can also run on PRs by changing this to 'pull_request'
+
+jobs:
+  Analyzers:
+    name: Check headers (IWYU)
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+        shell: bash
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y cmake ninja-build clang-17 libc++-17-dev libclang-17-dev wget
+
+      - name: Checkout IWYU
+        uses: actions/checkout@v4
+        with:
+          repository: include-what-you-use/include-what-you-use
+          ref: f25caa280dc3277c4086ec345ad279a2463fea0f
+          path: include-what-you-use
+          persist-credentials: false
+
+      - name: Build IWYU
+        run: |
+          mkdir -p build_iwyu && cd build_iwyu
+          cmake -G "Ninja" -DCMAKE_PREFIX_PATH="/usr/lib/llvm-17" ../include-what-you-use
+          ninja
+          sudo ninja install
+        working-directory: include-what-you-use
+
+      - name: Check IWYU version
+        run: include-what-you-use --version
+
+      - name: Run IWYU analysis
+        run: |
+          # Generate compile_commands.json for your library
+          cmake -B build_iwyu_analysis -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -S .
+          
+          # Run IWYU on all source files
+          iwyu_tool.py -p build_iwyu_analysis -- -Xiwyu --mapping="${{ github.workspace }}/.github/ci/libcxx17.imp" -Xiwyu --error
