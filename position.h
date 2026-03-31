@@ -170,12 +170,11 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         pieces_list[state().incr_sqs[1]] = state().incr_pc[1];
         pieces_list[state().incr_sqs[2]] = state().incr_pc[2];
         pieces_list[state().incr_sqs[3]] = state().incr_pc[3];
-        if constexpr (RetAll){
-            HistoryEntry<PieceC> state_=state();
+        if constexpr (RetAll) {
+            HistoryEntry<PieceC> state_ = state();
             history.pop_back();
             return state_;
-        }
-        else{
+        } else {
             history.pop_back();
             return;
         }
@@ -184,16 +183,14 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     inline void doNullMove() {
         history.push_back(state());
         state().incr_sqs[0] = state().incr_sqs[1] = state().incr_sqs[2] = state().incr_sqs[3] = SQ_NONE;
-        state().incr_pc[0] = state().incr_pc[1] = state().incr_pc[2] = state().incr_pc[3] =
-            PieceC::NO_PIECE;
-        state().hash ^=
-            (ep_square() != SQ_NONE && state().epIncluded) ? zobrist::RandomEP[file_of(ep_square())] : 0;
+        state().incr_pc[0] = state().incr_pc[1] = state().incr_pc[2] = state().incr_pc[3] = PieceC::NO_PIECE;
+        state().hash ^= (ep_square() != SQ_NONE && state().epIncluded) ? zobrist::RandomEP[file_of(ep_square())] : 0;
         state().epIncluded = false;
         state().enPassant = SQ_NONE;
         state().turn = ~state().turn;
         state().hash ^= zobrist::RandomCastle[state().castlingRights];
-        state().castlingRights = static_cast<CastlingRights>(
-            state().castlingRights & (state().turn == WHITE ? BLACK_CASTLING : WHITE_CASTLING));
+        state().castlingRights =
+            static_cast<CastlingRights>(state().castlingRights & (state().turn == WHITE ? BLACK_CASTLING : WHITE_CASTLING));
         state().hash ^= zobrist::RandomCastle[state().castlingRights];
         state().hash ^= zobrist::RandomTurn;
         state().fullMoveNumber += (state().turn == WHITE);
@@ -578,11 +575,11 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         return pin;
     }
     void refresh_attacks();
-    inline const auto& state() const { return history.back();}
-    inline auto& state() { return history.back();}
+    inline const auto &state() const { return history.back(); }
+    inline auto &state() { return history.back(); }
+
   public:
-    inline _Position(const _Position &other)
-        : history(other.history), _chess960(other._chess960) {
+    inline _Position(const _Position &other) : history(other.history), _chess960(other._chess960) {
         std::copy(std::begin(other.pieces_list), std::end(other.pieces_list), std::begin(pieces_list));
         refresh_attacks();
     }

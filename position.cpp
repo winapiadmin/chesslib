@@ -42,8 +42,7 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     bool is_capture = isCapture(move);
     history.push_back(state());
     state().incr_sqs[0] = state().incr_sqs[1] = state().incr_sqs[2] = state().incr_sqs[3] = SQ_NONE;
-    state().incr_pc[0] = state().incr_pc[1] = state().incr_pc[2] = state().incr_pc[3] =
-        PieceC::NO_PIECE;
+    state().incr_pc[0] = state().incr_pc[1] = state().incr_pc[2] = state().incr_pc[3] = PieceC::NO_PIECE;
     state().mv = move; // Update the move in the current state
 #if defined(_DEBUG) || !defined(NDEBUG)
     if (target_piecetype == KING) {
@@ -105,8 +104,8 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
             state().incr_sqs[2] = king_dest, state().incr_pc[2] = prev_king_dest;
             state().incr_sqs[3] = rook_dest, state().incr_pc[3] = prev_rook_dest;
 
-            Square rook_start = is_king_side ? state().castlingMetadata[us].rook_start_ks
-                                             : state().castlingMetadata[us].rook_start_qs;
+            Square rook_start =
+                is_king_side ? state().castlingMetadata[us].rook_start_ks : state().castlingMetadata[us].rook_start_qs;
 
             removePiece<KING>(from_sq, us);
             removePiece<ROOK>(rook_start, us);
