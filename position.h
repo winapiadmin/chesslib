@@ -6,6 +6,12 @@
 #include "zobrist.h"
 #include <string>
 #include <vector>
+#include <cstdint>
+#include <cassert>
+#include <algorithm>
+#include <array>
+#include <type_traits>
+#include "fwd_decl.h"
 namespace chess {
 
 template <typename Piece> struct alignas(64) HistoryEntry {
