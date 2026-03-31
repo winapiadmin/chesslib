@@ -4,8 +4,8 @@
 #include "printers.h"
 #include "zobrist.h"
 #include <algorithm>
-#include <iostream>
 #include <initializer_list>
+#include <iostream>
 #include <utility>
 #ifndef GENERATE_AT_RUNTIME
 #define _POSSIBLY_CONSTEXPR constexpr
