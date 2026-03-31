@@ -185,7 +185,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         current_state.incr_sqs[0] = current_state.incr_sqs[1] = current_state.incr_sqs[2] = current_state.incr_sqs[3] = SQ_NONE;
         current_state.incr_pc[0] = current_state.incr_pc[1] = current_state.incr_pc[2] = current_state.incr_pc[3] =
             PieceC::NO_PIECE;
-        current_state.hash ^= (ep_square()!=SQ_NONE&&current_state.epIncluded) ? zobrist::RandomEP[file_of(ep_square())]:0;
+        current_state.hash ^=
+            (ep_square() != SQ_NONE && current_state.epIncluded) ? zobrist::RandomEP[file_of(ep_square())] : 0;
         current_state.epIncluded = false;
         current_state.enPassant = SQ_NONE;
         current_state.turn = ~current_state.turn;
