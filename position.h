@@ -9,10 +9,10 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <vector>
-#include <stdexcept>
 namespace chess {
 
 template <typename Piece> struct alignas(64) HistoryEntry {
