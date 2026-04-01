@@ -20,7 +20,7 @@ jobs:
             exit 0
           fi
           # List changed files between PR base and head
-          CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
 
           # Check if any .cpp or .c files changed
           if echo "$CHANGED" | grep -E '\.(cpp|c)$' >/dev/null; then
@@ -31,6 +31,7 @@ jobs:
 
   build:
     needs: determine_changes
+    if: ${{ needs.determine_changes.outputs.skip_full_tests != 'true' }}
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -65,13 +66,6 @@ jobs:
             c_compiler: cl
 
     steps:
-      - name: Skip heavy build if no functional changes
-        shell: bash
-        run: |
-          if [[ "${{ needs.determine_changes.outputs.skip_full_tests }}" == "true" ]]; then
-            echo "Skipping build/tests (no functional changes)"
-            exit 0
-          fi
       - uses: actions/checkout@v4
 
       - name: Set build dir
@@ -100,7 +94,7 @@ jobs:
       - name: Build
         run: cmake --build ${{ steps.vars.outputs.dir }} --config ${{ matrix.build_type }}
 
-      - name: Test
+      - name: Test  
         working-directory: ${{ steps.vars.outputs.dir }}
         shell: bash
         run: |
