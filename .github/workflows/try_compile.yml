@@ -2,7 +2,7 @@ name: Compilation
 
 on:
   push: 
-
+    branches-ignore: main
 jobs:
   build:
     runs-on: ${{ matrix.os }}
