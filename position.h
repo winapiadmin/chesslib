@@ -165,7 +165,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         }
     }
     template <bool Strict = true> void doMove(const Move &move);
-    template <bool RetAll = false> inline auto undoMove() -> std::conditional_t<RetAll, HistoryEntry<PieceC> &, void> {
+    template <bool RetAll = false> inline auto undoMove() -> std::conditional_t<RetAll, HistoryEntry<PieceC>, void> {
         pieces_list[state().incr_sqs[0]] = state().incr_pc[0];
         pieces_list[state().incr_sqs[1]] = state().incr_pc[1];
         pieces_list[state().incr_sqs[2]] = state().incr_pc[2];
