@@ -31,7 +31,6 @@ jobs:
 
   build:
     needs: determine_changes
-    if: ${{ needs.determine_changes.outputs.skip_full_tests != 'true' }}
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -66,6 +65,13 @@ jobs:
             c_compiler: cl
 
     steps:
+      - name: Skip heavy build if no functional changes
+        shell: bash
+        run: |
+          if [[ "${{ needs.determine_changes.outputs.skip_full_tests }}" == "true" ]]; then
+            echo "Skipping build/tests (no functional changes)"
+            exit 0
+          fi
       - uses: actions/checkout@v4
 
       - name: Set build dir
