@@ -198,22 +198,27 @@ template <typename InputT, typename CheckInfo> struct TestEntry {
     InputT input;
     CheckInfo info;
 };
-template <typename T, MoveGenType mt, bool EnableDiv = false> /**
- * @brief Count leaf nodes in the move tree from a given position to a specified depth.
- *
- * Performs a full recursive enumeration of legal moves using the MoveGenType template parameter and
- * returns the total number of leaf positions reachable exactly `depth` plies from `pos`.
- *
- * The function mutates `pos` while exploring moves but always restores it to its original state before returning.
- *
- * @tparam T Position representation type.
- * @tparam mt Move generation type controlling which moves are generated.
- * @tparam EnableDiv When true, prints per-move node counts and the total to stdout.
- * @param pos Position to enumerate from; will be restored to its initial state on return.
- * @param depth Number of plies to explore; 0 yields 1 (the current position), 1 yields the number of legal moves.
- * @return uint64_t Number of leaf nodes reachable at the given depth.
- */
-uint64_t perft(_Position<T> &pos, int depth) {
+template <typename T,
+          MoveGenType mt,
+          bool EnableDiv = false> /**
+                                   * @brief Count leaf nodes in the move tree from a given position to a specified depth.
+                                   *
+                                   * Performs a full recursive enumeration of legal moves using the MoveGenType template
+                                   * parameter and returns the total number of leaf positions reachable exactly `depth` plies
+                                   * from `pos`.
+                                   *
+                                   * The function mutates `pos` while exploring moves but always restores it to its original
+                                   * state before returning.
+                                   *
+                                   * @tparam T Position representation type.
+                                   * @tparam mt Move generation type controlling which moves are generated.
+                                   * @tparam EnableDiv When true, prints per-move node counts and the total to stdout.
+                                   * @param pos Position to enumerate from; will be restored to its initial state on return.
+                                   * @param depth Number of plies to explore; 0 yields 1 (the current position), 1 yields the
+                                   * number of legal moves.
+                                   * @return uint64_t Number of leaf nodes reachable at the given depth.
+                                   */
+                                  uint64_t perft(_Position<T> &pos, int depth) {
     if (depth == 0) {
         return 1;
     } else if (depth == 1) {

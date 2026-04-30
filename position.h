@@ -26,14 +26,15 @@
 #include <string>
 #include <vector>
 /**
-     * Compute origin squares of pieces of a given color that attack a target square using the supplied occupancy.
-     *
-     * @param color Attacking color.
-     * @param square Target square being attacked.
-     * @param occupied Bitboard representing board occupancy used for sliding-attack calculations; the result is intersected with this occupancy.
-     * @return Bitboard with squares of pieces of `color` that attack `square`, masked by `occupied`.
-     */
-    namespace chess {
+ * Compute origin squares of pieces of a given color that attack a target square using the supplied occupancy.
+ *
+ * @param color Attacking color.
+ * @param square Target square being attacked.
+ * @param occupied Bitboard representing board occupancy used for sliding-attack calculations; the result is intersected with
+ * this occupancy.
+ * @return Bitboard with squares of pieces of `color` that attack `square`, masked by `occupied`.
+ */
+namespace chess {
 
 template <typename Piece> struct alignas(64) HistoryEntry {
     // Bitboards for each piece type (white and black)
