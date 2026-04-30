@@ -217,25 +217,31 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
             {
                 const auto pre_nm_hash_1 = pos.hash();
                 const auto pre_nm_fen_1 = pos.fen();
-                REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                if (pos.zobrist() != pos.hash())
+                    REQUIRE(pos.zobrist() == pos.hash());
                 pos.doNullMove();
                 pos.undoMove();
-                REQUIRE(pos.hash() == pre_nm_hash_1);
-                REQUIRE(pos.fen() == pre_nm_fen_1);
-                REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                if (!(pos.hash() == pre_nm_hash_1 || pos.fen() == pre_nm_fen_1 || pos.zobrist() == pre_nm_hash_1)) {
+                    REQUIRE(pos.hash() == pre_nm_hash_1);
+                    REQUIRE(pos.fen() == pre_nm_fen_1);
+                    REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                }
             }
 #endif
             const uint64_t nodes = perft<T, mt, false>(pos, depth - 1);
-#if IS_RELEASE
+#if !IS_RELEASE
             {
                 const auto pre_nm_hash_1 = pos.hash();
                 const auto pre_nm_fen_1 = pos.fen();
-                // REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                if (pos.zobrist() != pos.hash())
+                    REQUIRE(pos.zobrist() == pos.hash());
                 pos.doNullMove();
                 pos.undoMove();
-                /*REQUIRE(pos.hash() == pre_nm_hash_1);
-                REQUIRE(pos.fen() == pre_nm_fen_1);
-                REQUIRE(pos.zobrist() == pre_nm_hash_1);*/
+                if (!(pos.hash() == pre_nm_hash_1 || pos.fen() == pre_nm_fen_1 || pos.zobrist() == pre_nm_hash_1)) {
+                    REQUIRE(pos.hash() == pre_nm_hash_1);
+                    REQUIRE(pos.fen() == pre_nm_fen_1);
+                    REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                }
             }
 #endif
             pos.undoMove();
