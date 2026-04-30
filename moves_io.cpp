@@ -157,7 +157,28 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
 #endif
     return move;
 }
-template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std::string_view raw_san, bool remove_illegals) {
+template <typename T, typename P> /**
+ * @brief Parses a SAN string and resolves it to a legal move for the given position.
+ *
+ * Parses standard algebraic notation (including castling forms, captures, promotions,
+ * disambiguation by file/rank/source square, and optional trailing check/mate markers)
+ * and returns the corresponding legal Move for the position. When enabled via
+ * `remove_illegals`, the function will iteratively trim trailing characters and retry
+ * parsing to attempt recovery from malformed inputs.
+ *
+ * @param pos The position against which SAN is parsed and validated.
+ * @param raw_san The SAN string to parse (e.g. "Nbd2", "e8=Q", "O-O").
+ * @param remove_illegals If true, attempt progressive trimming of the SAN on failure
+ *        and accept the first parsable legal move.
+ * @return Move The matching legal move for the SAN, or `Move::none()`/`Move::null()`
+ *         when no move could be produced (in builds/configurations where exceptions
+ *         are disabled).
+ *
+ * @throws IllegalMoveException If the SAN is malformed or does not correspond to any
+ *         legal move for the position.
+ * @throws AmbiguousMoveException If the SAN matches more than one legal move.
+ */
+Move parseSan(const _Position<T, P> &pos, std::string_view raw_san, bool remove_illegals) {
     auto do_parse = [&](std::string_view input_san) -> Move {
         if (input_san.empty())
             return Move::none();

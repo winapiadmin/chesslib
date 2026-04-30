@@ -190,7 +190,29 @@ constexpr Square operator+(Square s, Direction d) { return Square(int(s) + int(d
 constexpr Square operator-(Square s, Direction d) { return Square(int(s) - int(d)); }
 constexpr Square &operator+=(Square &s, Direction d) { return s = s + d; }
 constexpr Square &operator-=(Square &s, Direction d) { return s = s - d; }
-// specifically for Polyglot (a.k.a zobrist hashing but use proper hash)
+/**
+ * Compact 16-bit representation of a chess move.
+ *
+ * Encodes origin, destination, optional promotion piece, and special-move flags
+ * (promotion, en passant, castling) in a single 16-bit value and provides
+ * constructors, factories, and accessors for working with that packed form.
+ *
+ * Bit layout:
+ *  - bits 0-5   : destination square (0..63)
+ *  - bits 6-11  : origin square (0..63)
+ *  - bits 12-13 : promotion piece type offset (KNIGHT..QUEEN)
+ *  - bits 14-15 : special move flag (NORMAL, PROMOTION, EN_PASSANT, CASTLING)
+ *
+ * Special sentinel moves:
+ *  - Move::none() and Move::null() are reserved sentinel values and are not
+ *    considered valid moves by is_ok().
+ *
+ * Usage notes:
+ *  - Use Move::make(...) to construct moves with an explicit MoveType or a
+ *    promotion piece type.
+ *  - Access origin and destination with from()/to() (or from_sq()/to_sq()).
+ *  - promotion_type() returns the promoted PieceType when the move is a promotion.
+ */
 enum class PolyglotPiece : uint8_t {
     WPAWN = 1,
     WKNIGHT = 3,
@@ -207,7 +229,92 @@ enum class PolyglotPiece : uint8_t {
     NO_PIECE = 12,
     PIECE_NB = 12
 };
-// Normal board, you can use ANY! (but comfortable for certain chess engines such as Stockfish)
+/**
+ * Map a PolyglotPiece encoding to its PieceType.
+ * @param p PolyglotPiece value to convert.
+ * @returns `NO_PIECE_TYPE` if `p` is `NO_PIECE`, otherwise the corresponding `PieceType`.
+ */
+/**
+ * Map an EnginePiece encoding to its PieceType.
+ * @param p EnginePiece value to convert.
+ * @returns `NO_PIECE_TYPE` if `p` is `NO_PIECE`, otherwise the corresponding `PieceType`.
+ */
+/**
+ * Map a ContiguousMappingPiece encoding to its PieceType.
+ * @param p ContiguousMappingPiece value to convert.
+ * @returns `NO_PIECE_TYPE` if `p` is `NO_PIECE`, otherwise the corresponding `PieceType`.
+ */
+/**
+ * Determine piece color from a PolyglotPiece encoding.
+ * @param pt PolyglotPiece value.
+ * @returns The `Color` (WHITE or BLACK) of `pt`.
+ */
+/**
+ * Determine piece color from an EnginePiece encoding.
+ * @param pt EnginePiece value.
+ * @returns The `Color` (WHITE or BLACK) of `pt`.
+ */
+/**
+ * Determine piece color from a ContiguousMappingPiece encoding.
+ * @param pt ContiguousMappingPiece value.
+ * @returns The `Color` (WHITE or BLACK) of `pt`.
+ */
+/**
+ * Construct an EnginePiece value from a PieceType and Color.
+ * @tparam T Must be `EnginePiece`.
+ * @param pt PieceType to encode.
+ * @param c Color of the piece.
+ * @returns EnginePiece encoding representing `pt` with color `c`.
+ */
+/**
+ * Construct a PolyglotPiece value from a PieceType and Color.
+ * @tparam T Must be `PolyglotPiece`.
+ * @param pt PieceType to encode.
+ * @param c Color of the piece.
+ * @returns PolyglotPiece encoding representing `pt` with color `c`.
+ */
+/**
+ * Construct a ContiguousMappingPiece value from a PieceType and Color.
+ * @tparam T Must be `ContiguousMappingPiece`.
+ * @param pt PieceType to encode.
+ * @param c Color of the piece.
+ * @returns ContiguousMappingPiece encoding representing `pt` with color `c`.
+ */
+/**
+ * Obtain the PieceType corresponding to a piece-encoding enum.
+ * @tparam T A piece-encoding enum type for which `is_piece_enum<T>::value` is true.
+ * @param p Piece-encoding enum value.
+ * @returns The corresponding `PieceType`.
+ */
+/**
+ * Mask castling rights to a single color.
+ * @param c Color whose castling rights to select.
+ * @param cr Castling rights mask to filter.
+ * @returns Only the bits of `cr` relevant to color `c`.
+ */
+/**
+ * Bitwise OR-assign for CastlingRights.
+ * @param a Left-hand side castling rights (updated in-place).
+ * @param b Right-hand side castling rights to OR.
+ * @returns Reference to `a` after OR assignment.
+ */
+/**
+ * Bitwise OR for CastlingRights.
+ * @param a First castling-rights operand.
+ * @param b Second castling-rights operand.
+ * @returns The bitwise OR of `a` and `b`.
+ */
+/**
+ * Bitwise AND-assign for CastlingRights.
+ * @param a Left-hand side castling rights (updated in-place).
+ * @param b Right-hand side castling rights to AND.
+ * @returns Reference to `a` after AND assignment.
+ */
+/**
+ * Bitwise complement restricted to castling-related bits.
+ * @param a CastlingRights value to invert.
+ * @returns The complement of `a` with respect to `ANY_CASTLING` (flips only castling bits).
+ */
 enum class EnginePiece : uint8_t {
     NO_PIECE,
     WPAWN = PAWN + 0,
@@ -224,6 +331,16 @@ enum class EnginePiece : uint8_t {
     BKING,
     PIECE_NB = 16
 };
+/**
+ * Combine two castling-rights flags and store the result in the left-hand operand.
+ *
+ * Performs a bitwise OR of `a` and `b`, updates `a` with the combined castling flags,
+ * and returns a reference to the modified `a`.
+ *
+ * @param a Left-hand operand to be updated with the combined castling rights.
+ * @param b Right-hand operand whose flags are OR-ed into `a`.
+ * @returns Reference to `a` after it has been updated with the combined flags.
+ */
 enum class ContiguousMappingPiece : uint8_t {
     WPAWN = 0,
     WKNIGHT = 1,
