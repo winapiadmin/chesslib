@@ -213,17 +213,20 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
         uint64_t total = 0;
         for (const Move &m : moves) {
             pos.template doMove<false>(m);
+            #if !IS_RELEASE
             {
                 const auto pre_nm_hash_1 = pos.hash();
                 const auto pre_nm_fen_1 = pos.fen();
-                // REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                REQUIRE(pos.zobrist() == pre_nm_hash_1);
                 pos.doNullMove();
                 pos.undoMove();
-                /*REQUIRE(pos.hash() == pre_nm_hash_1);
+                REQUIRE(pos.hash() == pre_nm_hash_1);
                 REQUIRE(pos.fen() == pre_nm_fen_1);
-                REQUIRE(pos.zobrist() == pre_nm_hash_1);*/
+                REQUIRE(pos.zobrist() == pre_nm_hash_1);
             }
+            #endif
             const uint64_t nodes = perft<T, mt, false>(pos, depth - 1);
+            #if IS_RELEASE
             {
                 const auto pre_nm_hash_1 = pos.hash();
                 const auto pre_nm_fen_1 = pos.fen();
@@ -234,6 +237,7 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
                 REQUIRE(pos.fen() == pre_nm_fen_1);
                 REQUIRE(pos.zobrist() == pre_nm_hash_1);*/
             }
+            #endif
             pos.undoMove();
             if constexpr (EnableDiv)
                 std::cout << m << ": " << nodes << '\n';
