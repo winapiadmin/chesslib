@@ -216,7 +216,7 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
             {
                 const auto pre_nm_hash_1 = pos.hash();
                 const auto pre_nm_fen_1 = pos.fen();
-                //REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                // REQUIRE(pos.zobrist() == pre_nm_hash_1);
                 pos.doNullMove();
                 pos.undoMove();
                 /*REQUIRE(pos.hash() == pre_nm_hash_1);
@@ -227,7 +227,7 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
             {
                 const auto pre_nm_hash_1 = pos.hash();
                 const auto pre_nm_fen_1 = pos.fen();
-                //REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                // REQUIRE(pos.zobrist() == pre_nm_hash_1);
                 pos.doNullMove();
                 pos.undoMove();
                 /*REQUIRE(pos.hash() == pre_nm_hash_1);

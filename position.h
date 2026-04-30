@@ -388,7 +388,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 #if !defined(_DEBUG) || defined(NDEBUG)
         return pieces_list[s];
 #else
-        PieceC _p2=PieceC::NO_PIECE;
+        PieceC _p2 = PieceC::NO_PIECE;
         Bitboard mask = (1ULL << s);
         if (((state().occ[WHITE] | state().occ[BLACK]) & mask) == 0) {
             _p2 = PieceC::NO_PIECE;
