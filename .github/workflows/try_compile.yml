@@ -49,15 +49,10 @@ jobs:
     - name: Configure CMake
       shell: bash
       run: |
-        CXX_FLAGS=""
-        LINK_FLAGS=""
-
         cmake -B "${{ steps.vars.outputs.dir }}" \
               -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
               -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
               -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-              -DCMAKE_CXX_FLAGS_DEBUG="$CXX_FLAGS" \
-              -DCMAKE_EXE_LINKER_FLAGS="$LINK_FLAGS" \
               -S "${{ github.workspace }}"
 
     - name: Build

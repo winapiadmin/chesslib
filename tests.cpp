@@ -221,7 +221,7 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
                     REQUIRE(pos.zobrist() == pos.hash());
                 pos.doNullMove();
                 pos.undoMove();
-                if (!(pos.hash() == pre_nm_hash_1 || pos.fen() == pre_nm_fen_1 || pos.zobrist() == pre_nm_hash_1)) {
+                if (!(pos.hash() == pre_nm_hash_1 && pos.fen() == pre_nm_fen_1 && pos.zobrist() == pre_nm_hash_1)) {
                     REQUIRE(pos.hash() == pre_nm_hash_1);
                     REQUIRE(pos.fen() == pre_nm_fen_1);
                     REQUIRE(pos.zobrist() == pre_nm_hash_1);
@@ -237,7 +237,7 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
                     REQUIRE(pos.zobrist() == pos.hash());
                 pos.doNullMove();
                 pos.undoMove();
-                if (!(pos.hash() == pre_nm_hash_1 || pos.fen() == pre_nm_fen_1 || pos.zobrist() == pre_nm_hash_1)) {
+                if (!(pos.hash() == pre_nm_hash_1 && pos.fen() == pre_nm_fen_1 && pos.zobrist() == pre_nm_hash_1)) {
                     REQUIRE(pos.hash() == pre_nm_hash_1);
                     REQUIRE(pos.fen() == pre_nm_fen_1);
                     REQUIRE(pos.zobrist() == pre_nm_hash_1);
