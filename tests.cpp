@@ -18,12 +18,10 @@
 */
 #define DOCTEST_CONFIG_IMPLEMENT
 #define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
-#include "moves_io.h"
 #include "position.h"
 #include "printers.h"
 #include <chrono>
 #include <doctest/doctest.h>
-#include <variant>
 using namespace chess;
 // --------- Color assertions ----------
 static_assert(color_of(PolyglotPiece::BPAWN) == BLACK, "BPAWN should be BLACK");
@@ -215,11 +213,27 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
         uint64_t total = 0;
         for (const Move &m : moves) {
             pos.template doMove<false>(m);
-            pos.doNullMove();
-            pos.undoMove();
+            {
+                const auto pre_nm_hash_1 = pos.hash();
+                const auto pre_nm_fen_1 = pos.fen();
+                //REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                pos.doNullMove();
+                pos.undoMove();
+                /*REQUIRE(pos.hash() == pre_nm_hash_1);
+                REQUIRE(pos.fen() == pre_nm_fen_1);
+                REQUIRE(pos.zobrist() == pre_nm_hash_1);*/
+            }
             const uint64_t nodes = perft<T, mt, false>(pos, depth - 1);
-            pos.doNullMove();
-            pos.undoMove();
+            {
+                const auto pre_nm_hash_1 = pos.hash();
+                const auto pre_nm_fen_1 = pos.fen();
+                //REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                pos.doNullMove();
+                pos.undoMove();
+                /*REQUIRE(pos.hash() == pre_nm_hash_1);
+                REQUIRE(pos.fen() == pre_nm_fen_1);
+                REQUIRE(pos.zobrist() == pre_nm_hash_1);*/
+            }
             pos.undoMove();
             if constexpr (EnableDiv)
                 std::cout << m << ": " << nodes << '\n';

@@ -145,7 +145,7 @@ struct Magic {
 struct Magic {
     Bitboard mask;
     Bitboard magic;
-    int index;
+    size_t index;
     Bitboard shift;
     constexpr Bitboard operator()(Bitboard b) const { return (((b & mask)) * magic) >> shift; }
 };
@@ -181,6 +181,39 @@ extern const std::array<Bitboard, 0x1480> BishopAttacks;
         return (b & ~MASK_FILE[7]) << 1;
     case Direction::SOUTH_EAST:
         return (b & ~MASK_FILE[7]) >> 7;
+    case DOUBLE_NORTH:
+        return b << 16;
+
+    case DOUBLE_SOUTH:
+        return b >> 16;
+
+    case DOUBLE_EAST:
+        return (b & ~MASK_FILE[7] & ~(MASK_FILE[7] >> 1)) << 2;
+
+    case DOUBLE_WEST:
+        return (b & ~MASK_FILE[0] & ~(MASK_FILE[0] << 1)) >> 2;
+
+    case DOUBLE_NORTH_EAST: {
+        Bitboard t = (b & ~MASK_FILE[7]) << 9;
+        return (t & ~MASK_FILE[7]) << 9;
+    }
+
+    case DOUBLE_NORTH_WEST: {
+        Bitboard t = (b & ~MASK_FILE[0]) << 7;
+        return (t & ~MASK_FILE[0]) << 7;
+    }
+
+    case DOUBLE_SOUTH_EAST: {
+        Bitboard t = (b & ~MASK_FILE[7]) >> 7;
+        return (t & ~MASK_FILE[7]) >> 7;
+    }
+
+    case DOUBLE_SOUTH_WEST: {
+        Bitboard t = (b & ~MASK_FILE[0]) >> 9;
+        return (t & ~MASK_FILE[0]) >> 9;
+    }
+    case DIR_NONE:
+        return b;
     default:
         UNREACHABLE();
         return 0;

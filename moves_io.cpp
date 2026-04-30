@@ -19,15 +19,10 @@
 // UCI moves parsing
 
 // License: https://github.com/Disservin/chess-library/blob/master/LICENSE
-// pjpuzzler/cpp-chess doesn't have license, but it is linked to niklasf/python-chess
-
-// License: https://github.com/niklasf/python-chess/blob/master/LICENSE.txt
 #include "moves_io.h"
 #include "position.h"
 #include "types.h"
 #include <algorithm>
-#include <iostream>
-#include <regex>
 #include <string_view>
 #if defined(__EXCEPTIONS)
 #define THROW_IF_EXCEPTIONS_ON(stuff) throw stuff
@@ -261,8 +256,10 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
                 // consume it
                 std::string src_sq_str = prefix.substr(prefix.size() - 2, 2);
                 src_square = parse_square(src_sq_str);
-                if (src_square == SQ_NONE)
+                if (src_square == SQ_NONE){
                     THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+		    return Move::none();
+		}
                 prefix.resize(prefix.size() - 2);
             }
         }

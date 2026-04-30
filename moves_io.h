@@ -16,9 +16,6 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-// pjpuzzler/cpp-chess doesn't have license, but it is linked to niklasf/python-chess
-
-// License: https://github.com/niklasf/python-chess/blob/master/LICENSE.txt
 #pragma once
 #include "fwd_decl.h"
 #include <cstdint>
