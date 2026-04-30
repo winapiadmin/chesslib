@@ -206,8 +206,6 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
         pos.template legals<mt>(moves);
         if constexpr (EnableDiv)
             for (const Move &m : moves) {
-                pos.doNullMove();
-                pos.undoMove();
                 std::cout << m << ": 1\n";
             }
         return moves.size();

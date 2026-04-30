@@ -193,9 +193,11 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         if constexpr (RetAll) {
             HistoryEntry<PieceC> state_ = state();
             history.pop_back();
+            refresh_attacks();
             return state_;
         } else {
             history.pop_back();
+            refresh_attacks();
             return;
         }
     }
@@ -208,10 +210,6 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         state().epIncluded = false;
         state().enPassant = SQ_NONE;
         state().turn = ~state().turn;
-        state().hash ^= zobrist::RandomCastle[state().castlingRights];
-        state().castlingRights =
-            static_cast<CastlingRights>(state().castlingRights & (state().turn == WHITE ? BLACK_CASTLING : WHITE_CASTLING));
-        state().hash ^= zobrist::RandomCastle[state().castlingRights];
         state().hash ^= zobrist::RandomTurn;
         state().fullMoveNumber += (state().turn == WHITE);
         state().pliesFromNull = state().repetition = 0;
