@@ -436,13 +436,11 @@ TEST_SUITE("SAN Parser") {
         auto b = Position{ "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 17" };
 
         Move m = Move::make<Move::CASTLING>(Square::SQ_E1, Square::SQ_H1);
-#if defined(_DEBUG) && !defined(NDEBUG)
-        REQUIRE_THROWS_WITH_AS(uci::parseSan(b, "0-0+?!"),
+        Move m2 = Move::none();
+        REQUIRE_THROWS_WITH_AS(m2 = uci::parseSan(b, "0-0+?!"),
                                "illegal san: '0-0+?!' in rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 17",
                                chess::uci::IllegalMoveException);
-#else
-        REQUIRE(uci::parseSan(b, "0-0+?!") == Move::none());
-#endif
+        REQUIRE(m2 == Move::none());
         REQUIRE(uci::parseSan(b, "0-0+?!", true) == m);
     }
 
@@ -451,13 +449,11 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make<Move::CASTLING>(Square::SQ_E1, Square::SQ_A1);
 
-#if defined(_DEBUG) && !defined(NDEBUG)
-        REQUIRE_THROWS_WITH_AS(uci::parseSan(b, "0-0-0+?!"),
+        Move m2 = Move::none();
+        REQUIRE_THROWS_WITH_AS(m2 = uci::parseSan(b, "0-0-0+?!"),
                                "illegal san: '0-0-0+?!' in rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1",
                                chess::uci::IllegalMoveException);
-#else
-        REQUIRE(uci::parseSan(b, "0-0-0+?!") == Move::none());
-#endif
+        REQUIRE(m2 == Move::none());
 
         REQUIRE(uci::parseSan(b, "0-0-0+?!", true) == m);
     }
