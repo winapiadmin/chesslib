@@ -262,7 +262,7 @@ void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
     for (auto &entry : entries) {
         std::cerr << entry.input << " (chess960=false) " << entry.info.depth;
 #if !IS_RELEASE
-        if (entry.info.nodes > 1e7) {
+        if (entry.info.nodes > 1e6) {
             std::cerr << "(skipped)\n";
             continue;
         }
