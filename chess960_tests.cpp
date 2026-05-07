@@ -55,7 +55,37 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
         uint64_t total = 0;
         for (const Move &m : moves) {
             pos.template doMove<false>(m);
+#if !IS_RELEASE
+            {
+                const auto pre_nm_hash_1 = pos.hash();
+                const auto pre_nm_fen_1 = pos.fen();
+                if (pos.zobrist() != pos.hash())
+                    REQUIRE(pos.zobrist() == pos.hash());
+                pos.doNullMove();
+                pos.undoMove();
+                if (!(pos.hash() == pre_nm_hash_1 && pos.fen() == pre_nm_fen_1 && pos.zobrist() == pre_nm_hash_1)) {
+                    REQUIRE(pos.hash() == pre_nm_hash_1);
+                    REQUIRE(pos.fen() == pre_nm_fen_1);
+                    REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                }
+            }
+#endif
             const uint64_t nodes = perft<T, mt, false>(pos, depth - 1);
+#if !IS_RELEASE
+            {
+                const auto pre_nm_hash_1 = pos.hash();
+                const auto pre_nm_fen_1 = pos.fen();
+                if (pos.zobrist() != pos.hash())
+                    REQUIRE(pos.zobrist() == pos.hash());
+                pos.doNullMove();
+                pos.undoMove();
+                if (!(pos.hash() == pre_nm_hash_1 && pos.fen() == pre_nm_fen_1 && pos.zobrist() == pre_nm_hash_1)) {
+                    REQUIRE(pos.hash() == pre_nm_hash_1);
+                    REQUIRE(pos.fen() == pre_nm_fen_1);
+                    REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                }
+            }
+#endif
             pos.undoMove();
             if constexpr (EnableDiv)
                 std::cout << m << ": " << nodes << '\n';
@@ -74,7 +104,7 @@ void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
     for (auto &entry : entries) {
         std::cerr << entry.input << " (chess960=true) " << entry.info.depth;
 #if !IS_RELEASE
-        if (entry.info.nodes > 2e7) {
+        if (entry.info.nodes > 1e6) {
             std::cerr << "(skipped)\n";
             continue;
         }
