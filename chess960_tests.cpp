@@ -97,18 +97,19 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
     }
 }
 #if !IS_RELEASE
-auto split_testcases(std::vector<TestEntry<std::string, perft_t>>& entries) {
+auto split_testcases(std::vector<TestEntry<std::string, perft_t>> &entries) {
     std::vector<TestEntry<std::string, perft_t>> optimized;
-    
-    std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
-        return a.info.nodes < b.info.nodes;
-    });
+
+    std::sort(entries.begin(), entries.end(), [](const auto &a, const auto &b) { return a.info.nodes < b.info.nodes; });
 
     std::vector<TestEntry<std::string, perft_t>> bucket1, bucket2, bucket3;
-    for (const auto& e : entries) {
-        if (e.info.nodes <= 1'000'000) bucket1.push_back(e);
-        else if (e.info.nodes <= 10'000'000) bucket2.push_back(e);
-        else if (e.info.nodes <= 1'000'000'000) bucket3.push_back(e);
+    for (const auto &e : entries) {
+        if (e.info.nodes <= 1'000'000)
+            bucket1.push_back(e);
+        else if (e.info.nodes <= 10'000'000)
+            bucket2.push_back(e);
+        else if (e.info.nodes <= 1'000'000'000)
+            bucket3.push_back(e);
     }
 
     size_t n1 = std::min(bucket1.size(), size_t(2000));
@@ -130,9 +131,9 @@ void check_perfts(std::vector<TestEntry<std::string, perft_t>> &entries) {
     uint64_t nodes = 0;
     double elapsed = 0;
     using namespace std::chrono;
-    #if !IS_RELEASE
-    entries=split_testcases(entries);
-    #endif
+#if !IS_RELEASE
+    entries = split_testcases(entries);
+#endif
     auto start_time = high_resolution_clock::now();
     for (auto &entry : entries) {
         std::cerr << entry.input << " (chess960=true) " << entry.info.depth;
