@@ -96,11 +96,44 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
         return total;
     }
 }
+#if !IS_RELEASE
+auto split_testcases(std::vector<TestEntry<std::string, perft_t>>& entries) {
+    std::vector<TestEntry<std::string, perft_t>> optimized;
+    
+    std::sort(entries.begin(), entries.end(), [](const auto& a, const auto& b) {
+        return a.info.nodes < b.info.nodes;
+    });
+
+    std::vector<TestEntry<std::string, perft_t>> bucket1, bucket2, bucket3;
+    for (const auto& e : entries) {
+        if (e.info.nodes <= 1'000'000) bucket1.push_back(e);
+        else if (e.info.nodes <= 10'000'000) bucket2.push_back(e);
+        else if (e.info.nodes <= 1'000'000'000) bucket3.push_back(e);
+    }
+
+    size_t n1 = std::min(bucket1.size(), size_t(2000));
+    optimized.insert(optimized.end(), bucket1.begin(), bucket1.begin() + n1);
+
+    size_t n2 = std::min(bucket2.size(), size_t(30));
+    optimized.insert(optimized.end(), bucket2.begin(), bucket2.begin() + n2);
+
+    size_t n3 = std::min(bucket3.size(), size_t(5));
+    if (n3 > 0) {
+        optimized.insert(optimized.end(), bucket3.end() - n3, bucket3.end());
+    }
+
+    return optimized;
+}
+#endif
 template <MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false>
-void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
+void check_perfts(std::vector<TestEntry<std::string, perft_t>> &entries) {
     uint64_t nodes = 0;
     double elapsed = 0;
     using namespace std::chrono;
+    #if !IS_RELEASE
+    entries=split_testcases(entries);
+    #endif
+    auto start_time = high_resolution_clock::now();
     for (auto &entry : entries) {
         std::cerr << entry.input << " (chess960=true) " << entry.info.depth;
 #if !IS_RELEASE
@@ -112,18 +145,12 @@ void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
         std::cerr << '\n';
         {
             _Position<PolyglotPiece> pos(entry.input, true);
-            auto start_time = high_resolution_clock::now();
             REQUIRE(perft<PolyglotPiece, mt, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
-            auto end_time = high_resolution_clock::now();
-            elapsed += duration<double>(end_time - start_time).count();
             nodes += entry.info.nodes;
             if (entry.info.nodes < 5e6) {
                 _Position<PolyglotPiece> pos2 = pos;
                 REQUIRE(pos.fen() == pos2.fen());
-                auto start_time = high_resolution_clock::now();
                 REQUIRE(perft<PolyglotPiece, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
-                auto end_time = high_resolution_clock::now();
-                elapsed += duration<double>(end_time - start_time).count();
                 nodes += entry.info.nodes;
             } else {
                 std::cerr << "\n(skipped copying test)\n";
@@ -131,18 +158,12 @@ void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
         }
         {
             _Position<EnginePiece> pos(entry.input, true);
-            auto start_time = high_resolution_clock::now();
             REQUIRE(perft<EnginePiece, mt, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
-            auto end_time = high_resolution_clock::now();
-            elapsed += duration<double>(end_time - start_time).count();
             nodes += entry.info.nodes;
             if (entry.info.nodes < 5e6) {
                 _Position<EnginePiece> pos2 = pos;
                 REQUIRE(pos.fen() == pos2.fen());
-                auto start_time = high_resolution_clock::now();
                 REQUIRE(perft<EnginePiece, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
-                auto end_time = high_resolution_clock::now();
-                elapsed += duration<double>(end_time - start_time).count();
                 nodes += entry.info.nodes;
             } else {
                 std::cerr << "\n(skipped copying test)\n";
@@ -150,24 +171,20 @@ void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
         }
         {
             _Position<ContiguousMappingPiece> pos(entry.input, true);
-            auto start_time = high_resolution_clock::now();
             REQUIRE(perft<ContiguousMappingPiece, mt, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
-            auto end_time = high_resolution_clock::now();
-            elapsed += duration<double>(end_time - start_time).count();
             nodes += entry.info.nodes;
             if (entry.info.nodes < 5e6) {
                 _Position<ContiguousMappingPiece> pos2 = pos;
                 REQUIRE(pos.fen() == pos2.fen());
-                auto start_time = high_resolution_clock::now();
                 REQUIRE(perft<ContiguousMappingPiece, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
-                auto end_time = high_resolution_clock::now();
-                elapsed += duration<double>(end_time - start_time).count();
                 nodes += entry.info.nodes;
             } else {
                 std::cerr << "\n(skipped copying test)\n";
             }
         }
     }
+    auto end_time = high_resolution_clock::now();
+    elapsed = duration<double>(end_time - start_time).count();
     double mnps = (nodes / elapsed) / 1'000'000.0;
     std::cout << "Speed: " << mnps << "Mnps\n";
 }
