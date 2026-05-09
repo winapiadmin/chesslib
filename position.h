@@ -1,3 +1,21 @@
+/*
+  a chess library (bonus: you can integrate more piece types!) which
+  supports Chess960 and is decently fast enough
+  Copyright (C) 2025-2026  winapiadmin
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
 #pragma once
 #include "attacks.h"
 #include "bitboard.h"
@@ -63,9 +81,11 @@ template <typename MoveGenType> constexpr MoveGenType operator&(MoveGenType a, M
     using U = std::underlying_type_t<MoveGenType>;
     return static_cast<MoveGenType>(static_cast<U>(a) & static_cast<U>(b));
 }
+
 template <typename MoveGenType> constexpr MoveGenType operator|(MoveGenType a, MoveGenType b) {
     using U = std::underlying_type_t<MoveGenType>;
-    return static_cast<MoveGenType>(static_cast<U>(a) | static_cast<U>(b));
+    return static_cast<MoveGenType>(static_cast<U>(a) |
+                                    static_cast<U>(b)); // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange)
 }
 template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_enum<PieceC>::value>> class _Position {
   private:
@@ -173,9 +193,11 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         if constexpr (RetAll) {
             HistoryEntry<PieceC> state_ = state();
             history.pop_back();
+            refresh_attacks();
             return state_;
         } else {
             history.pop_back();
+            refresh_attacks();
             return;
         }
     }
@@ -188,10 +210,6 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         state().epIncluded = false;
         state().enPassant = SQ_NONE;
         state().turn = ~state().turn;
-        state().hash ^= zobrist::RandomCastle[state().castlingRights];
-        state().castlingRights =
-            static_cast<CastlingRights>(state().castlingRights & (state().turn == WHITE ? BLACK_CASTLING : WHITE_CASTLING));
-        state().hash ^= zobrist::RandomCastle[state().castlingRights];
         state().hash ^= zobrist::RandomTurn;
         state().fullMoveNumber += (state().turn == WHITE);
         state().pliesFromNull = state().repetition = 0;
@@ -370,7 +388,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 #if !defined(_DEBUG) || defined(NDEBUG)
         return pieces_list[s];
 #else
-        PieceC _p2;
+        PieceC _p2 = PieceC::NO_PIECE;
         Bitboard mask = (1ULL << s);
         if (((state().occ[WHITE] | state().occ[BLACK]) & mask) == 0) {
             _p2 = PieceC::NO_PIECE;
@@ -385,11 +403,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
             }
         }
         auto p = pieces_list[s];
-#ifndef __EXCEPTIONS
+#if defined(_DEBUG) && !defined(NDEBUG)
         assert(p == _p2 && "Inconsistient piece map");
-#else
-        if (p != _p2)
-            throw std::invalid_argument("Inconsistient piece map");
 #endif
         return p;
 #endif
@@ -470,7 +485,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     // after the root, or repeats twice before or at the root.
     inline bool is_repetition(int ply) const { return state().repetition + 1 >= ply; }
     inline int repetition_count() const { return state().repetition; }
-    // Test if it's draw of 75 move rule (that forces everyone to draw). It doesn't consider checkmates.
+    // Test if it's draw of 50 move rule (that forces everyone to draw). It doesn't consider checkmates.
     inline bool is_draw(int ply) const { return rule50_count() > 99 || is_repetition(ply); }
     // Tests whether there has been at least one repetition
     // of positions since the last capture or pawn move.
@@ -487,8 +502,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     }
     inline bool _is_halfmoves(int n) const { return rule50_count() >= n; }
     inline bool chess960() const { return _chess960; }
-    inline bool is_seventyfive_moves(int n) const { return _is_halfmoves(150); }
-    inline bool is_fifty_moves(int n) const { return _is_halfmoves(150); }
+    inline bool is_seventyfive_moves() const { return _is_halfmoves(150); }
+    inline bool is_fifty_moves() const { return _is_halfmoves(100); }
     inline bool is_fivefold_repetition() const { return is_repetition(5); }
     inline bool is_attacked_by(Color color, Square sq, Bitboard occupied = 0) const {
         Bitboard occ_bb = occupied ? occupied : this->occ();

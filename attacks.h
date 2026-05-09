@@ -1,3 +1,22 @@
+/*
+  a chess library (bonus: you can integrate more piece types!) which
+  supports Chess960 and is decently fast enough
+  Copyright (C) 2025-2026  winapiadmin
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
 #pragma once
 #include "bitboard.h"
 #include "fwd_decl.h"
@@ -126,7 +145,7 @@ struct Magic {
 struct Magic {
     Bitboard mask;
     Bitboard magic;
-    int index;
+    size_t index;
     Bitboard shift;
     constexpr Bitboard operator()(Bitboard b) const { return (((b & mask)) * magic) >> shift; }
 };
@@ -162,6 +181,39 @@ extern const std::array<Bitboard, 0x1480> BishopAttacks;
         return (b & ~MASK_FILE[7]) << 1;
     case Direction::SOUTH_EAST:
         return (b & ~MASK_FILE[7]) >> 7;
+    case DOUBLE_NORTH:
+        return b << 16;
+
+    case DOUBLE_SOUTH:
+        return b >> 16;
+
+    case DOUBLE_EAST:
+        return (b & ~MASK_FILE[7] & ~(MASK_FILE[7] >> 1)) << 2;
+
+    case DOUBLE_WEST:
+        return (b & ~MASK_FILE[0] & ~(MASK_FILE[0] << 1)) >> 2;
+
+    case DOUBLE_NORTH_EAST: {
+        Bitboard t = (b & ~MASK_FILE[7]) << 9;
+        return (t & ~MASK_FILE[7]) << 9;
+    }
+
+    case DOUBLE_NORTH_WEST: {
+        Bitboard t = (b & ~MASK_FILE[0]) << 7;
+        return (t & ~MASK_FILE[0]) << 7;
+    }
+
+    case DOUBLE_SOUTH_EAST: {
+        Bitboard t = (b & ~MASK_FILE[7]) >> 7;
+        return (t & ~MASK_FILE[7]) >> 7;
+    }
+
+    case DOUBLE_SOUTH_WEST: {
+        Bitboard t = (b & ~MASK_FILE[0]) >> 9;
+        return (t & ~MASK_FILE[0]) >> 9;
+    }
+    case DIR_NONE:
+        return b;
     default:
         UNREACHABLE();
         return 0;

@@ -1,9 +1,28 @@
+/*
+  a chess library (bonus: you can integrate more piece types!) which
+  supports Chess960 and is decently fast enough
+  Copyright (C) 2025-2026  winapiadmin
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+// UCI moves parsing
+
+// License: https://github.com/Disservin/chess-library/blob/master/LICENSE
 #include "moves_io.h"
 #include "position.h"
 #include "types.h"
 #include <algorithm>
-#include <iostream>
-#include <regex>
 #include <string_view>
 #if defined(__EXCEPTIONS)
 #define THROW_IF_EXCEPTIONS_ON(stuff) throw stuff
@@ -237,13 +256,14 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
                 // consume it
                 std::string src_sq_str = prefix.substr(prefix.size() - 2, 2);
                 src_square = parse_square(src_sq_str);
-                if (src_square == SQ_NONE)
+                if (src_square == SQ_NONE) {
                     THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+                    return Move::none();
+                }
                 prefix.resize(prefix.size() - 2);
-                has_src_square = true;
             }
         }
-
+        has_src_square = src_square != SQ_NONE;
         // 7) Detect piece letter at front if present
         PieceType piece_type = NO_PIECE_TYPE;
         if (!prefix.empty()) {

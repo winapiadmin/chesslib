@@ -1,3 +1,26 @@
+/*
+  a chess library (bonus: you can integrate more piece types!) which
+  supports Chess960 and is decently fast enough
+  Copyright (C) 2025-2026  winapiadmin
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+// enums, structures, Move class taken from Stockfish
+
+// License: https://github.com/official-stockfish/Stockfish/blob/master/COPYING.txt
+
 #pragma once
 
 #include "fwd_decl.h"
@@ -111,6 +134,15 @@ enum Direction : int8_t {
     SOUTH_EAST = SOUTH + EAST,
     SOUTH_WEST = SOUTH + WEST,
     NORTH_WEST = NORTH + WEST,
+    DOUBLE_NORTH = 2*NORTH,
+    DOUBLE_EAST = 2*EAST,
+    DOUBLE_SOUTH = 2*SOUTH,
+    DOUBLE_WEST = 2*WEST,
+    DOUBLE_NORTH_EAST = 2*NORTH_EAST,
+    DOUBLE_SOUTH_EAST = 2*SOUTH_EAST,
+    DOUBLE_SOUTH_WEST = 2*SOUTH_WEST,
+    DOUBLE_NORTH_WEST = 2*NORTH_WEST,
+    
     DIR_NONE = 0
 };
 // clang-format on
@@ -266,23 +298,23 @@ enum CastlingRights : int8_t {
 constexpr CastlingRights operator&(Color c, CastlingRights cr) {
     return CastlingRights((c == WHITE ? WHITE_CASTLING : BLACK_CASTLING) & cr);
 }
-// Bitwise OR assignment operator
+
 inline CastlingRights &operator|=(CastlingRights &a, CastlingRights b) {
-    a = static_cast<CastlingRights>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
-    return a;
+    return a = static_cast<CastlingRights>(static_cast<uint8_t>(a) |
+                                           static_cast<uint8_t>(b)); // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange)
 }
-// Bitwise OR assignment operator
 inline CastlingRights operator|(CastlingRights a, CastlingRights b) {
-    return static_cast<CastlingRights>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
+    return static_cast<CastlingRights>(static_cast<uint8_t>(a) |
+                                       static_cast<uint8_t>(b)); // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange)
 }
 
-// Bitwise OR assignment operator
 inline CastlingRights &operator&=(CastlingRights &a, CastlingRights b) {
     a = static_cast<CastlingRights>(static_cast<uint8_t>(a) & static_cast<uint8_t>(b));
     return a;
 }
 inline CastlingRights operator~(CastlingRights a) {
-    return static_cast<CastlingRights>(static_cast<uint8_t>(a) ^ ANY_CASTLING);
+    return static_cast<CastlingRights>(static_cast<uint8_t>(a) ^
+                                       ANY_CASTLING); // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange)
 }
 
 enum MoveType : uint16_t { NORMAL, PROMOTION = 1 << 14, EN_PASSANT = 2 << 14, CASTLING = 3 << 14 };

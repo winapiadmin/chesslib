@@ -1,3 +1,21 @@
+/*
+  a chess library (bonus: you can integrate more piece types!) which
+  supports Chess960 and is decently fast enough
+  Copyright (C) 2025-2026  winapiadmin
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
 #define DOCTEST_CONFIG_IMPLEMENT
 #ifndef __EXCEPTIONS
 #define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
@@ -418,11 +436,11 @@ TEST_SUITE("SAN Parser") {
         auto b = Position{ "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 17" };
 
         Move m = Move::make<Move::CASTLING>(Square::SQ_E1, Square::SQ_H1);
-#if defined(_DEBUG) && !defined(NDEBUG)
-        REQUIRE_THROWS_WITH_AS(uci::parseSan(b, "0-0+?!"),
+        Move m2 = Move::none();
+        REQUIRE_THROWS_WITH_AS(m2 = uci::parseSan(b, "0-0+?!"),
                                "illegal san: '0-0+?!' in rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 17",
                                chess::uci::IllegalMoveException);
-#endif
+        REQUIRE(m2 == Move::none());
         REQUIRE(uci::parseSan(b, "0-0+?!", true) == m);
     }
 
@@ -431,11 +449,12 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make<Move::CASTLING>(Square::SQ_E1, Square::SQ_A1);
 
-#if defined(_DEBUG) && !defined(NDEBUG)
-        REQUIRE_THROWS_WITH_AS(uci::parseSan(b, "0-0-0+?!"),
+        Move m2 = Move::none();
+        REQUIRE_THROWS_WITH_AS(m2 = uci::parseSan(b, "0-0-0+?!"),
                                "illegal san: '0-0-0+?!' in rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1",
                                chess::uci::IllegalMoveException);
-#endif
+        REQUIRE(m2 == Move::none());
+
         REQUIRE(uci::parseSan(b, "0-0-0+?!", true) == m);
     }
 

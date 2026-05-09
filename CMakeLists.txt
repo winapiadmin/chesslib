@@ -1,4 +1,21 @@
-cmake_minimum_required(VERSION 3.16)
+#  a chess library (bonus: you can integrate more piece types!) which 
+#  supports Chess960 and is decently fast enough
+#  Copyright (C) 2025-2026  winapiadmin
+#
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+cmake_minimum_required(VERSION 3.14)
 project(chesslib LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -51,7 +68,7 @@ if(BUILD_TESTING)
     FetchContent_Declare(
         doctest
         GIT_REPOSITORY https://github.com/doctest/doctest.git
-        GIT_TAG v2.4.12
+        GIT_TAG v2.5.2
     )
     FetchContent_MakeAvailable(doctest)
 

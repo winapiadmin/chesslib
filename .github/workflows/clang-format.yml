@@ -27,10 +27,4 @@ jobs:
           clang-format -i $(git ls-files '*.cpp' '*.hpp' '*.h' '*.c')
 
       - name: Commit and push changes
-        run: |
-          if ! git diff --quiet; then
-            git config user.email "actions@github.com"
-            git config user.name "GitHub Actions"
-            git commit -am "Apply clang-format"
-            git push
-          fi
+        uses: stefanzweifel/git-auto-commit-action@v7
