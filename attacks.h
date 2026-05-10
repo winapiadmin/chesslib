@@ -22,8 +22,8 @@
 #include "fwd_decl.h"
 #include "types.h"
 #include <array>
-#include <vector>
 #include <immintrin.h>
+#include <vector>
 namespace chess::attacks {
 // clang-format off
     // pre-calculated lookup table for pawn attacks

@@ -21,8 +21,8 @@
 #include "position.h"
 #include "printers.h"
 #include <chrono>
-#include <random>
 #include <doctest/doctest.h>
+#include <random>
 using namespace chess;
 // --------- Color assertions ----------
 static_assert(color_of(PolyglotPiece::BPAWN) == BLACK, "BPAWN should be BLACK");
@@ -358,9 +358,11 @@ void check_perfts(std::vector<TestEntry<std::string, perft_t>> &entries) {
     std::cout << "Speed: " << mnps << "Mnps\n";
 }
 
-template <bool ISROOK>
-[[nodiscard]] inline Bitboard sliderAttacks(Square sq, Bitboard occupied) noexcept {
-    static constexpr Direction dirs[2][4][2] = {{EAST, EAST, EAST, WEST, WEST, WEST, WEST, EAST}, {EAST, DIR_NONE, DIR_NONE, WEST, WEST, DIR_NONE, DIR_NONE, EAST}};
+template <bool ISROOK> [[nodiscard]] inline Bitboard sliderAttacks(Square sq, Bitboard occupied) noexcept {
+    static constexpr Direction dirs[2][4][2] = {
+        { EAST,     EAST,     EAST, WEST, WEST,     WEST,     WEST, EAST },
+        { EAST, DIR_NONE, DIR_NONE, WEST, WEST, DIR_NONE, DIR_NONE, EAST }
+    };
 
     Bitboard attacks = 0ull;
 
@@ -371,33 +373,33 @@ template <bool ISROOK>
         Direction off_f = dirs[ISROOK][i][0];
         Direction off_r = dirs[ISROOK][i][1];
 
-        File f=pf+off_f;
-        Rank r=pr+off_r;
+        File f = pf + off_f;
+        Rank r = pr + off_r;
         for (; is_valid(r, f); f += off_f, r += off_r) {
             const auto index = make_sq(f, r);
-            attacks|=1ULL<<index;
-            if (occupied&(1ULL<<index)) break;
+            attacks |= 1ULL << index;
+            if (occupied & (1ULL << index))
+                break;
         }
     }
 
     return attacks;
 }
-TEST_CASE("attacks"){
-    std::random_device rd; 
-    std::mt19937_64 gen(rd()); 
+TEST_CASE("attacks") {
+    std::random_device rd;
+    std::mt19937_64 gen(rd());
     std::uniform_int_distribution<uint64_t> dis;
-    for (Square sq=SQ_A1;sq<SQ_NONE;sq++){
-	for (int i=0;i<10000;i++){
-	    uint64_t bb=dis(gen)&dis(gen);
-            REQUIRE(attacks::bishop(sq,bb)==sliderAttacks<false>(sq,bb));
-	}
+    for (Square sq = SQ_A1; sq < SQ_NONE; sq++) {
+        for (int i = 0; i < 10000; i++) {
+            uint64_t bb = dis(gen) & dis(gen);
+            REQUIRE(attacks::bishop(sq, bb) == sliderAttacks<false>(sq, bb));
+        }
     }
-    for (Square sq=SQ_A1;sq<SQ_NONE;sq++){
-	for (int i=0;i<10000;i++)
-	{
-	    uint64_t bb=dis(gen)&dis(gen);
-            REQUIRE(attacks::rook(sq,bb)==sliderAttacks<true>(sq,bb));
-	}
+    for (Square sq = SQ_A1; sq < SQ_NONE; sq++) {
+        for (int i = 0; i < 10000; i++) {
+            uint64_t bb = dis(gen) & dis(gen);
+            REQUIRE(attacks::rook(sq, bb) == sliderAttacks<true>(sq, bb));
+        }
     }
 }
 TEST_CASE("Castling move making FEN rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8") {
