@@ -190,7 +190,15 @@ constexpr Square operator+(Square s, Direction d) { return Square(int(s) + int(d
 constexpr Square operator-(Square s, Direction d) { return Square(int(s) - int(d)); }
 constexpr Square &operator+=(Square &s, Direction d) { return s = s + d; }
 constexpr Square &operator-=(Square &s, Direction d) { return s = s - d; }
-// specifically for Polyglot (a.k.a zobrist hashing but use proper hash)
+constexpr Rank operator+(Rank s, Direction d) { return Rank(int(s) + int(d)); }
+constexpr Rank operator-(Rank s, Direction d) { return Rank(int(s) - int(d)); }
+constexpr Rank &operator+=(Rank &s, Direction d) { return s = s + d; }
+constexpr Rank &operator-=(Rank &s, Direction d) { return s = s - d; }
+constexpr File operator+(File s, Direction d) { return File(int(s) + int(d)); }
+constexpr File operator-(File s, Direction d) { return File(int(s) - int(d)); }
+constexpr File &operator+=(File &s, Direction d) { return s = s + d; }
+constexpr File &operator-=(File &s, Direction d) { return s = s - d; }
+
 enum class PolyglotPiece : uint8_t {
     WPAWN = 1,
     WKNIGHT = 3,
@@ -207,7 +215,6 @@ enum class PolyglotPiece : uint8_t {
     NO_PIECE = 12,
     PIECE_NB = 12
 };
-// Normal board, you can use ANY! (but comfortable for certain chess engines such as Stockfish)
 enum class EnginePiece : uint8_t {
     NO_PIECE,
     WPAWN = PAWN + 0,

@@ -21,6 +21,7 @@
 #include "position.h"
 #include "printers.h"
 #include <chrono>
+#include <random>
 #include <doctest/doctest.h>
 using namespace chess;
 // --------- Color assertions ----------
@@ -254,19 +255,46 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
         return total;
     }
 }
+#if !IS_RELEASE
+auto split_testcases(std::vector<TestEntry<std::string, perft_t>> &entries) {
+    std::vector<TestEntry<std::string, perft_t>> optimized;
+
+    std::sort(entries.begin(), entries.end(), [](const auto &a, const auto &b) { return a.info.nodes < b.info.nodes; });
+
+    std::vector<TestEntry<std::string, perft_t>> bucket1, bucket2, bucket3;
+    for (const auto &e : entries) {
+        if (e.info.nodes <= 1'000'000)
+            bucket1.push_back(e);
+        else if (e.info.nodes <= 10'000'000)
+            bucket2.push_back(e);
+        else if (e.info.nodes <= 1'000'000'000)
+            bucket3.push_back(e);
+    }
+
+    size_t n1 = std::min(bucket1.size(), size_t(2000));
+    optimized.insert(optimized.end(), bucket1.begin(), bucket1.begin() + n1);
+
+    size_t n2 = std::min(bucket2.size(), size_t(30));
+    optimized.insert(optimized.end(), bucket2.begin(), bucket2.begin() + n2);
+
+    size_t n3 = std::min(bucket3.size(), size_t(5));
+    if (n3 > 0) {
+        optimized.insert(optimized.end(), bucket3.end() - n3, bucket3.end());
+    }
+
+    return optimized;
+}
+#endif
 template <MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false>
-void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
+void check_perfts(std::vector<TestEntry<std::string, perft_t>> &entries) {
     uint64_t nodes = 0;
     double elapsed = 0;
     using namespace std::chrono;
+#if !IS_RELEASE
+    entries = split_testcases(entries);
+#endif
     for (auto &entry : entries) {
         std::cerr << entry.input << " (chess960=false) " << entry.info.depth;
-#if !IS_RELEASE
-        if (entry.info.nodes > 1e6) {
-            std::cerr << "(skipped)\n";
-            continue;
-        }
-#endif
         std::cerr << '\n';
         {
             _Position<PolyglotPiece> pos(entry.input);
@@ -328,6 +356,49 @@ void check_perfts(const std::vector<TestEntry<std::string, perft_t>> &entries) {
     }
     double mnps = (nodes / elapsed) / 1'000'000.0;
     std::cout << "Speed: " << mnps << "Mnps\n";
+}
+
+template <bool ISROOK>
+[[nodiscard]] inline Bitboard sliderAttacks(Square sq, Bitboard occupied) noexcept {
+    static constexpr Direction dirs[2][4][2] = {{EAST, EAST, EAST, WEST, WEST, WEST, WEST, EAST}, {EAST, DIR_NONE, DIR_NONE, WEST, WEST, DIR_NONE, DIR_NONE, EAST}};
+
+    Bitboard attacks = 0ull;
+
+    File pf = file_of(sq);
+    Rank pr = rank_of(sq);
+
+    for (int i = 0; i < 4; ++i) {
+        Direction off_f = dirs[ISROOK][i][0];
+        Direction off_r = dirs[ISROOK][i][1];
+
+        File f=pf+off_f;
+        Rank r=pr+off_r;
+        for (; is_valid(r, f); f += off_f, r += off_r) {
+            const auto index = make_sq(f, r);
+            attacks|=1ULL<<index;
+            if (occupied&(1ULL<<index)) break;
+        }
+    }
+
+    return attacks;
+}
+TEST_CASE("attacks"){
+    std::random_device rd; 
+    std::mt19937_64 gen(rd()); 
+    std::uniform_int_distribution<uint64_t> dis;
+    for (Square sq=SQ_A1;sq<SQ_NONE;sq++){
+	for (int i=0;i<10000;i++){
+	    uint64_t bb=dis(gen)&dis(gen);
+            REQUIRE(attacks::bishop(sq,bb)==sliderAttacks<false>(sq,bb));
+	}
+    }
+    for (Square sq=SQ_A1;sq<SQ_NONE;sq++){
+	for (int i=0;i<10000;i++)
+	{
+	    uint64_t bb=dis(gen)&dis(gen);
+            REQUIRE(attacks::rook(sq,bb)==sliderAttacks<true>(sq,bb));
+	}
+    }
 }
 TEST_CASE("Castling move making FEN rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8") {
     std::string fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";

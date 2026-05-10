@@ -137,12 +137,6 @@ void check_perfts(std::vector<TestEntry<std::string, perft_t>> &entries) {
     auto start_time = high_resolution_clock::now();
     for (auto &entry : entries) {
         std::cerr << entry.input << " (chess960=true) " << entry.info.depth;
-#if !IS_RELEASE
-        if (entry.info.nodes > 1e6) {
-            std::cerr << "(skipped)\n";
-            continue;
-        }
-#endif
         std::cerr << '\n';
         {
             _Position<PolyglotPiece> pos(entry.input, true);
