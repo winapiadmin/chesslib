@@ -323,7 +323,7 @@ template <Color c> [[nodiscard]] constexpr Bitboard pawn(const Bitboard pawns) {
  * @tparam pt
  * @return
  */
-template <PieceType pt> [[nodiscard]] constexpr Bitboard slider(Square sq, Bitboard occupied) {
+template <PieceType pt> [[nodiscard]] inline Bitboard slider(Square sq, Bitboard occupied) {
     static_assert(pt == PieceType::BISHOP || pt == PieceType::ROOK || pt == PieceType::QUEEN, "PieceType must be a slider!");
 
     if constexpr (pt == PieceType::BISHOP)
