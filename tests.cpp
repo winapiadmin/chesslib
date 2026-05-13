@@ -386,8 +386,7 @@ template <bool ISROOK> [[nodiscard]] inline Bitboard sliderAttacks(Square sq, Bi
     return attacks;
 }
 TEST_CASE("attacks") {
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
+    std::mt19937_64 gen(19937);
     std::uniform_int_distribution<uint64_t> dis;
     for (Square sq = SQ_A1; sq < SQ_NONE; sq++) {
         for (int i = 0; i < 10000; i++) {
