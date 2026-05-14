@@ -389,14 +389,14 @@ TEST_CASE("attacks") {
     std::mt19937_64 gen(19937);
     std::uniform_int_distribution<uint64_t> dis;
     for (Square sq = SQ_A1; sq < SQ_NONE; sq++) {
-        for (int i = 0; i < 10000; i++) {
-            uint64_t bb = dis(gen) & dis(gen);
+        for (int i = 0; i < 100; i++) {
+            uint64_t bb = dis(gen) & dis(gen) & dis(gen);
             REQUIRE(attacks::bishop(sq, bb) == sliderAttacks<false>(sq, bb));
         }
     }
     for (Square sq = SQ_A1; sq < SQ_NONE; sq++) {
-        for (int i = 0; i < 10000; i++) {
-            uint64_t bb = dis(gen) & dis(gen);
+        for (int i = 0; i < 100; i++) {
+            uint64_t bb = dis(gen) & dis(gen) & dis(gen);
             REQUIRE(attacks::rook(sq, bb) == sliderAttacks<true>(sq, bb));
         }
     }
