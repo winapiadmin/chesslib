@@ -271,7 +271,7 @@ auto split_testcases(std::vector<TestEntry<std::string, perft_t>> &entries) {
             bucket3.push_back(e);
     }
 
-    size_t n1 = std::min(bucket1.size(), size_t(2000));
+    size_t n1 = std::min(bucket1.size(), size_t(1000));
     optimized.insert(optimized.end(), bucket1.begin(), bucket1.begin() + n1);
 
     size_t n2 = std::min(bucket2.size(), size_t(15));
@@ -575,6 +575,8 @@ TEST_CASE("Perfts" * doctest::timeout(36000)) {
         {                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  4,    197281 },
         {                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  5,   4865609 },
         {                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  6, 119060324 },
+        {                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  6, 119060324 },
+      { "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",7,3195901860},
         {               "rnbqkbnr/pppppppp/8/8/8/3P4/PPP1PPPP/RNBQKBNR b KQkq - 0 1",  4,    328511 },
         {             "rnbqkbnr/pp1ppppp/2p5/8/8/3P4/PPP1PPPP/RNBQKBNR w KQkq - 0 2",  3,     15206 },
         {               "rnbqkbnr/pp1ppppp/2p5/8/8/3P4/PPPKPPPP/RNBQ1BNR b kq - 1 2",  2,       463 },
@@ -621,7 +623,7 @@ TEST_CASE("Perfts" * doctest::timeout(36000)) {
         {         "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",  3,      9467 },
         {         "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",  4,    422333 },
         {         "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",  5,  15833292 },
-        //{ "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1", 6, 706045033 },
+        {         "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",  6, 706045033 },
         {         "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P1RPP/R2Q2K1 b kq - 1 1",  4,   2703427 },
         {          "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/5q2/Pp1P1RPP/R2Q2K1 w kq - 0 2",  3,     58801 },
         {          "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/5q2/Pp1P1RPP/R2Q1K2 b kq - 1 2",  2,      1732 },
@@ -632,7 +634,7 @@ TEST_CASE("Perfts" * doctest::timeout(36000)) {
         {         "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1",  3,      9467 },
         {         "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1",  4,    422333 },
         {         "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1",  5,  15833292 },
-        //{ "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1", 6, 706045033 }
+        {         "r2q1rk1/pP1p2pp/Q4n2/bbp1p3/Np6/1B3NBn/pPPP1PPP/R3K2R b KQ - 0 1",  6, 706045033 },
         {                "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",  1,        44 },
         {                "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",  2,      1486 },
         {                "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",  3,     62379 },
@@ -1476,7 +1478,6 @@ TEST_CASE("Perfts" * doctest::timeout(36000)) {
         {                                      "2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1",  4,    112556 },
         {                                      "2b5/2p5/8/8/5B1k/q7/2K5/8 w - - 0 1",  5,   1189238 },
         {                      "2K2q1q/2n4n/3qb3/1r2qq2/5n2/k4n2/r5Q1/1q6 w - - 0 1",  1,         0 }, // checkmate
-        // Pins (i noticed an desync of position.h that leaves pins unchanged)
         {                              "8/1Q1pkp1Q/3ppp2/8/1Q2Q2Q/4K3/8/8 w - - 0 1",  5,   6990511 },
         {                                    "8/3pkp2/3ppp2/8/1Q6/4K3/8/8 w - - 0 1",  5,    617665 },
         {                                         "7k/4p3/8/2KP3r/8/8/8/8 b - - 0 1",  5,    197176 },
