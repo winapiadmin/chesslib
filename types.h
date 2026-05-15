@@ -179,7 +179,6 @@ ENABLE_INCR_OPERATORS_ON(PieceType)
 ENABLE_INCR_OPERATORS_ON(Square)
 ENABLE_INCR_OPERATORS_ON(File)
 ENABLE_INCR_OPERATORS_ON(Rank)
-
 #undef ENABLE_INCR_OPERATORS_ON
 
 constexpr Direction operator+(Direction d1, Direction d2) { return Direction(int(d1) + int(d2)); }
@@ -190,12 +189,24 @@ constexpr Square operator+(Square s, Direction d) { return Square(int(s) + int(d
 constexpr Square operator-(Square s, Direction d) { return Square(int(s) - int(d)); }
 constexpr Square &operator+=(Square &s, Direction d) { return s = s + d; }
 constexpr Square &operator-=(Square &s, Direction d) { return s = s - d; }
-constexpr Rank operator+(Rank s, Direction d) { return Rank(int(s) + int(d)); }
-constexpr Rank operator-(Rank s, Direction d) { return Rank(int(s) - int(d)); }
+constexpr Rank operator+(Rank s, Direction d) {
+    assert(d == EAST || d == WEST || d == DIR_NONE);
+    return Rank(int(s) + int(d));
+}
+constexpr Rank operator-(Rank s, Direction d) {
+    assert(d == EAST || d == WEST || d == DIR_NONE);
+    return Rank(int(s) - int(d));
+}
 constexpr Rank &operator+=(Rank &s, Direction d) { return s = s + d; }
 constexpr Rank &operator-=(Rank &s, Direction d) { return s = s - d; }
-constexpr File operator+(File s, Direction d) { return File(int(s) + int(d)); }
-constexpr File operator-(File s, Direction d) { return File(int(s) - int(d)); }
+constexpr File operator+(File s, Direction d) {
+    assert(d == EAST || d == WEST || d == DIR_NONE);
+    return File(int(s) + int(d));
+}
+constexpr File operator-(File s, Direction d) {
+    assert(d == EAST || d == WEST || d == DIR_NONE);
+    return File(int(s) - int(d));
+}
 constexpr File &operator+=(File &s, Direction d) { return s = s + d; }
 constexpr File &operator-=(File &s, Direction d) { return s = s - d; }
 
