@@ -112,7 +112,7 @@ auto split_testcases(std::vector<TestEntry<std::string, perft_t>> &entries) {
             bucket3.push_back(e);
     }
 
-    size_t n1 = std::min(bucket1.size(), size_t(2000));
+    size_t n1 = std::min(bucket1.size(), size_t(1000));
     optimized.insert(optimized.end(), bucket1.begin(), bucket1.begin() + n1);
 
     size_t n2 = std::min(bucket2.size(), size_t(15));
