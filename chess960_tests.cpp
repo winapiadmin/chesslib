@@ -114,12 +114,20 @@ auto split_testcases(std::vector<TestEntry<std::string, perft_t>> &entries) {
 
     size_t n1 = std::min(bucket1.size(), size_t(1000));
     optimized.insert(optimized.end(), bucket1.begin(), bucket1.begin() + n1);
-
-    size_t n2 = std::min(bucket2.size(), size_t(defined(_WIN32) ? 5 : 15)); // GitHub Actions having slowdown on Windows runners
+    #if defined(_WIN32)
+    size_t size=5;
+    #else
+    size_t size=15;
+    #endif
+    size_t n2 = std::min(bucket2.size(), size); // GitHub Actions having slowdown on Windows runners
 
     optimized.insert(optimized.end(), bucket2.begin(), bucket2.begin() + n2);
-
-    size_t n3 = std::min(bucket3.size(), size_t(1));
+    #if defined(_WIN32)
+    size=0;
+    #else
+    size=1;
+    #endif
+    size_t n3 = std::min(bucket3.size(), size);
     if (n3 > 0) {
         optimized.insert(optimized.end(), bucket3.end() - n3, bucket3.end());
     }
