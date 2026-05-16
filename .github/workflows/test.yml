@@ -10,7 +10,31 @@ on:
       - '**.hpp'
 
 jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      commit_sha: ${{ steps.auto-commit.outputs.commit_hash }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+
+      - name: Run clang-format
+        run: clang-format -i $(git ls-files '*.cpp' '*.hpp' '*.h' '*.c')
+
+      - name: Commit and push changes
+        id: auto-commit
+        uses: stefanzweifel/git-auto-commit-action@v7
+
   build:
+    needs: format
     runs-on: ${{ matrix.os }}
 
     strategy:
