@@ -23,6 +23,7 @@
 #include "types.h"
 #include <array>
 #include <immintrin.h>
+#include <vector>
 namespace chess::attacks {
 // clang-format off
     // pre-calculated lookup table for pawn attacks
@@ -110,13 +111,9 @@ namespace chess::attacks {
         0x101010101010101,  0x202020202020202,  0x404040404040404,  0x808080808080808,
         0x1010101010101010, 0x2020202020202020, 0x4040404040404040, 0x8080808080808080,
     };
-    extern const std::array<uint64_t, 64> BishopMagics;
-    extern const std::array<uint64_t, 64> RookMagics;
 // clang-format on
 #ifdef __BMI2__
 constexpr uint64_t software_pext_u64(uint64_t val, uint64_t mask) {
-    if (!is_constant_evaluated())
-        return ~0ULL;
     uint64_t result = 0;
     uint64_t bit_position = 0;
 
@@ -153,10 +150,6 @@ struct Magic {
 
 } // namespace chess::attacks
 namespace chess::attacks {
-extern const std::array<Magic, 64> RookTable;
-extern const std::array<Bitboard, 0x19000> RookAttacks;
-extern const std::array<Magic, 64> BishopTable;
-extern const std::array<Bitboard, 0x1480> BishopAttacks;
 /**
  * @brief  Shifts a bitboard in a given direction
  * @tparam direction
@@ -293,16 +286,13 @@ template <Color c> [[nodiscard]] constexpr Bitboard pawn(const Bitboard pawns) {
     Bitboard h2 = l2 | r2;                                  // 2-square horizontal shifts
     return (h1 << 16) | (h1 >> 16) | (h2 << 8) | (h2 >> 8); // vertical shifts: +2,+1,-2,-1
 }
-
 /**
  * @brief Returns the bishop attacks for a given square
  * @param sq
  * @param occupied
  * @return
  */
-[[nodiscard]] constexpr Bitboard bishop(Square sq, Bitboard occupied) {
-    return BishopAttacks[BishopTable[(int)sq].index + BishopTable[(int)sq](occupied)];
-}
+[[nodiscard]] Bitboard bishop(Square sq, Bitboard occupied);
 
 /**
  * @brief Returns the rook attacks for a given square
@@ -310,17 +300,14 @@ template <Color c> [[nodiscard]] constexpr Bitboard pawn(const Bitboard pawns) {
  * @param occupied
  * @return
  */
-[[nodiscard]] constexpr Bitboard rook(Square sq, Bitboard occupied) {
-    return RookAttacks[RookTable[(int)sq].index + RookTable[(int)sq](occupied)];
-}
-
+[[nodiscard]] Bitboard rook(Square sq, Bitboard occupied);
 /**
  * @brief Returns the queen attacks for a given square
  * @param sq
  * @param occupied
  * @return
  */
-[[nodiscard]] constexpr Bitboard queen(Square sq, Bitboard occupied) { return bishop(sq, occupied) | rook(sq, occupied); }
+[[nodiscard]] inline Bitboard queen(Square sq, Bitboard occupied) { return bishop(sq, occupied) | rook(sq, occupied); }
 
 /**
  * @brief Returns the king attacks for a given square
@@ -336,7 +323,7 @@ template <Color c> [[nodiscard]] constexpr Bitboard pawn(const Bitboard pawns) {
  * @tparam pt
  * @return
  */
-template <PieceType pt> [[nodiscard]] constexpr Bitboard slider(Square sq, Bitboard occupied) {
+template <PieceType pt> [[nodiscard]] inline Bitboard slider(Square sq, Bitboard occupied) {
     static_assert(pt == PieceType::BISHOP || pt == PieceType::ROOK || pt == PieceType::QUEEN, "PieceType must be a slider!");
 
     if constexpr (pt == PieceType::BISHOP)

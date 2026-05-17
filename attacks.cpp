@@ -93,7 +93,7 @@ namespace chess::attacks {
 #ifndef GENERATE_AT_RUNTIME
 #define _POSSIBLY_CONSTEXPR constexpr
 #else
-#define _POSSIBLY_CONSTEXPR const
+#define _POSSIBLY_CONSTEXPR
 #endif
 // clang-format off
 _POSSIBLY_CONSTEXPR std::array<uint64_t, 64> RookMagics = {
@@ -140,7 +140,6 @@ _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, TableS
     std::array<Bitboard, TableSize> attacks{};
 
     size_t offset = 0;
-
     for (Square sq = SQ_A1; sq < SQ_NONE; ++sq) {
         Bitboard occ = 0;
         Bitboard edges = ((attacks::MASK_RANK[0] | attacks::MASK_RANK[7]) & ~attacks::MASK_RANK[rank_of(sq)]) |
@@ -165,6 +164,7 @@ _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, TableS
 
         // Carry-rippler loop over all blocker subsets
         occ = 0;
+
         do {
             size_t idx = entry(occ);
             attacks[offset + idx] = AttackFunc(static_cast<Square>(sq), occ);
@@ -173,7 +173,6 @@ _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, TableS
 
         offset += (1ULL << bits);
     }
-
     return std::pair{ table, attacks };
 }
 _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, 0x1480>> bishopData =
@@ -185,6 +184,26 @@ _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, 0x1900
     generate_magic_table<_chess::_HyperbolaRookAttacks, 0x19000, false>();
 _POSSIBLY_CONSTEXPR std::array<Magic, 64> RookTable = rookData.first;
 _POSSIBLY_CONSTEXPR std::array<Bitboard, 0x19000> RookAttacks = rookData.second;
+/**
+ * @brief Returns the bishop attacks for a given square
+ * @param sq
+ * @param occupied
+ * @return
+ */
+[[nodiscard]] Bitboard bishop(Square sq, Bitboard occupied) {
+    return BishopAttacks[BishopTable[(int)sq].index + BishopTable[(int)sq](occupied)];
+}
+
+/**
+ * @brief Returns the rook attacks for a given square
+ * @param sq
+ * @param occupied
+ * @return
+ */
+[[nodiscard]] Bitboard rook(Square sq, Bitboard occupied) {
+    return RookAttacks[RookTable[(int)sq].index + RookTable[(int)sq](occupied)];
+}
+
 } // namespace chess::attacks
 namespace chess::movegen {
 inline static Bitboard att(PieceType pt, Square sq, Bitboard occ) {

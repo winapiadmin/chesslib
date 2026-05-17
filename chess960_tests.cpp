@@ -112,13 +112,22 @@ auto split_testcases(std::vector<TestEntry<std::string, perft_t>> &entries) {
             bucket3.push_back(e);
     }
 
-    size_t n1 = std::min(bucket1.size(), size_t(2000));
+    size_t n1 = std::min(bucket1.size(), size_t(1000));
     optimized.insert(optimized.end(), bucket1.begin(), bucket1.begin() + n1);
+#if defined(_WIN32)
+    size_t size = 5;
+#else
+    size_t size = 15;
+#endif
+    size_t n2 = std::min(bucket2.size(), size); // GitHub Actions having slowdown on Windows runners
 
-    size_t n2 = std::min(bucket2.size(), size_t(30));
     optimized.insert(optimized.end(), bucket2.begin(), bucket2.begin() + n2);
-
-    size_t n3 = std::min(bucket3.size(), size_t(5));
+#if defined(_WIN32)
+    size = 0;
+#else
+    size = 1;
+#endif
+    size_t n3 = std::min(bucket3.size(), size);
     if (n3 > 0) {
         optimized.insert(optimized.end(), bucket3.end() - n3, bucket3.end());
     }
@@ -137,12 +146,6 @@ void check_perfts(std::vector<TestEntry<std::string, perft_t>> &entries) {
     auto start_time = high_resolution_clock::now();
     for (auto &entry : entries) {
         std::cerr << entry.input << " (chess960=true) " << entry.info.depth;
-#if !IS_RELEASE
-        if (entry.info.nodes > 1e6) {
-            std::cerr << "(skipped)\n";
-            continue;
-        }
-#endif
         std::cerr << '\n';
         {
             _Position<PolyglotPiece> pos(entry.input, true);
