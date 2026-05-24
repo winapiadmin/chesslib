@@ -278,8 +278,18 @@ constexpr File &operator-=(File &s, Direction d) { return s = s - d; }
 /// @enum PolyglotPiece
 /// @brief Piece encoding compatible with Polyglot opening books.
 enum class PolyglotPiece : uint8_t {
-    WPAWN = 1, WKNIGHT = 3, WBISHOP = 5, WROOK = 7, WQUEEN = 9, WKING = 11,
-    BPAWN = 0, BKNIGHT = 2, BBISHOP = 4, BROOK = 6, BQUEEN = 8, BKING = 10,
+    WPAWN = 1,
+    WKNIGHT = 3,
+    WBISHOP = 5,
+    WROOK = 7,
+    WQUEEN = 9,
+    WKING = 11,
+    BPAWN = 0,
+    BKNIGHT = 2,
+    BBISHOP = 4,
+    BROOK = 6,
+    BQUEEN = 8,
+    BKING = 10,
     NO_PIECE = 12,
     PIECE_NB = 12
 };
@@ -288,16 +298,36 @@ enum class PolyglotPiece : uint8_t {
 /// @brief Default engine piece encoding with 8 values per colour.
 enum class EnginePiece : uint8_t {
     NO_PIECE,
-    WPAWN = PAWN + 0, WKNIGHT, WBISHOP, WROOK, WQUEEN, WKING,
-    BPAWN = PAWN + 8, BKNIGHT, BBISHOP, BROOK, BQUEEN, BKING,
+    WPAWN = PAWN + 0,
+    WKNIGHT,
+    WBISHOP,
+    WROOK,
+    WQUEEN,
+    WKING,
+    BPAWN = PAWN + 8,
+    BKNIGHT,
+    BBISHOP,
+    BROOK,
+    BQUEEN,
+    BKING,
     PIECE_NB = 16
 };
 
 /// @enum ContiguousMappingPiece
 /// @brief Compact piece encoding (0-5 = white, 6-11 = black).
 enum class ContiguousMappingPiece : uint8_t {
-    WPAWN = 0, WKNIGHT = 1, WBISHOP = 2, WROOK = 3, WQUEEN = 4, WKING = 5,
-    BPAWN = 6, BKNIGHT = 7, BBISHOP = 8, BROOK = 9, BQUEEN = 10, BKING = 11,
+    WPAWN = 0,
+    WKNIGHT = 1,
+    WBISHOP = 2,
+    WROOK = 3,
+    WQUEEN = 4,
+    WKING = 5,
+    BPAWN = 6,
+    BKNIGHT = 7,
+    BBISHOP = 8,
+    BROOK = 9,
+    BQUEEN = 10,
+    BKING = 11,
     NO_PIECE = 12,
     PIECE_NB = 12
 };
