@@ -599,7 +599,8 @@ constexpr Square parse_square(std::string_view sv) {
 constexpr PieceType parse_pt(unsigned char c) {
     const char a[] = "pnbrqk";
     int p = -1;
-    if (c >= 'A' && c <= 'Z') c += 32;
+    if (c >= 'A' && c <= 'Z')
+        c += 32;
     for (size_t i = 0; i < sizeof(a); i++) {
         if (c == a[i])
             p = i;

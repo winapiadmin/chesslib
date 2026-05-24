@@ -262,11 +262,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Bitboard of a piece type for a colour (compile-time colour).
     template <PieceType pt> [[nodiscard]] inline Bitboard pieces(Color c) const {
-        #if defined(_CHESSLIB_ERROR_MODE_ASSERTS)
+#if defined(_CHESSLIB_ERROR_MODE_ASSERTS)
         assert(c != COLOR_NB && "color is COLOR_NB");
-        #elif defined(_CHESSLIB_ERROR_MODE_THROWS)
-        if (c == COLOR_NB) throw std::runtime_error("color is COLOR_NB");
-        #endif
+#elif defined(_CHESSLIB_ERROR_MODE_THROWS)
+        if (c == COLOR_NB)
+            throw std::runtime_error("color is COLOR_NB");
+#endif
         if constexpr (pt == PIECE_TYPE_NB || pt == ALL_PIECES)
             return occ(c);
         return state().pieces[pt] & state().occ[c];
@@ -290,11 +291,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Bitboard of a piece type for a colour (runtime both).
     [[nodiscard]] inline Bitboard pieces(PieceType pt, Color c) const {
-        #if defined(_CHESSLIB_ERROR_MODE_ASSERTS)
+#if defined(_CHESSLIB_ERROR_MODE_ASSERTS)
         assert(c != COLOR_NB && "color is COLOR_NB");
-        #elif defined(_CHESSLIB_ERROR_MODE_THROWS)
-        if (c == COLOR_NB) throw std::runtime_error("color is COLOR_NB");
-        #endif
+#elif defined(_CHESSLIB_ERROR_MODE_THROWS)
+        if (c == COLOR_NB)
+            throw std::runtime_error("color is COLOR_NB");
+#endif
         switch (pt) {
         case PIECE_TYPE_NB:
         case ALL_PIECES:
@@ -437,11 +439,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Piece on a square.
     inline PieceC piece_on(Square s) const {
-        #if defined(_CHESSLIB_ERROR_MODE_ASSERTS)
+#if defined(_CHESSLIB_ERROR_MODE_ASSERTS)
         assert(chess::is_valid(sq) && "sq is out-of-bounds");
-        #elif defined(_CHESSLIB_ERROR_MODE_THROWS)
-        if (!chess::is_valid(sq)) throw std::runtime_error("sq is out-of-bounds");
-        #endif
+#elif defined(_CHESSLIB_ERROR_MODE_THROWS)
+        if (!chess::is_valid(sq))
+            throw std::runtime_error("sq is out-of-bounds");
+#endif
 #if !defined(_DEBUG) || defined(NDEBUG)
         return pieces_list[s];
 #else
@@ -463,7 +466,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 #if defined(_CHESSLIB_ERROR_MODE_ASSERTS)
         assert(p == _p2 && "Inconsistient piece map");
 #elif defined(_CHESSLIB_ERROR_MODE_THROWS)
-        if (p != _p2) throw std::runtime_error("Inconsistient piece map");
+        if (p != _p2)
+            throw std::runtime_error("Inconsistient piece map");
 #endif
         return p;
 #endif
@@ -588,7 +592,9 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     /// @brief Whether there has been at least one repetition since the last capture or pawn move.
     inline bool has_repeated() const {
         auto idx = history.size() - 1;
-        int end = std::min({static_cast<int>(rule50_count()), static_cast<int>(state().pliesFromNull), static_cast<int>(history.size()) - 1});
+        int end = std::min({ static_cast<int>(rule50_count()),
+                             static_cast<int>(state().pliesFromNull),
+                             static_cast<int>(history.size()) - 1 });
         while (end-- >= 4) {
             if (history[idx].repetition)
                 return true;

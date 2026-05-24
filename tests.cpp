@@ -1513,10 +1513,10 @@ TEST_CASE("Double setFEN reinitializes castling metadata") {
         p.setFEN("r3k2r/8/8/8/8/8/8/R3K2R w Q - 0 1");
         auto meta_w = p.getCastlingMetadata(WHITE);
         REQUIRE(meta_w.king_start == SQ_E1);
-        REQUIRE(meta_w.rook_start_ks == SQ_NONE);  // no kingside
+        REQUIRE(meta_w.rook_start_ks == SQ_NONE); // no kingside
         REQUIRE(meta_w.rook_start_qs == SQ_A1);
         auto meta_b = p.getCastlingMetadata(BLACK);
-        REQUIRE(meta_b.king_start == SQ_NONE);     // black not set
+        REQUIRE(meta_b.king_start == SQ_NONE); // black not set
         REQUIRE(meta_b.rook_start_ks == SQ_NONE);
         REQUIRE(meta_b.rook_start_qs == SQ_NONE);
     }
@@ -1565,8 +1565,8 @@ TEST_CASE("Draw detection") {
 
         // K+B vs K
         Position p2("4k3/8/8/8/5B2/8/8/4K3 w - - 0 1");
-        CHECK(p2.is_insufficient_material(WHITE));  // white has K+B
-        CHECK(p2.is_insufficient_material());        // both sides insufficient
+        CHECK(p2.is_insufficient_material(WHITE)); // white has K+B
+        CHECK(p2.is_insufficient_material());      // both sides insufficient
         // Actually K+B vs K is draw
         CHECK(p2.is_insufficient_material());
 
@@ -1644,8 +1644,8 @@ TEST_CASE("Draw detection") {
     // is_draw / fifty/seventy-five/fivefold
     {
         Position p;
-        CHECK_FALSE(p.is_draw(5));           // opening, not draw
-        CHECK_FALSE(p.is_fifty_moves());      // half-move clock = 0
+        CHECK_FALSE(p.is_draw(5));       // opening, not draw
+        CHECK_FALSE(p.is_fifty_moves()); // half-move clock = 0
         CHECK_FALSE(p.is_seventyfive_moves());
         CHECK_FALSE(p.is_fivefold_repetition());
         CHECK_FALSE(p.isHalfMoveDraw());
@@ -1662,7 +1662,7 @@ TEST_CASE("Material and position queries") {
         Position p2("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1");
         Key k2 = p2.material_key();
 
-        CHECK(k1 == k2);  // material key independent of turn
+        CHECK(k1 == k2); // material key independent of turn
 
         // EP square present
         Position p3("rnbqkbnr/1ppppppp/8/8/4Pp2/8/PPPP1PPP/RNBQKBNR w KQkq e3 0 1");
@@ -1953,8 +1953,8 @@ TEST_CASE("Move utility methods") {
 
     // from_to
     Move m1(SQ_E2, SQ_E4);
-    CHECK((m1.from_to() & 0x3F) == SQ_E4);  // lower 6 = to
-    CHECK(((m1.from_to() >> 6) & 0x3F) == SQ_E2);  // next 6 = from
+    CHECK((m1.from_to() & 0x3F) == SQ_E4);        // lower 6 = to
+    CHECK(((m1.from_to() >> 6) & 0x3F) == SQ_E2); // next 6 = from
 
     // promotion_type
     Move promQ = Move::make<PROMOTION>(SQ_E7, SQ_E8, QUEEN);
@@ -1967,7 +1967,7 @@ TEST_CASE("Move utility methods") {
     CHECK(promR.promotion_type() == ROOK);
 
     // raw encoding
-    CHECK(Move(SQ_A1, SQ_A2).raw() == 65);  // 1 << 6 | 1 = 65
+    CHECK(Move(SQ_A1, SQ_A2).raw() == 65); // 1 << 6 | 1 = 65
     CHECK(Move::null().raw() == 65);
     CHECK(Move::none().raw() == 0);
 
@@ -1985,48 +1985,64 @@ TEST_CASE("Move utility methods") {
 TEST_CASE("Stream operators") {
     std::ostringstream os;
     // Color
-    os.str(""); os << WHITE;
+    os.str("");
+    os << WHITE;
     CHECK(os.str() == "WHITE");
-    os.str(""); os << BLACK;
+    os.str("");
+    os << BLACK;
     CHECK(os.str() == "BLACK");
 
     // Move
-    os.str(""); os << Move::make<PROMOTION>(SQ_E7, SQ_E8, QUEEN);
+    os.str("");
+    os << Move::make<PROMOTION>(SQ_E7, SQ_E8, QUEEN);
     CHECK(os.str() == "e7e8q");
 
     // CastlingRights
-    os.str(""); os << CastlingRights(WHITE_OO);
+    os.str("");
+    os << CastlingRights(WHITE_OO);
     CHECK(os.str() == "K");
-    os.str(""); os << CastlingRights(WHITE_OOO);
+    os.str("");
+    os << CastlingRights(WHITE_OOO);
     CHECK(os.str() == "Q");
-    os.str(""); os << CastlingRights(BLACK_OO);
+    os.str("");
+    os << CastlingRights(BLACK_OO);
     CHECK(os.str() == "k");
-    os.str(""); os << CastlingRights(BLACK_OOO);
+    os.str("");
+    os << CastlingRights(BLACK_OOO);
     CHECK(os.str() == "q");
-    os.str(""); os << CastlingRights(KING_SIDE);
+    os.str("");
+    os << CastlingRights(KING_SIDE);
     CHECK(os.str() == "Kk");
-    os.str(""); os << CastlingRights(NO_CASTLING);
+    os.str("");
+    os << CastlingRights(NO_CASTLING);
     CHECK(os.str() == "-");
 
     // Square
-    os.str(""); os << SQ_A1;
+    os.str("");
+    os << SQ_A1;
     CHECK(os.str() == "a1");
-    os.str(""); os << SQ_H8;
+    os.str("");
+    os << SQ_H8;
     CHECK(os.str() == "h8");
-    os.str(""); os << SQ_E4;
+    os.str("");
+    os << SQ_E4;
     CHECK(os.str() == "e4");
 
     // PieceType
-    os.str(""); os << PAWN;
+    os.str("");
+    os << PAWN;
     CHECK(os.str() == "PAWN");
-    os.str(""); os << KNIGHT;
+    os.str("");
+    os << KNIGHT;
     CHECK(os.str() == "KNIGHT");
-    os.str(""); os << KING;
+    os.str("");
+    os << KING;
     CHECK(os.str() == "KING");
 
     // Position
     Position pos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    os.str(""); os << pos;
+    os.str("");
+    os << pos;
     CHECK_FALSE(os.str().empty());
     // Board should contain piece characters
     CHECK(os.str().find('r') != std::string::npos);

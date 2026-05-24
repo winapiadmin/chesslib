@@ -32,10 +32,12 @@
 #include <stdexcept>
 #include <utility>
 
-#if defined(_CHESSLIB_ERROR_MODE_THROW)	
-#define INVALID_ARG_IF(c, exception) if (c) throw (exception)
+#if defined(_CHESSLIB_ERROR_MODE_THROW)
+#define INVALID_ARG_IF(c, exception)                                                                                           \
+    if (c)                                                                                                                     \
+    throw(exception)
 #elif defined(_CHESSLIB_ERROR_MODE_ASSERT)
-#define INVALID_ARG_IF(c,exception) assert(!(c) && #exception);
+#define INVALID_ARG_IF(c, exception) assert(!(c) && #exception);
 #endif
 namespace chess {
 
@@ -331,7 +333,8 @@ void _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
     } else if (active_color == "b") {
         state().turn = BLACK;
     } else {
-        INVALID_ARG_IF(active_color != "w" && active_color != "b", std::runtime_error("Expected white or black, got something else."));
+        INVALID_ARG_IF(active_color != "w" && active_color != "b",
+                       std::runtime_error("Expected white or black, got something else."));
     }
 
     // 3. Castling rights
