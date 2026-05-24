@@ -16,7 +16,7 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#define DOCTEST_CONFIG_IMPLEMENT
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
 #include "moves_io.h"
 #include "position.h"
@@ -135,6 +135,20 @@ auto split_testcases(std::vector<TestEntry<std::string, perft_t>> &entries) {
     return optimized;
 }
 #endif
+template <typename T, MoveGenType mt, bool EnableDiv>
+void check_perft_type(TestEntry<std::string, perft_t> &entry, uint64_t &nodes) {
+    _Position<T> pos(entry.input, true);
+    REQUIRE(perft<T, mt, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
+    nodes += entry.info.nodes;
+    if (entry.info.nodes < 5e6) {
+        _Position<T> pos2 = pos;
+        REQUIRE(pos.fen() == pos2.fen());
+        REQUIRE(perft<T, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
+        nodes += entry.info.nodes;
+    } else {
+        std::cerr << "\n(skipped copying test)\n";
+    }
+}
 template <MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false>
 void check_perfts(std::vector<TestEntry<std::string, perft_t>> &entries) {
     uint64_t nodes = 0;
@@ -147,45 +161,9 @@ void check_perfts(std::vector<TestEntry<std::string, perft_t>> &entries) {
     for (auto &entry : entries) {
         std::cerr << entry.input << " (chess960=true) " << entry.info.depth;
         std::cerr << '\n';
-        {
-            _Position<PolyglotPiece> pos(entry.input, true);
-            REQUIRE(perft<PolyglotPiece, mt, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
-            nodes += entry.info.nodes;
-            if (entry.info.nodes < 5e6) {
-                _Position<PolyglotPiece> pos2 = pos;
-                REQUIRE(pos.fen() == pos2.fen());
-                REQUIRE(perft<PolyglotPiece, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
-                nodes += entry.info.nodes;
-            } else {
-                std::cerr << "\n(skipped copying test)\n";
-            }
-        }
-        {
-            _Position<EnginePiece> pos(entry.input, true);
-            REQUIRE(perft<EnginePiece, mt, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
-            nodes += entry.info.nodes;
-            if (entry.info.nodes < 5e6) {
-                _Position<EnginePiece> pos2 = pos;
-                REQUIRE(pos.fen() == pos2.fen());
-                REQUIRE(perft<EnginePiece, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
-                nodes += entry.info.nodes;
-            } else {
-                std::cerr << "\n(skipped copying test)\n";
-            }
-        }
-        {
-            _Position<ContiguousMappingPiece> pos(entry.input, true);
-            REQUIRE(perft<ContiguousMappingPiece, mt, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
-            nodes += entry.info.nodes;
-            if (entry.info.nodes < 5e6) {
-                _Position<ContiguousMappingPiece> pos2 = pos;
-                REQUIRE(pos.fen() == pos2.fen());
-                REQUIRE(perft<ContiguousMappingPiece, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
-                nodes += entry.info.nodes;
-            } else {
-                std::cerr << "\n(skipped copying test)\n";
-            }
-        }
+        check_perft_type<PolyglotPiece, mt, EnableDiv>(entry, nodes);
+        check_perft_type<EnginePiece, mt, EnableDiv>(entry, nodes);
+        check_perft_type<ContiguousMappingPiece, mt, EnableDiv>(entry, nodes);
     }
     auto end_time = high_resolution_clock::now();
     elapsed = duration<double>(end_time - start_time).count();
@@ -5957,10 +5935,95 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
     };
     check_perfts(tests);
 }
-int main(int argc, char **argv) {
-    doctest::Context ctx;
-    ctx.setOption("success", true);
-    ctx.setOption("no-breaks", true);
-    ctx.setOption("abort-after", 1);
-    return ctx.run();
+TEST_CASE("Chess960 double setFEN reinitializes castling metadata") {
+    {
+        // Chess960 position → Chess960 position (different castling)
+        // GEge: G/kingside rook on G file, E/queenside rook on E file; king at F1/F8
+        Position p("n1bqrkrb/pppppppp/8/8/8/8/PPPPPPPP/N1BQRKRB w GEge - 0 1", true);
+        auto meta_w = p.getCastlingMetadata(WHITE);
+        auto meta_b = p.getCastlingMetadata(BLACK);
+        REQUIRE(meta_w.king_start == SQ_F1);
+        REQUIRE(meta_w.rook_start_ks == SQ_G1);
+        REQUIRE(meta_w.rook_start_qs == SQ_E1);
+        REQUIRE(meta_b.king_start == SQ_F8);
+        REQUIRE(meta_b.rook_start_ks == SQ_G8);
+        REQUIRE(meta_b.rook_start_qs == SQ_E8);
+
+        // Q1NBBRKR: Q A1, . B1, N C1, B D1, B E1, R F1, K G1, R H1 → HFhf → king=G1, rook_ks=H1, rook_qs=F1
+        p.setFEN("qnnbbrkr/1p2ppp1/2pp3p/p7/1P5P/2NP4/P1P1PPP1/Q1NBBRKR w HFhf - 0 9", true);
+        meta_w = p.getCastlingMetadata(WHITE);
+        meta_b = p.getCastlingMetadata(BLACK);
+        REQUIRE(meta_w.king_start == SQ_G1);
+        REQUIRE(meta_w.rook_start_ks == SQ_H1);
+        REQUIRE(meta_w.rook_start_qs == SQ_F1);
+        REQUIRE(meta_b.king_start == SQ_G8);
+        REQUIRE(meta_b.rook_start_ks == SQ_H8);
+        REQUIRE(meta_b.rook_start_qs == SQ_F8);
+    }
+    {
+        // Standard → Chess960 → Standard
+        // BQ1BNRKR: B A1, Q B1, . C1, B D1, N E1, R F1, K G1, R H1 → HFhf → king=G1, rook_ks=H1, rook_qs=F1
+        Position p("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        p.setFEN("bqnb1rkr/pp3ppp/3ppn2/2p5/5P2/P2P4/NPP1P1PP/BQ1BNRKR w HFhf - 2 9", true);
+        auto meta_w = p.getCastlingMetadata(WHITE);
+        REQUIRE(meta_w.king_start == SQ_G1);
+        REQUIRE(meta_w.rook_start_ks == SQ_H1);
+        REQUIRE(meta_w.rook_start_qs == SQ_F1);
+
+        p.setFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        meta_w = p.getCastlingMetadata(WHITE);
+        REQUIRE(meta_w.king_start == SQ_E1);
+        REQUIRE(meta_w.rook_start_ks == SQ_H1);
+        REQUIRE(meta_w.rook_start_qs == SQ_A1);
+    }
+    {
+        // Chess960 → no castling → Chess960
+        // QNBBNRKR: Q A1, N B1, B C1, B D1, N E1, R F1, K G1, R H1 → HFhf → king=G1
+        Position p("1nbbnrkr/p1p1ppp1/3p4/1p3P1p/3Pq2P/8/PPP1P1P1/QNBBNRKR w HFhf - 0 9", true);
+        REQUIRE(p.getCastlingMetadata(WHITE).king_start == SQ_G1);
+
+        p.setFEN("4k3/8/8/8/8/8/8/4K3 w - - 0 1");
+        REQUIRE(p.getCastlingMetadata(WHITE).king_start == SQ_NONE);
+        REQUIRE(p.getCastlingMetadata(BLACK).king_start == SQ_NONE);
+
+        // 1BNNBRKR: . A1, B B1, N C1, N D1, B E1, R F1, K G1, R H1 → HFhf → king=G1, rook_ks=H1, rook_qs=F1
+        p.setFEN("qbn1brkr/ppp1p1p1/2n4p/3p1p2/P7/6PP/QPPPPP2/1BNNBRKR w HFhf - 0 9", true);
+        auto meta_w = p.getCastlingMetadata(WHITE);
+        REQUIRE(meta_w.king_start == SQ_G1);
+        REQUIRE(meta_w.rook_start_ks == SQ_H1);
+        REQUIRE(meta_w.rook_start_qs == SQ_F1);
+    }
+    {
+        // Chess960 with "Kk": white kingside + black kingside only
+        Position p("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1");
+        p.setFEN("r3k2r/8/8/8/8/8/8/R3K2R w Kk - 0 1", true);
+        auto meta_w = p.getCastlingMetadata(WHITE);
+        REQUIRE(meta_w.king_start == SQ_E1);
+        REQUIRE(meta_w.rook_start_ks == SQ_H1);
+        REQUIRE(meta_w.rook_start_qs == SQ_NONE);
+        auto meta_b = p.getCastlingMetadata(BLACK);
+        REQUIRE(meta_b.king_start == SQ_E8);
+        REQUIRE(meta_b.rook_start_ks == SQ_H8);
+        REQUIRE(meta_b.rook_start_qs == SQ_NONE);
+    }
+    {
+        // Chess960 with non-standard rook placements
+        Position p("r1bqkb1r/pppppppp/2n2n2/8/8/2N2N2/PPPPPPPP/R1BQKB1R w KQkq - 0 1");
+        p.setFEN("n1bqrkrb/pppppppp/8/8/8/8/PPPPPPPP/N1BQRKRB w GEge - 0 1", true);
+        auto meta_w = p.getCastlingMetadata(WHITE);
+        REQUIRE(meta_w.king_start == SQ_F1);
+        REQUIRE(meta_w.rook_start_ks == SQ_G1);
+        REQUIRE(meta_w.rook_start_qs == SQ_E1);
+        auto meta_b = p.getCastlingMetadata(BLACK);
+        REQUIRE(meta_b.king_start == SQ_F8);
+        REQUIRE(meta_b.rook_start_ks == SQ_G8);
+        REQUIRE(meta_b.rook_start_qs == SQ_E8);
+
+        // 1BNNBRKR: . A1, B B1, N C1, N D1, B E1, R F1, K G1, R H1 → HFhf → king=G1, rook_ks=H1, rook_qs=F1
+        p.setFEN("qbn1brkr/ppp1p1p1/2n4p/3p1p2/P7/6PP/QPPPPP2/1BNNBRKR w HFhf - 0 9", true);
+        meta_w = p.getCastlingMetadata(WHITE);
+        REQUIRE(meta_w.king_start == SQ_G1);
+        REQUIRE(meta_w.rook_start_ks == SQ_H1);
+        REQUIRE(meta_w.rook_start_qs == SQ_F1);
+    }
 }

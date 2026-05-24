@@ -33,7 +33,7 @@ namespace chess {
 /// @return Reference to the stream.
 std::ostream &operator<<(std::ostream &os, const Move mv);
 
-/// @brief Print a Color ("white" or "black").
+/// @brief Print a Color ("WHITE" or "BLACK").
 std::ostream &operator<<(std::ostream &os, const Color c);
 
 /// @brief Print CastlingRights (e.g. "KQkq").
@@ -46,7 +46,7 @@ std::ostream &operator<<(std::ostream &os, PieceC p);
 /// @brief Print a square (e.g. "e4").
 std::ostream &operator<<(std::ostream &os, const Square sq);
 
-/// @brief Print a PieceType (e.g. "Pawn", "Knight").
+/// @brief Print a PieceType (e.g. "PAWN", "KNIGHT").
 std::ostream &operator<<(std::ostream &os, const PieceType pt);
 
 template <typename T, typename> class _Position;

@@ -28,14 +28,16 @@
 #include "types.h"
 #include <algorithm>
 #include <string_view>
-#if defined(__EXCEPTIONS)
-#define THROW_IF_EXCEPTIONS_ON(stuff) throw stuff
+#if defined(_CHESSLIB_ERROR_MODE_THROW)	
+#define INVALID_ARG_IF(c, exception) if (c) throw (exception)
+#elif defined(_CHESSLIB_ERROR_MODE_ASSERT)
+#define INVALID_ARG_IF(c,exception) assert(!(c) && #exception);
 #else
-#define THROW_IF_EXCEPTIONS_ON(stuff) ((void)0)
+#define INVALID_ARG_IF(a,b)
 #endif
 namespace chess {
 namespace uci {
-/// @brief Convert a Square to algebraic notation string (e.g. 0→"a1").
+/// @brief Convert a Square to algebraic notation string (e.g. 0 -> "a1").
 std::string squareToString(Square sq) {
     constexpr std::string_view fileChars[65] = {
         "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1", "a2", "b2", "c2", "d2", "e2", "f2",  "g2", "h2", "a3",
@@ -77,12 +79,7 @@ std::string moveToUci(Move mv, bool chess960) {
                 move += "c8"; // black queenside castling
                 break;
             default:
-#if defined(_DEBUG) || !defined(NDEBUG)
-                assert(false && "this isn't chess960");
-#else
-                THROW_IF_EXCEPTIONS_ON(IllegalMoveException("this isn't chess960"));
-                break;
-#endif
+                INVALID_ARG_IF(false, std::runtime_error("This isn't Chess960"));
             }
         }
     } break;
@@ -99,7 +96,7 @@ std::string moveToUci(Move mv, bool chess960) {
 /// @brief Convert a UCI string (e.g. "e2e4") to a Move object.
 template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std::string_view uci) {
     if (uci.length() < 4) {
-        THROW_IF_EXCEPTIONS_ON(IllegalMoveException("example: a2a4 or d7d8q"));
+        INVALID_ARG_IF(uci.length() < 4, IllegalMoveException("example: a2a4 or d7d8q"));
         return Move::NO_MOVE;
     }
 
@@ -107,13 +104,13 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
     Square target = parse_square(uci.substr(2, 2));
 
     if (!is_valid(source) || !is_valid(target)) {
-        THROW_IF_EXCEPTIONS_ON(IllegalMoveException("source !in [a1, h8], target !in [a1, h8]"));
+        INVALID_ARG_IF(!is_valid(source) || !is_valid(target), IllegalMoveException("source !in [a1, h8], target !in [a1, h8]"));
         return Move::NO_MOVE;
     }
     auto move = (uci.length() == 4) ? Move::make(source, target) : Move::NO_MOVE;
     auto pt = piece_of(pos.at(source));
     if (pt == NO_PIECE_TYPE) {
-        THROW_IF_EXCEPTIONS_ON(IllegalMoveException("source need to be a existing piece, got nothing"));
+        INVALID_ARG_IF(pt == NO_PIECE_TYPE, IllegalMoveException("source need to be a existing piece, got nothing"));
         return Move::NO_MOVE;
     }
     // castling in chess960
@@ -138,11 +135,7 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
         auto promotion = parse_pt(uci[4]);
 
         if (promotion == NO_PIECE_TYPE || promotion == KING || promotion == PAWN) {
-#if defined(_DEBUG) || !defined(NDEBUG)
-            assert(false && "promotions: [NRBQ]");
-#else
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("promotions: [NRBQ]"));
-#endif
+            INVALID_ARG_IF(promotion == NO_PIECE_TYPE || promotion == KING || promotion == PAWN, IllegalMoveException("promotions: [NRBQ]"));
             return Move::NO_MOVE;
         }
 
@@ -151,12 +144,7 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
     Movelist moves;
     pos.legals(moves);
     auto it = std::find(moves.begin(), moves.end(), move);
-#if defined(_DEBUG) || !defined(NDEBUG)
-    assert(it != moves.end() && "Move is illegal");
-#else
-    if (it == moves.end())
-        THROW_IF_EXCEPTIONS_ON(IllegalMoveException("Move is illegal"));
-#endif
+    INVALID_ARG_IF(it == moves.end(), IllegalMoveException("Move is illegal"));
     return move;
 }
 /// @brief Parse a SAN (Standard Algebraic Notation) move string.
@@ -178,7 +166,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
 
             if (std::find(moves.begin(), moves.end(), km) != moves.end())
                 return km;
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));
+            INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));
             return Move::none();
         }
         if (san == "O-O-O" || san == "0-0-0" || san == "O-O-O+" || san == "0-0-0+" || san == "O-O-O#" || san == "0-0-0#") {
@@ -188,7 +176,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
 
             if (std::find(moves.begin(), moves.end(), qm) != moves.end())
                 return qm;
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));
+            INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));
             return Move::none();
         }
         // 2) Strip trailing annotations (+, #) that aren't required in the standard (except "e.p. "). Repeated occurrences too.
@@ -200,7 +188,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
                 break;
         }
         if (san.empty()) {
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));
+            INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));
             return Move::none();
         }
 
@@ -213,7 +201,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
             if (penult == '=') {
                 promotion = parse_pt(last);
                 if (promotion == NO_PIECE_TYPE) {
-                    THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+                    INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
                     return Move::none();
                 }
                 san.pop_back(); // remove piece letter
@@ -228,17 +216,17 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
 
         // 4) Destination square: always the last [file][rank]
         if (san.size() < 2)
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+            INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
         char dfile = san[san.size() - 2];
         char drank = san[san.size() - 1];
         if (!(dfile >= 'a' && dfile <= 'h' && drank >= '1' && drank <= '8')) {
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+            INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
             return Move::none();
         }
         std::string dest_sq_str = san.substr(san.size() - 2, 2);
         Square to_square = parse_square(dest_sq_str);
         if (to_square == SQ_NONE) {
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+            INVALID_ARG_IF(to_square == SQ_NONE, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
             return Move::none();
         }
         san.resize(san.size() - 2); // chop off destination
@@ -265,7 +253,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
                 std::string src_sq_str = prefix.substr(prefix.size() - 2, 2);
                 src_square = parse_square(src_sq_str);
                 if (src_square == SQ_NONE) {
-                    THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+                    INVALID_ARG_IF(src_square == SQ_NONE, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
                     return Move::none();
                 }
                 prefix.resize(prefix.size() - 2);
@@ -297,7 +285,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
                 dis_rank = c - '1';
             else {
                 // unexpected char in prefix
-                THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+                INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
                 return Move::none();
             }
         }
@@ -357,7 +345,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
 
             // Everything matches -> accept candidate
             if (found) {
-                THROW_IF_EXCEPTIONS_ON(AmbiguousMoveException("ambiguous san: '" + _san + "' in " + pos.fen()));
+                INVALID_ARG_IF(found, AmbiguousMoveException("ambiguous san: '" + _san + "' in " + pos.fen()));
                 return Move::none();
             }
             matched = m;
@@ -365,13 +353,14 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
         }
 
         if (!found) {
-            THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+            INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
             return Move::none();
         }
 
         return matched;
     };
 
+    #if !defined(_CHESSLIB_ERROR_MODE_THROW)
     if (remove_illegals) {
         std::string trimmed_san(raw_san);
         while (!trimmed_san.empty()) {
@@ -383,11 +372,11 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
             }
             trimmed_san.pop_back();
         }
-        THROW_IF_EXCEPTIONS_ON(IllegalMoveException("illegal san: '" + std::string(raw_san) + "' in " + pos.fen()));
+        INVALID_ARG_IF(trimmed_san.empty(), IllegalMoveException("illegal san: '" + std::string(raw_san) + "' in " + pos.fen()));
         return Move::none();
-    } else {
-        return do_parse(raw_san);
-    }
+    } else 
+    #endif
+    return do_parse(raw_san);
 }
 /// @brief Convert a Move to SAN or LAN (Long Algebraic Notation) string.
 template <typename T, typename P> std::string moveToSan(const _Position<T, P> &pos, Move move, bool long_, bool suffix) {
@@ -413,7 +402,7 @@ template <typename T, typename P> std::string moveToSan(const _Position<T, P> &p
         }
     }
     if (piece_type == NO_PIECE_TYPE) {
-        THROW_IF_EXCEPTIONS_ON(IllegalMoveException("moveToSan() expect move to be pseudo-legal or null, but got " +
+        INVALID_ARG_IF(piece_type == NO_PIECE_TYPE, IllegalMoveException("moveToSan() expect move to be pseudo-legal or null, but got " +
                                                     moveToUci(move) + " in " + pos.fen()));
         return "";
     }

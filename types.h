@@ -526,7 +526,7 @@ template <typename T, std::size_t MaxSize> class ValueList {
 
     /// @brief Indexed access.
     inline T &operator[](int index) {
-        assert(index < MaxSize);
+        assert(index < size_);
         return values_[index];
     }
 
@@ -537,7 +537,7 @@ template <typename T, std::size_t MaxSize> class ValueList {
     size_type size_ = 0;
 
   private:
-    T values_[MaxSize]{};
+    T values_[MaxSize];
 };
 
 /// @typedef Movelist
@@ -569,7 +569,7 @@ constexpr Square parse_square(std::string_view sv) {
 constexpr PieceType parse_pt(unsigned char c) {
     const char a[] = "pnbrqk";
     int p = -1;
-    (c >= 'A' && c <= 'Z') ? (c += 32) : (c);
+    if (c >= 'A' && c <= 'Z') c += 32;
     for (size_t i = 0; i < sizeof(a); i++) {
         if (c == a[i])
             p = i;

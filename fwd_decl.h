@@ -103,6 +103,6 @@ using Position = _Position<EnginePiece, void>;
 
 /// @typedef Board
 /// @brief Alias for Position.
-using Board = Position;
+using Board [[deprecated]] = Position;
 
 } // namespace chess

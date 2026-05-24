@@ -22,6 +22,7 @@
 #include "movegen.h"
 #include "types.h"
 #include "zobrist.h"
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -259,7 +260,11 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Bitboard of a piece type for a colour (compile-time colour).
     template <PieceType pt> [[nodiscard]] inline Bitboard pieces(Color c) const {
-        assert(c != COLOR_NB);
+        #if defined(_CHESSLIB_ERROR_MODE_ASSERTS)
+        assert(c != COLOR_NB && "color is COLOR_NB");
+        #elif defined(_CHESSLIB_ERROR_MODE_THROWS)
+        if (c == COLOR_NB) throw std::runtime_error("color is COLOR_NB");
+        #endif
         if constexpr (pt == PIECE_TYPE_NB || pt == ALL_PIECES)
             return occ(c);
         return state().pieces[pt] & state().occ[c];
@@ -283,7 +288,11 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Bitboard of a piece type for a colour (runtime both).
     [[nodiscard]] inline Bitboard pieces(PieceType pt, Color c) const {
-        assert(c != COLOR_NB);
+        #if defined(_CHESSLIB_ERROR_MODE_ASSERTS)
+        assert(c != COLOR_NB && "color is COLOR_NB");
+        #elif defined(_CHESSLIB_ERROR_MODE_THROWS)
+        if (c == COLOR_NB) throw std::runtime_error("color is COLOR_NB");
+        #endif
         switch (pt) {
         case PIECE_TYPE_NB:
         case ALL_PIECES:
@@ -425,7 +434,11 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Piece on a square.
     inline PieceC piece_on(Square s) const {
-        assert(chess::is_valid(s));
+        #if defined(_CHESSLIB_ERROR_MODE_ASSERTS)
+        assert(chess::is_valid(sq) && "sq is out-of-bounds");
+        #elif defined(_CHESSLIB_ERROR_MODE_THROWS)
+        if (!chess::is_valid(sq)) throw std::runtime_error("sq is out-of-bounds");
+        #endif
 #if !defined(_DEBUG) || defined(NDEBUG)
         return pieces_list[s];
 #else
@@ -444,8 +457,10 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
             }
         }
         auto p = pieces_list[s];
-#if defined(_DEBUG) && !defined(NDEBUG)
+#if defined(_CHESSLIB_ERROR_MODE_ASSERTS)
         assert(p == _p2 && "Inconsistient piece map");
+#elif defined(_CHESSLIB_ERROR_MODE_THROWS)
+        if (p != _p2) throw std::runtime_error("Inconsistient piece map");
 #endif
         return p;
 #endif
@@ -506,7 +521,6 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Extract a property from a square.
     template <typename T = PieceC> inline T at(Square sq) const {
-        assert(chess::is_valid(sq));
         if constexpr (std::is_same_v<T, PieceType>)
             return piece_of(piece_on(sq));
         else if constexpr (std::is_same_v<T, Color>)
@@ -573,7 +587,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     /// @brief Whether there has been at least one repetition since the last capture or pawn move.
     inline bool has_repeated() const {
         auto idx = history.size() - 1;
-        int end = std::min(rule50_count(), state().pliesFromNull);
+        int end = std::min({static_cast<int>(rule50_count()), static_cast<int>(state().pliesFromNull), static_cast<int>(history.size()) - 1});
         while (end-- >= 4) {
             if (history[idx].repetition)
                 return true;
@@ -643,7 +657,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     /// @brief Compute the material-only key (excludes turn, EP, castling).
     inline Key material_key() const {
         return hash() ^ (zobrist::RandomTurn * ~side_to_move()) ^ (zobrist::RandomCastle[castlingRights()]) ^
-               (zobrist::RandomEP[ep_square() == SQ_NONE ? file_of(ep_square()) : FILE_NB]);
+               (state().epIncluded ? zobrist::RandomEP[file_of(ep_square())] : zobrist::RandomEP[FILE_NB]);
     }
 
     /// @brief Validate position consistency.
@@ -723,5 +737,5 @@ template <typename T, typename = std::enable_if_t<is_piece_enum<T>::value>>
 } // namespace attacks
 
 using Position = _Position<EnginePiece>;
-using Board = _Position<EnginePiece>;
+using Board [[deprecated]] = _Position<EnginePiece>;
 }; // namespace chess

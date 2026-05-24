@@ -67,16 +67,16 @@ std::ostream &operator<<(std::ostream &os, const Move mv) {
     return os << mv.uci();
 }
 
-/// @brief Print a Color as "w" or "b".
+/// @brief Print a Color as "WHITE" or "BLACK".
 std::ostream &operator<<(std::ostream &os, const Color c) {
     DescriptiveNameNotation<Color> colors = {
         {    WHITE,    "WHITE" },
         {    BLACK,    "BLACK" },
         { COLOR_NB, "COLOR_NB" }
     };
-    return os << colors[c];
+    return os << colors.at(c);
 }
-/// @brief Print a PieceType as "p", "n", "b", "r", "q", "k".
+/// @brief Print a PieceType as "PAWN", "KNIGHT", etc.
 std::ostream &operator<<(std::ostream &os, const PieceType c) {
     DescriptiveNameNotation<PieceType> pieces = {
         { NO_PIECE_TYPE, "NO_PIECE_TYPE/ALL_PIECES" },
@@ -88,7 +88,7 @@ std::ostream &operator<<(std::ostream &os, const PieceType c) {
         {          KING,                     "KING" },
         { PIECE_TYPE_NB,            "PIECE_TYPE_NB" },
     };
-    return os << pieces[c];
+    return os << pieces.at(c);
 }
 /// @brief Print CastlingRights as "KkQq" style string.
 std::ostream &operator<<(std::ostream &os, const CastlingRights cr) {
@@ -111,7 +111,7 @@ std::ostream &operator<<(std::ostream &os, const CastlingRights cr) {
         { WHITE_OOO | BLACK_OO | BLACK_OOO, "WHITE_OOO | BLACK_OO | BLACK_OOO" },
     };
 
-    return os << castlingFlags[cr];
+    return os << castlingFlags.at(cr);
 }
 static std::string str_toupper(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::toupper(c); });
