@@ -48,13 +48,14 @@ namespace {
 /// @details ep_pawn_mask[sq] has the capturing-pawn square set for the given EP target square.
 constexpr Bitboard ep_pawn_mask_for(Square sq) {
     const Rank r = rank_of(sq);
-    if (r != RANK_3 && r != RANK_6) return 0;
+    if (r != RANK_3 && r != RANK_6)
+        return 0;
 
     Bitboard m = 1ULL << static_cast<int>(sq);
     if (r == RANK_6)
-        m >>= 8;  // WHITE stm → shift down to rank 5
+        m >>= 8; // WHITE stm → shift down to rank 5
     else
-        m <<= 8;  // BLACK stm → shift up to rank 4
+        m <<= 8; // BLACK stm → shift up to rank 4
     return ((m << 1) & ~attacks::MASK_FILE[0]) | ((m >> 1) & ~attacks::MASK_FILE[7]);
 }
 
@@ -151,8 +152,7 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
             state().incr_sqs[2] = king_dest, state().incr_pc[2] = prev_king_dest;
             state().incr_sqs[3] = rook_dest, state().incr_pc[3] = prev_rook_dest;
 
-            Square rook_start =
-                is_king_side ? castling_meta_[us].rook_start_ks : castling_meta_[us].rook_start_qs;
+            Square rook_start = is_king_side ? castling_meta_[us].rook_start_ks : castling_meta_[us].rook_start_qs;
 
             removePiece<KING>(from_sq, us);
             removePiece<ROOK>(rook_start, us);
@@ -706,7 +706,7 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
     if (Bitboard sniper = getSniper(this, ksq, oc)) {
         const auto sq = static_cast<Square>(pop_lsb(sniper));
         return (!(movegen::between(ksq, sq) & toBB) || move.type_of() == Move::CASTLING) ? CheckType::DISCOVERY_CHECK
-                                                                                        : CheckType::NO_CHECK;
+                                                                                         : CheckType::NO_CHECK;
     }
 
     switch (move.type_of()) {

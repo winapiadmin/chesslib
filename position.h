@@ -35,19 +35,19 @@ namespace chess {
 /// @brief Saved position state for undo operations.
 /// @tparam Piece Piece-enum type.
 template <typename Piece> struct alignas(64) HistoryEntry {
-    Bitboard pieces[7];     ///< Bitboards per piece type.
-    Bitboard occ[COLOR_NB]; ///< Occupancy per colour.
-    Color turn;             ///< Side to move.
-    Move mv;                ///< The move that led to this position.
-    Key hash;               ///< Zobrist hash.
+    Bitboard pieces[7];      ///< Bitboards per piece type.
+    Bitboard occ[COLOR_NB];  ///< Occupancy per colour.
+    Color turn;              ///< Side to move.
+    Move mv;                 ///< The move that led to this position.
+    Key hash;                ///< Zobrist hash.
     uint8_t halfMoveClock;   ///< Half-move clock for 50/75-move rule.
     uint16_t fullMoveNumber; ///< Full-move number (starts at 1).
     bool epIncluded;
-    int8_t repetition;        ///< Repetition counter from this position.
+    int8_t repetition; ///< Repetition counter from this position.
     uint8_t pliesFromNull = 0;
-    Square enPassant = SQ_NONE;         ///< En-passant target square.
+    Square enPassant = SQ_NONE; ///< En-passant target square.
     Square kings[COLOR_NB] = { SQ_NONE };
-    CastlingRights castlingRights;       ///< Castling rights bitmask.
+    CastlingRights castlingRights; ///< Castling rights bitmask.
     Square incr_sqs[4] = { SQ_NONE, SQ_NONE, SQ_NONE, SQ_NONE };
     Piece incr_pc[4] = { Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE };
     /// @name Cached attack data (saved to avoid recomputation on undo)
@@ -226,7 +226,9 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
             return;
         }
     }
-    template <bool RetAll = false> inline auto undo_move() -> std::conditional_t<RetAll, HistoryEntry<PieceC>, void> { return undoMove<RetAll>(); }
+    template <bool RetAll = false> inline auto undo_move() -> std::conditional_t<RetAll, HistoryEntry<PieceC>, void> {
+        return undoMove<RetAll>();
+    }
 
     /// @brief Execute a null move (switch sides without moving).
     inline void doNullMove() {
@@ -345,8 +347,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
         return (attacks::pawn(~by, sq) & pieces(PieceType::PAWN, by)) ||
                (attacks::knight(sq) & pieces(PieceType::KNIGHT, by)) || (attacks::king(sq) & pieces(PieceType::KING, by)) ||
-               (attacks::bishop(sq, occ_bb) & diag_attackers & us_bb) ||
-               (attacks::rook(sq, occ_bb) & ortho_attackers & us_bb);
+               (attacks::bishop(sq, occ_bb) & diag_attackers & us_bb) || (attacks::rook(sq, occ_bb) & ortho_attackers & us_bb);
     }
     [[nodiscard]] inline bool is_attacked(Square sq, Color by) const noexcept { return isAttacked(sq, by); }
 
@@ -359,7 +360,9 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
                (attacks::knight(sq) & pieces(PieceType::KNIGHT, by)) || (attacks::king(sq) & pieces(PieceType::KING, by)) ||
                (attacks::bishop(sq, occupied) & diag_attackers) || (attacks::rook(sq, occupied) & ortho_attackers);
     }
-    [[nodiscard]] inline bool is_attacked(Square sq, Color by, Bitboard occupied) const noexcept { return isAttacked(sq, by, occupied); }
+    [[nodiscard]] inline bool is_attacked(Square sq, Color by, Bitboard occupied) const noexcept {
+        return isAttacked(sq, by, occupied);
+    }
 
     /// @brief Get attackers for a colour using the current occupancy.
     [[nodiscard]] inline Bitboard attackers(Color colour, Square square) const { return attackers(colour, square, occ()); }
@@ -546,9 +549,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Test for draw by insufficient material.
     bool is_insufficient_material(Color c) const;
-    inline bool is_insufficient_material() const {
-        return is_insufficient_material(WHITE) && is_insufficient_material(BLACK);
-    }
+    inline bool is_insufficient_material() const { return is_insufficient_material(WHITE) && is_insufficient_material(BLACK); }
 
     /// @brief Whether a colour has any non-pawn, non-king material.
     inline bool hasNonPawnMaterial(Color c) const { return bool(us(c) & ~(pieces(PAWN) | pieces(KING)) & occ(c)); }
@@ -678,7 +679,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         Bitboard opp_rooks = (pieces<ROOK>(~c) | opp_queens);
         Bitboard rook_atks = attacks::slider<ROOK>(sq, occ_opp) & opp_rooks;
 
-        rook_pin = 0; bishop_pin = 0;
+        rook_pin = 0;
+        bishop_pin = 0;
         while (bishop_atks) {
             auto possible = movegen::between(sq, Square(pop_lsb(bishop_atks)));
             Bitboard tmp = possible & occ_us;
@@ -703,7 +705,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     /// @brief Copy constructor (deep copy of position state).
     inline _Position(const _Position &other)
         : history(other.history), rep_hashes_(other.rep_hashes_), _chess960(other._chess960),
-          castling_meta_{other.castling_meta_[0], other.castling_meta_[1]} {
+          castling_meta_{ other.castling_meta_[0], other.castling_meta_[1] } {
         std::copy(std::begin(other.pieces_list), std::end(other.pieces_list), std::begin(pieces_list));
         refresh_attacks();
     }

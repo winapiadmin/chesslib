@@ -63,9 +63,7 @@ template <typename PieceC, typename> std::ostream &operator<<(std::ostream &os, 
     return os;
 }
 /// @brief Print a Move as UCI string.
-std::ostream &operator<<(std::ostream &os, const Move mv) {
-    return os << mv.uci();
-}
+std::ostream &operator<<(std::ostream &os, const Move mv) { return os << mv.uci(); }
 
 /// @brief Print a Color as "w" or "b".
 std::ostream &operator<<(std::ostream &os, const Color c) {
@@ -118,9 +116,7 @@ static std::string str_toupper(std::string s) {
     return s;
 }
 /// @brief Print a Square as algebraic notation (e.g. "e2").
-std::ostream &operator<<(std::ostream &os, const Square sq) {
-    return os << uci::squareToString(sq);
-}
+std::ostream &operator<<(std::ostream &os, const Square sq) { return os << uci::squareToString(sq); }
 
 /// @brief Print a piece (color + type), e.g. "wP", "bK".
 template <typename PieceC, typename> std::ostream &operator<<(std::ostream &os, PieceC p) {
