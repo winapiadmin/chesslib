@@ -213,15 +213,15 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
         pos.template legals<mt>(moves);
         uint64_t total = 0;
         for (const Move &m : moves) {
-            pos.template doMove<false>(m);
+            pos.template do_move<false>(m);
 #if !IS_RELEASE
             {
                 const auto pre_nm_hash_1 = pos.hash();
                 const auto pre_nm_fen_1 = pos.fen();
                 if (pos.zobrist() != pos.hash())
                     REQUIRE(pos.zobrist() == pos.hash());
-                pos.doNullMove();
-                pos.undoMove();
+                pos.do_null_move();
+                pos.undo_move();
                 if (!(pos.hash() == pre_nm_hash_1 && pos.fen() == pre_nm_fen_1 && pos.zobrist() == pre_nm_hash_1)) {
                     REQUIRE(pos.hash() == pre_nm_hash_1);
                     REQUIRE(pos.fen() == pre_nm_fen_1);
@@ -236,8 +236,8 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
                 const auto pre_nm_fen_1 = pos.fen();
                 if (pos.zobrist() != pos.hash())
                     REQUIRE(pos.zobrist() == pos.hash());
-                pos.doNullMove();
-                pos.undoMove();
+                pos.do_null_move();
+                pos.undo_move();
                 if (!(pos.hash() == pre_nm_hash_1 && pos.fen() == pre_nm_fen_1 && pos.zobrist() == pre_nm_hash_1)) {
                     REQUIRE(pos.hash() == pre_nm_hash_1);
                     REQUIRE(pos.fen() == pre_nm_fen_1);
@@ -245,7 +245,7 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
                 }
             }
 #endif
-            pos.undoMove();
+            pos.undo_move();
             if constexpr (EnableDiv)
                 std::cout << m << ": " << nodes << '\n';
             total += nodes;
@@ -405,7 +405,7 @@ TEST_CASE("Castling move making FEN rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK
     std::string fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
     Position position(fen);
     REQUIRE(position.hash() == 0x4f874e21f78d3590);
-    position.doMove<false>(Move::make<CASTLING>(SQ_E1, SQ_H1));
+    position.do_move<false>(Move::make<CASTLING>(SQ_E1, SQ_H1));
     REQUIRE(position.hash() == position.zobrist());
     REQUIRE(position.hash() == 0x31F235158B7EEE80);
     REQUIRE(position.fen() == "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQ1RK1 b - - 2 8");
@@ -414,7 +414,7 @@ TEST_CASE("EP move making FEN 8/5k1K/8/8/4Pp2/8/8/8 b - e3 0 1") {
     std::string fen = "8/5k1K/8/8/4Pp2/8/8/8 b - e3 0 1";
     Position position(fen);
     REQUIRE(position.hash() == 0x775d0e2acc42db8c);
-    position.doMove<false>(Move::make<EN_PASSANT>(SQ_F4, SQ_E3));
+    position.do_move<false>(Move::make<EN_PASSANT>(SQ_F4, SQ_E3));
     REQUIRE(position.hash() == position.zobrist());
     REQUIRE(position.hash() == 0x3ec71faae73cfbed);
     REQUIRE(position.fen() == "8/5k1K/8/8/8/4p3/8/8 w - - 0 2");
@@ -423,7 +423,7 @@ TEST_CASE("EP move making FEN 8/5k1K/8/3pP3/8/8/8/8 w - d6 0 2") {
     std::string fen = "8/5k1K/8/3pP3/8/8/8/8 w - d6 0 2";
     Position position(fen);
     REQUIRE(position.hash() == 0xbdc108e30cccd00b);
-    position.doMove<false>(Move::make<EN_PASSANT>(SQ_E5, SQ_D6));
+    position.do_move<false>(Move::make<EN_PASSANT>(SQ_E5, SQ_D6));
     REQUIRE(position.fen() == "8/5k1K/3P4/8/8/8/8/8 b - - 0 2");
     REQUIRE(position.hash() == position.zobrist());
     REQUIRE(position.hash() == 0x5c57e65793a2c8fe);
@@ -432,26 +432,26 @@ TEST_CASE("Promotion FEN 8/5kP1/7K/8/8/8/8/8 w - - 0 1") {
     std::string fen = "8/5kP1/7K/8/8/8/8/8 w - - 0 1";
     Position position(fen);
     REQUIRE(position.hash() == 0x3793b24e1b95a6d5);
-    position.doMove<false>(Move::make<PROMOTION>(SQ_G7, SQ_G8));
+    position.do_move<false>(Move::make<PROMOTION>(SQ_G7, SQ_G8));
     REQUIRE(position.fen() == "6N1/5k2/7K/8/8/8/8/8 b - - 0 1");
     REQUIRE(position.hash() == position.zobrist());
     REQUIRE(position.hash() == 0x6adb9bf15f32cb92);
 }
 TEST_CASE("EP replace on non-EP move") {
     Position position("rnbqkbnr/pppppp2/7p/6pP/8/8/PPPPPPP1/RNBQKBNR w KQkq g6 0 3");
-    position.doMove<false>(Move(SQ_E2, SQ_E4));
+    position.do_move<false>(Move(SQ_E2, SQ_E4));
     REQUIRE(position.fen() == "rnbqkbnr/pppppp2/7p/6pP/4P3/8/PPPP1PP1/RNBQKBNR b KQkq e3 0 3");
 }
 TEST_CASE("EP ignore on non-EP move") {
     Position position("rnbqkbnr/pppppp2/7p/6pP/8/8/PPPPPPP1/RNBQKBNR w KQkq g6 0 3");
-    position.doMove<false>(Move(SQ_E2, SQ_E3));
+    position.do_move<false>(Move(SQ_E2, SQ_E3));
     REQUIRE(position.fen() == "rnbqkbnr/pppppp2/7p/6pP/8/4P3/PPPP1PP1/RNBQKBNR b KQkq - 0 3");
 }
 TEST_CASE("Move making and unmaking") {
     Position position;
-    position.doMove<false>(Move(SQ_E2, SQ_E4));
+    position.do_move<false>(Move(SQ_E2, SQ_E4));
     REQUIRE(position.fen() == "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
-    position.undoMove();
+    position.undo_move();
     REQUIRE(position.fen() == "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 }
 TEST_CASE("Pin detection double push movegen") {
@@ -468,9 +468,9 @@ TEST_CASE("Pin detection double push movegen") {
 }
 TEST_CASE("Move making pin update") {
     Position pos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    pos.doMove<false>(Move(SQ_C2, SQ_C4));
-    pos.doMove<false>(Move(SQ_A7, SQ_A5));
-    pos.doMove<false>(Move(SQ_D1, SQ_A4));
+    pos.do_move<false>(Move(SQ_C2, SQ_C4));
+    pos.do_move<false>(Move(SQ_A7, SQ_A5));
+    pos.do_move<false>(Move(SQ_D1, SQ_A4));
     {
         Movelist out;
         pos.legals<MoveGenType::PAWN>(out);
@@ -513,46 +513,46 @@ TEST_CASE("Experienced bugs in this repo") {
     }
     {
         Position p;
-        p.doMove<false>(Move(SQ_A2, SQ_A3));
-        p.doMove<false>(Move(SQ_B8, SQ_A6));
-        p.doMove<false>(Move(SQ_F2, SQ_F3));
-        p.doMove<false>(Move(SQ_F7, SQ_F5));
+        p.do_move<false>(Move(SQ_A2, SQ_A3));
+        p.do_move<false>(Move(SQ_B8, SQ_A6));
+        p.do_move<false>(Move(SQ_F2, SQ_F3));
+        p.do_move<false>(Move(SQ_F7, SQ_F5));
         REQUIRE(p.zobrist() == p.hash());
         REQUIRE(p.hash() == 4177524090105507023);
     }
     {
         Position p;
-        p.doMove<false>(Move(SQ_A2, SQ_A3));
+        p.do_move<false>(Move(SQ_A2, SQ_A3));
         REQUIRE(p.zobrist() == p.hash());
-        p.doMove<false>(Move(SQ_B8, SQ_A6));
+        p.do_move<false>(Move(SQ_B8, SQ_A6));
         REQUIRE(p.zobrist() == p.hash());
-        p.doMove<false>(Move(SQ_F2, SQ_F3));
+        p.do_move<false>(Move(SQ_F2, SQ_F3));
         REQUIRE(p.zobrist() == p.hash());
-        p.doMove<false>(Move(SQ_F7, SQ_F5));
+        p.do_move<false>(Move(SQ_F7, SQ_F5));
         REQUIRE(p.zobrist() == p.hash());
-        p.doNullMove();
+        p.do_null_move();
         REQUIRE(p.zobrist() == p.hash());
-        p.undoMove();
+        p.undo_move();
         REQUIRE(p.zobrist() == p.hash());
-        p.undoMove();
+        p.undo_move();
         REQUIRE(p.zobrist() == p.hash());
-        p.undoMove();
+        p.undo_move();
         REQUIRE(p.zobrist() == p.hash());
-        p.undoMove();
+        p.undo_move();
         REQUIRE(p.zobrist() == p.hash());
-        p.undoMove();
+        p.undo_move();
         REQUIRE(p.zobrist() == p.hash());
     }
     {
         Position p;
-        REQUIRE(p.getCastlingPath(WHITE, true) == 0x60);
-        REQUIRE(p.getCastlingPath(WHITE, false) == 0xe);
-        REQUIRE(p.getCastlingPath(BLACK, true) == 0x6000000000000000ULL);
-        REQUIRE(p.getCastlingPath(BLACK, false) == 0xe00000000000000ULL);
+        REQUIRE(p.get_castling_path(WHITE, true) == 0x60);
+        REQUIRE(p.get_castling_path(WHITE, false) == 0xe);
+        REQUIRE(p.get_castling_path(BLACK, true) == 0x6000000000000000ULL);
+        REQUIRE(p.get_castling_path(BLACK, false) == 0xe00000000000000ULL);
     }
     {
         Position p;
-        p.setFEN("1nbqkbnr/1ppppppp/r7/8/4P3/8/PPPP1PPP/RNBQK1NR w KQk - 0 3");
+        p.set_fen("1nbqkbnr/1ppppppp/r7/8/4P3/8/PPPP1PPP/RNBQK1NR w KQk - 0 3");
         REQUIRE(p.fen() == "1nbqkbnr/1ppppppp/r7/8/4P3/8/PPPP1PPP/RNBQK1NR w KQk - 0 3");
     }
 }

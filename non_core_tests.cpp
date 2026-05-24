@@ -145,7 +145,7 @@ TEST_CASE("moveToUci") {
 TEST_CASE("push_uci/parse_uci") {
     Position p;
     REQUIRE(p.parse_uci("e2e4") == Move(SQ_E2, SQ_E4));
-    p.setFEN("rn1qkbnr/pP1ppppp/8/1b6/8/8/PPP1PPPP/RNBQKBNR w KQkq - 1 5");
+    p.set_fen("rn1qkbnr/pP1ppppp/8/1b6/8/8/PPP1PPPP/RNBQKBNR w KQkq - 1 5");
     REQUIRE(p.parse_uci("b7a8q") == Move::make<PROMOTION>(SQ_B7, SQ_A8, QUEEN));
 }
 template <typename T> void check_was_into_check(std::vector<TestEntry<std::string, bool>> &tests) {
@@ -274,19 +274,19 @@ void check_repetitions(std::vector<TestEntry<repetitions_t, bool>> &tests) {
         {
             _Position<PolyglotPiece> pos(tc.input.FEN);
             for (auto &move : tc.input.moves)
-                pos.doMove(move);
+                pos.do_move(move);
             REQUIRE(pos.is_repetition(tc.input.repetition) == tc.info);
         }
         {
             _Position<EnginePiece> pos(tc.input.FEN);
             for (auto &move : tc.input.moves)
-                pos.doMove(move);
+                pos.do_move(move);
             REQUIRE(pos.is_repetition(tc.input.repetition) == tc.info);
         }
         {
             _Position<ContiguousMappingPiece> pos(tc.input.FEN);
             for (auto &move : tc.input.moves)
-                pos.doMove(move);
+                pos.do_move(move);
             REQUIRE(pos.is_repetition(tc.input.repetition) == tc.info);
         }
     }
@@ -313,8 +313,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_F6, Square::SQ_E5);
 
-        CHECK(uci::moveToSan(b, m) == "fxe5");
-        REQUIRE(uci::parseSan(b, "fxe5") == m);
+        CHECK(uci::move_to_san(b, m) == "fxe5");
+        REQUIRE(uci::parse_san(b, "fxe5") == m);
     }
 
     TEST_CASE("Test ambiguous pawn ep capture") {
@@ -322,8 +322,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make<Move::ENPASSANT>(Square::SQ_F5, Square::SQ_G6);
 
-        CHECK(uci::moveToSan(b, m) == "fxg6");
-        REQUIRE(uci::parseSan(b, "fxg6") == m);
+        CHECK(uci::move_to_san(b, m) == "fxg6");
+        REQUIRE(uci::parse_san(b, "fxg6") == m);
     }
 
     TEST_CASE("Test ambiguous knight move") {
@@ -331,8 +331,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_F3, Square::SQ_G5);
 
-        CHECK(uci::moveToSan(b, m) == "Nfg5");
-        REQUIRE(uci::parseSan(b, "Nfg5") == m);
+        CHECK(uci::move_to_san(b, m) == "Nfg5");
+        REQUIRE(uci::parse_san(b, "Nfg5") == m);
     }
 
     TEST_CASE("Test ambiguous rook move with check") {
@@ -340,8 +340,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_C2, Square::SQ_E2);
 
-        CHECK(uci::moveToSan(b, m) == "Rce2+");
-        REQUIRE(uci::parseSan(b, "Rce2+") == m);
+        CHECK(uci::move_to_san(b, m) == "Rce2+");
+        REQUIRE(uci::parse_san(b, "Rce2+") == m);
     }
 
     TEST_CASE("Test ambiguous rook move with checkmate") {
@@ -349,8 +349,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_D2, Square::SQ_E2);
 
-        CHECK(uci::moveToSan(b, m) == "Rde2#");
-        REQUIRE(uci::parseSan(b, "Rde2#") == m);
+        CHECK(uci::move_to_san(b, m) == "Rde2#");
+        REQUIRE(uci::parse_san(b, "Rde2#") == m);
     }
 
     TEST_CASE("Test Knight move") {
@@ -358,8 +358,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_F3, Square::SQ_G5);
 
-        CHECK(uci::moveToSan(b, m) == "Ng5");
-        REQUIRE(uci::parseSan(b, "Ng5") == m);
+        CHECK(uci::move_to_san(b, m) == "Ng5");
+        REQUIRE(uci::parse_san(b, "Ng5") == m);
     }
 
     TEST_CASE("Test Bishop move") {
@@ -367,8 +367,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_F1, Square::SQ_C4);
 
-        CHECK(uci::moveToSan(b, m) == "Bc4");
-        REQUIRE(uci::parseSan(b, "Bc4") == m);
+        CHECK(uci::move_to_san(b, m) == "Bc4");
+        REQUIRE(uci::parse_san(b, "Bc4") == m);
     }
 
     TEST_CASE("Test Rook move") {
@@ -376,8 +376,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_F1, Square::SQ_F7);
 
-        CHECK(uci::moveToSan(b, m) == "Rxf7");
-        REQUIRE(uci::parseSan(b, "Rxf7") == m);
+        CHECK(uci::move_to_san(b, m) == "Rxf7");
+        REQUIRE(uci::parse_san(b, "Rxf7") == m);
     }
 
     TEST_CASE("Test Queen move") {
@@ -385,8 +385,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_F1, Square::SQ_F7);
 
-        CHECK(uci::moveToSan(b, m) == "Qxf7+");
-        REQUIRE(uci::parseSan(b, "Qxf7+") == m);
+        CHECK(uci::move_to_san(b, m) == "Qxf7+");
+        REQUIRE(uci::parse_san(b, "Qxf7+") == m);
     }
 
     TEST_CASE("Test King move") {
@@ -394,8 +394,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_E1, Square::SQ_F1);
 
-        CHECK(uci::moveToSan(b, m) == "Kf1");
-        REQUIRE(uci::parseSan(b, "Kf1") == m);
+        CHECK(uci::move_to_san(b, m) == "Kf1");
+        REQUIRE(uci::parse_san(b, "Kf1") == m);
     }
 
     TEST_CASE("Test King Castling Short move") {
@@ -403,8 +403,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make<Move::CASTLING>(Square::SQ_E1, Square::SQ_H1);
 
-        CHECK(uci::moveToSan(b, m) == "O-O");
-        REQUIRE(uci::parseSan(b, "O-O") == m);
+        CHECK(uci::move_to_san(b, m) == "O-O");
+        REQUIRE(uci::parse_san(b, "O-O") == m);
     }
 
     TEST_CASE("Test King Castling Long move") {
@@ -412,8 +412,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make<Move::CASTLING>(Square::SQ_E1, Square::SQ_A1);
 
-        CHECK(uci::moveToSan(b, m) == "O-O-O");
-        REQUIRE(uci::parseSan(b, "O-O-O") == m);
+        CHECK(uci::move_to_san(b, m) == "O-O-O");
+        REQUIRE(uci::parse_san(b, "O-O-O") == m);
     }
 
     TEST_CASE("Test King Castling Short move with Zero") {
@@ -421,7 +421,7 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make<Move::CASTLING>(Square::SQ_E1, Square::SQ_H1);
 
-        REQUIRE(uci::parseSan(b, "0-0") == m);
+        REQUIRE(uci::parse_san(b, "0-0") == m);
     }
 
     TEST_CASE("Test King Castling Long move with Zero") {
@@ -429,7 +429,7 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make<Move::CASTLING>(Square::SQ_E1, Square::SQ_A1);
 
-        REQUIRE(uci::parseSan(b, "0-0-0") == m);
+        REQUIRE(uci::parse_san(b, "0-0-0") == m);
     }
     // These are removed due to illegal move (annotations aren't allowed strictly)
     TEST_CASE("Test King Castling Short move with Annotation") {
@@ -437,11 +437,11 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make<Move::CASTLING>(Square::SQ_E1, Square::SQ_H1);
         Move m2 = Move::none();
-        REQUIRE_THROWS_WITH_AS(m2 = uci::parseSan(b, "0-0+?!"),
+        REQUIRE_THROWS_WITH_AS(m2 = uci::parse_san(b, "0-0+?!"),
                                "illegal san: '0-0+?!' in rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 17",
                                chess::uci::IllegalMoveException);
         REQUIRE(m2 == Move::none());
-        REQUIRE(uci::parseSan(b, "0-0+?!", true) == m);
+        REQUIRE(uci::parse_san(b, "0-0+?!", true) == m);
     }
 
     TEST_CASE("Test King Castling Long move with Annotation") {
@@ -450,12 +450,12 @@ TEST_SUITE("SAN Parser") {
         Move m = Move::make<Move::CASTLING>(Square::SQ_E1, Square::SQ_A1);
 
         Move m2 = Move::none();
-        REQUIRE_THROWS_WITH_AS(m2 = uci::parseSan(b, "0-0-0+?!"),
+        REQUIRE_THROWS_WITH_AS(m2 = uci::parse_san(b, "0-0-0+?!"),
                                "illegal san: '0-0-0+?!' in rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1",
                                chess::uci::IllegalMoveException);
         REQUIRE(m2 == Move::none());
 
-        REQUIRE(uci::parseSan(b, "0-0-0+?!", true) == m);
+        REQUIRE(uci::parse_san(b, "0-0-0+?!", true) == m);
     }
 
     TEST_CASE("Test Queen Capture Ambiguity") {
@@ -463,8 +463,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_C4, Square::SQ_E6);
 
-        CHECK(uci::moveToSan(b, m) == "Qcxe6");
-        REQUIRE(uci::parseSan(b, "Qcxe6") == m);
+        CHECK(uci::move_to_san(b, m) == "Qcxe6");
+        REQUIRE(uci::parse_san(b, "Qcxe6") == m);
     }
 
     TEST_CASE("Test Rook Ambiguity") {
@@ -472,8 +472,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_A1, Square::SQ_A3);
 
-        CHECK(uci::moveToSan(b, m) == "R1a3");
-        REQUIRE(uci::parseSan(b, "R1a3") == m);
+        CHECK(uci::move_to_san(b, m) == "R1a3");
+        REQUIRE(uci::parse_san(b, "R1a3") == m);
     }
 
     TEST_CASE("Test Rook Capture Ambiguity") {
@@ -481,8 +481,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_C8, Square::SQ_C4);
 
-        CHECK(uci::moveToSan(b, m) == "R8xc4");
-        REQUIRE(uci::parseSan(b, "R8xc4") == m);
+        CHECK(uci::move_to_san(b, m) == "R8xc4");
+        REQUIRE(uci::parse_san(b, "R8xc4") == m);
     }
 
     TEST_CASE("Test Knight Capture Ambiguity") {
@@ -490,8 +490,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_C6, Square::SQ_E5);
 
-        CHECK(uci::moveToSan(b, m) == "N6xe5");
-        REQUIRE(uci::parseSan(b, "N6xe5") == m);
+        CHECK(uci::move_to_san(b, m) == "N6xe5");
+        REQUIRE(uci::parse_san(b, "N6xe5") == m);
     }
 
     TEST_CASE("Test Pawn Capture Promotion Ambiguity") {
@@ -499,8 +499,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make<Move::PROMOTION>(Square::SQ_E7, Square::SQ_F8, PieceType::QUEEN);
 
-        CHECK(uci::moveToSan(b, m) == "exf8=Q+");
-        REQUIRE(uci::parseSan(b, "exf8=Q+") == m);
+        CHECK(uci::move_to_san(b, m) == "exf8=Q+");
+        REQUIRE(uci::parse_san(b, "exf8=Q+") == m);
     }
 
     TEST_CASE("Test Pawn Push") {
@@ -508,8 +508,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_E2, Square::SQ_E4);
 
-        CHECK(uci::moveToSan(b, m) == "e4");
-        REQUIRE(uci::parseSan(b, "e4") == m);
+        CHECK(uci::move_to_san(b, m) == "e4");
+        REQUIRE(uci::parse_san(b, "e4") == m);
     }
 
     TEST_CASE("Test Pawn Promotion") {
@@ -517,8 +517,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make<Move::PROMOTION>(Square::SQ_A7, Square::SQ_A8, PieceType::QUEEN);
 
-        CHECK(uci::moveToSan(b, m) == "a8=Q+");
-        REQUIRE(uci::parseSan(b, "a8=Q+") == m);
+        CHECK(uci::move_to_san(b, m) == "a8=Q+");
+        REQUIRE(uci::parse_san(b, "a8=Q+") == m);
     }
 
     TEST_CASE("Test Knight Ambiguity") {
@@ -526,8 +526,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_D4, Square::SQ_B3);
 
-        CHECK(uci::moveToSan(b, m) == "N4b3");
-        REQUIRE(uci::parseSan(b, "N4b3") == m);
+        CHECK(uci::move_to_san(b, m) == "N4b3");
+        REQUIRE(uci::parse_san(b, "N4b3") == m);
     }
 
     TEST_CASE("Test Knight Capture Ambiguity") {
@@ -535,8 +535,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_D4, Square::SQ_B3);
 
-        CHECK(uci::moveToSan(b, m) == "N4xb3");
-        REQUIRE(uci::parseSan(b, "N4xb3") == m);
+        CHECK(uci::move_to_san(b, m) == "N4xb3");
+        REQUIRE(uci::parse_san(b, "N4xb3") == m);
     }
 
     TEST_CASE("Test Knight Ambiguity 2") {
@@ -545,29 +545,29 @@ TEST_SUITE("SAN Parser") {
         {
             Move m = Move::make(Square::SQ_E4, Square::SQ_D6);
 
-            CHECK(uci::moveToSan(b, m) == "Ne4d6");
-            REQUIRE(uci::parseSan(b, "Ne4d6") == m);
+            CHECK(uci::move_to_san(b, m) == "Ne4d6");
+            REQUIRE(uci::parse_san(b, "Ne4d6") == m);
         }
 
         {
             Move m = Move::make(Square::SQ_C4, Square::SQ_D6);
 
-            CHECK(uci::moveToSan(b, m) == "Nc4d6");
-            REQUIRE(uci::parseSan(b, "Nc4d6") == m);
+            CHECK(uci::move_to_san(b, m) == "Nc4d6");
+            REQUIRE(uci::parse_san(b, "Nc4d6") == m);
         }
 
         {
             Move m = Move::make(Square::SQ_C8, Square::SQ_D6);
 
-            CHECK(uci::moveToSan(b, m) == "Nc8d6");
-            REQUIRE(uci::parseSan(b, "Nc8d6") == m);
+            CHECK(uci::move_to_san(b, m) == "Nc8d6");
+            REQUIRE(uci::parse_san(b, "Nc8d6") == m);
         }
 
         {
             Move m = Move::make(Square::SQ_E8, Square::SQ_D6);
 
-            CHECK(uci::moveToSan(b, m) == "Ne8d6");
-            REQUIRE(uci::parseSan(b, "Ne8d6") == m);
+            CHECK(uci::move_to_san(b, m) == "Ne8d6");
+            REQUIRE(uci::parse_san(b, "Ne8d6") == m);
         }
     }
 
@@ -577,8 +577,8 @@ TEST_SUITE("SAN Parser") {
         {
             Move m = Move::make(Square::SQ_E4, Square::SQ_D6);
 
-            CHECK(uci::moveToSan(b, m) == "Ne4xd6+");
-            REQUIRE(uci::parseSan(b, "Ne4xd6+") == m);
+            CHECK(uci::move_to_san(b, m) == "Ne4xd6+");
+            REQUIRE(uci::parse_san(b, "Ne4xd6+") == m);
         }
     }
 
@@ -588,29 +588,29 @@ TEST_SUITE("SAN Parser") {
         {
             auto m = Move::make(Square::SQ_C2, Square::SQ_D3);
 
-            CHECK(uci::moveToSan(b, m) == "Bc2d3");
-            REQUIRE(uci::parseSan(b, "Bc2d3") == m);
+            CHECK(uci::move_to_san(b, m) == "Bc2d3");
+            REQUIRE(uci::parse_san(b, "Bc2d3") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_C4, Square::SQ_D3);
 
-            CHECK(uci::moveToSan(b, m) == "Bc4d3");
-            REQUIRE(uci::parseSan(b, "Bc4d3") == m);
+            CHECK(uci::move_to_san(b, m) == "Bc4d3");
+            REQUIRE(uci::parse_san(b, "Bc4d3") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_E2, Square::SQ_D3);
 
-            CHECK(uci::moveToSan(b, m) == "Be2d3");
-            REQUIRE(uci::parseSan(b, "Be2d3") == m);
+            CHECK(uci::move_to_san(b, m) == "Be2d3");
+            REQUIRE(uci::parse_san(b, "Be2d3") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_E4, Square::SQ_D3);
 
-            CHECK(uci::moveToSan(b, m) == "Be4d3");
-            REQUIRE(uci::parseSan(b, "Be4d3") == m);
+            CHECK(uci::move_to_san(b, m) == "Be4d3");
+            REQUIRE(uci::parse_san(b, "Be4d3") == m);
         }
     }
 
@@ -620,29 +620,29 @@ TEST_SUITE("SAN Parser") {
         {
             auto m = Move::make(Square::SQ_C2, Square::SQ_C3);
 
-            CHECK(uci::moveToSan(b, m) == "R2c3");
-            REQUIRE(uci::parseSan(b, "R2c3") == m);
+            CHECK(uci::move_to_san(b, m) == "R2c3");
+            REQUIRE(uci::parse_san(b, "R2c3") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_C2, Square::SQ_D2);
 
-            CHECK(uci::moveToSan(b, m) == "Rcd2");
-            REQUIRE(uci::parseSan(b, "Rcd2") == m);
+            CHECK(uci::move_to_san(b, m) == "Rcd2");
+            REQUIRE(uci::parse_san(b, "Rcd2") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_E2, Square::SQ_E3);
 
-            CHECK(uci::moveToSan(b, m) == "R2e3");
-            REQUIRE(uci::parseSan(b, "R2e3") == m);
+            CHECK(uci::move_to_san(b, m) == "R2e3");
+            REQUIRE(uci::parse_san(b, "R2e3") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_E2, Square::SQ_D2);
 
-            CHECK(uci::moveToSan(b, m) == "Red2");
-            REQUIRE(uci::parseSan(b, "Red2") == m);
+            CHECK(uci::move_to_san(b, m) == "Red2");
+            REQUIRE(uci::parse_san(b, "Red2") == m);
         }
     }
 
@@ -652,29 +652,29 @@ TEST_SUITE("SAN Parser") {
         {
             auto m = Move::make(Square::SQ_C2, Square::SQ_D3);
 
-            CHECK(uci::moveToSan(b, m) == "Qc2d3");
-            REQUIRE(uci::parseSan(b, "Qc2d3") == m);
+            CHECK(uci::move_to_san(b, m) == "Qc2d3");
+            REQUIRE(uci::parse_san(b, "Qc2d3") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_C4, Square::SQ_D3);
 
-            CHECK(uci::moveToSan(b, m) == "Qc4d3");
-            REQUIRE(uci::parseSan(b, "Qc4d3") == m);
+            CHECK(uci::move_to_san(b, m) == "Qc4d3");
+            REQUIRE(uci::parse_san(b, "Qc4d3") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_E2, Square::SQ_D3);
 
-            CHECK(uci::moveToSan(b, m) == "Qe2d3");
-            REQUIRE(uci::parseSan(b, "Qe2d3") == m);
+            CHECK(uci::move_to_san(b, m) == "Qe2d3");
+            REQUIRE(uci::parse_san(b, "Qe2d3") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_E4, Square::SQ_D3);
 
-            CHECK(uci::moveToSan(b, m) == "Qe4d3");
-            REQUIRE(uci::parseSan(b, "Qe4d3") == m);
+            CHECK(uci::move_to_san(b, m) == "Qe4d3");
+            REQUIRE(uci::parse_san(b, "Qe4d3") == m);
         }
     }
 
@@ -684,8 +684,8 @@ TEST_SUITE("SAN Parser") {
         {
             auto m = Move::make(Square::SQ_F8, Square::SQ_F6);
 
-            CHECK(uci::moveToSan(b, m) == "Q8f6");
-            REQUIRE(uci::parseSan(b, "Q8f6") == m);
+            CHECK(uci::move_to_san(b, m) == "Q8f6");
+            REQUIRE(uci::parse_san(b, "Q8f6") == m);
         }
     }
 
@@ -695,8 +695,8 @@ TEST_SUITE("SAN Parser") {
         {
             auto m = Move::make(Square::SQ_H4, Square::SQ_F6);
 
-            CHECK(uci::moveToSan(b, m) == "Q4f6");
-            REQUIRE(uci::parseSan(b, "Q4f6") == m);
+            CHECK(uci::move_to_san(b, m) == "Q4f6");
+            REQUIRE(uci::parse_san(b, "Q4f6") == m);
         }
     }
 
@@ -706,15 +706,15 @@ TEST_SUITE("SAN Parser") {
         {
             auto m = Move::make(Square::SQ_H4, Square::SQ_F6);
 
-            CHECK(uci::moveToSan(b, m) == "Qh4f6");
-            REQUIRE(uci::parseSan(b, "Qh4f6") == m);
+            CHECK(uci::move_to_san(b, m) == "Qh4f6");
+            REQUIRE(uci::parse_san(b, "Qh4f6") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_F4, Square::SQ_F6);
 
-            CHECK(uci::moveToSan(b, m) == "Qf4f6");
-            REQUIRE(uci::parseSan(b, "Qf4f6") == m);
+            CHECK(uci::move_to_san(b, m) == "Qf4f6");
+            REQUIRE(uci::parse_san(b, "Qf4f6") == m);
         }
     }
 
@@ -724,15 +724,15 @@ TEST_SUITE("SAN Parser") {
         {
             auto m = Move::make(Square::SQ_B1, Square::SQ_B2);
 
-            CHECK(uci::moveToSan(b, m) == "R1b2");
-            REQUIRE(uci::parseSan(b, "R1b2") == m);
+            CHECK(uci::move_to_san(b, m) == "R1b2");
+            REQUIRE(uci::parse_san(b, "R1b2") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_D2, Square::SQ_B2);
 
-            CHECK(uci::moveToSan(b, m) == "Rdb2");
-            REQUIRE(uci::parseSan(b, "Rdb2") == m);
+            CHECK(uci::move_to_san(b, m) == "Rdb2");
+            REQUIRE(uci::parse_san(b, "Rdb2") == m);
         }
     }
 
@@ -742,15 +742,15 @@ TEST_SUITE("SAN Parser") {
         {
             auto m = Move::make(Square::SQ_B5, Square::SQ_B2);
 
-            CHECK(uci::moveToSan(b, m) == "Rbb2");
-            REQUIRE(uci::parseSan(b, "Rbb2") == m);
+            CHECK(uci::move_to_san(b, m) == "Rbb2");
+            REQUIRE(uci::parse_san(b, "Rbb2") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_B5, Square::SQ_B6);
 
-            CHECK(uci::moveToSan(b, m) == "R5b6");
-            REQUIRE(uci::parseSan(b, "R5b6") == m);
+            CHECK(uci::move_to_san(b, m) == "R5b6");
+            REQUIRE(uci::parse_san(b, "R5b6") == m);
         }
     }
 
@@ -760,15 +760,15 @@ TEST_SUITE("SAN Parser") {
         {
             auto m = Move::make(Square::SQ_B5, Square::SQ_B2);
 
-            CHECK(uci::moveToSan(b, m) == "Rb2");
-            REQUIRE(uci::parseSan(b, "Rb2") == m);
+            CHECK(uci::move_to_san(b, m) == "Rb2");
+            REQUIRE(uci::parse_san(b, "Rb2") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_B5, Square::SQ_B6);
 
-            CHECK(uci::moveToSan(b, m) == "R5b6");
-            REQUIRE(uci::parseSan(b, "R5b6") == m);
+            CHECK(uci::move_to_san(b, m) == "R5b6");
+            REQUIRE(uci::parse_san(b, "R5b6") == m);
         }
     }
 
@@ -778,15 +778,15 @@ TEST_SUITE("SAN Parser") {
         {
             auto m = Move::make(Square::SQ_C4, Square::SQ_A6);
 
-            CHECK(uci::moveToSan(b, m) == "B4a6");
-            REQUIRE(uci::parseSan(b, "B4a6") == m);
+            CHECK(uci::move_to_san(b, m) == "B4a6");
+            REQUIRE(uci::parse_san(b, "B4a6") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_C4, Square::SQ_D3);
 
-            CHECK(uci::moveToSan(b, m) == "Bcd3");
-            REQUIRE(uci::parseSan(b, "Bcd3") == m);
+            CHECK(uci::move_to_san(b, m) == "Bcd3");
+            REQUIRE(uci::parse_san(b, "Bcd3") == m);
         }
     }
 
@@ -796,15 +796,15 @@ TEST_SUITE("SAN Parser") {
         {
             auto m = Move::make(Square::SQ_C4, Square::SQ_A6);
 
-            CHECK(uci::moveToSan(b, m) == "Ba6");
-            REQUIRE(uci::parseSan(b, "Ba6") == m);
+            CHECK(uci::move_to_san(b, m) == "Ba6");
+            REQUIRE(uci::parse_san(b, "Ba6") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_C4, Square::SQ_D3);
 
-            CHECK(uci::moveToSan(b, m) == "Bcd3");
-            REQUIRE(uci::parseSan(b, "Bcd3") == m);
+            CHECK(uci::move_to_san(b, m) == "Bcd3");
+            REQUIRE(uci::parse_san(b, "Bcd3") == m);
         }
     }
 
@@ -814,8 +814,8 @@ TEST_SUITE("SAN Parser") {
         {
             auto m = Move::make(Square::SQ_C4, Square::SQ_D3);
 
-            CHECK(uci::moveToSan(b, m) == "Bcxd3#");
-            REQUIRE(uci::parseSan(b, "Bcxd3#") == m);
+            CHECK(uci::move_to_san(b, m) == "Bcxd3#");
+            REQUIRE(uci::parse_san(b, "Bcxd3#") == m);
         }
     }
 
@@ -825,15 +825,15 @@ TEST_SUITE("SAN Parser") {
         {
             auto m = Move::make(Square::SQ_F1, Square::SQ_F5);
 
-            CHECK(uci::moveToSan(b, m) == "Qfxf5+");
-            REQUIRE(uci::parseSan(b, "Qfxf5+") == m);
+            CHECK(uci::move_to_san(b, m) == "Qfxf5+");
+            REQUIRE(uci::parse_san(b, "Qfxf5+") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_H5, Square::SQ_F5);
 
-            CHECK(uci::moveToSan(b, m) == "Qhxf5+");
-            REQUIRE(uci::parseSan(b, "Qhxf5+") == m);
+            CHECK(uci::move_to_san(b, m) == "Qhxf5+");
+            REQUIRE(uci::parse_san(b, "Qhxf5+") == m);
         }
     }
 
@@ -843,15 +843,15 @@ TEST_SUITE("SAN Parser") {
         {
             auto m = Move::make(Square::SQ_B5, Square::SQ_B2);
 
-            CHECK(uci::moveToSan(b, m) == "Rb2");
-            REQUIRE(uci::parseSan(b, "Rb2") == m);
+            CHECK(uci::move_to_san(b, m) == "Rb2");
+            REQUIRE(uci::parse_san(b, "Rb2") == m);
         }
 
         {
             auto m = Move::make(Square::SQ_B5, Square::SQ_B6);
 
-            CHECK(uci::moveToSan(b, m) == "R5b6");
-            REQUIRE(uci::parseSan(b, "R5b6") == m);
+            CHECK(uci::move_to_san(b, m) == "R5b6");
+            REQUIRE(uci::parse_san(b, "R5b6") == m);
         }
     }
 
@@ -861,8 +861,8 @@ TEST_SUITE("SAN Parser") {
         {
             auto m = Move::make(Square::SQ_E2, Square::SQ_D3);
 
-            CHECK(uci::moveToSan(b, m) == "Bxd3#");
-            REQUIRE(uci::parseSan(b, "Bxd3#") == m);
+            CHECK(uci::move_to_san(b, m) == "Bxd3#");
+            REQUIRE(uci::parse_san(b, "Bxd3#") == m);
         }
     }
 
@@ -871,14 +871,14 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make(Square::SQ_C4, Square::SQ_E5);
 
-        CHECK(uci::moveToSan(b, m) == "Nxe5");
-        REQUIRE(uci::parseSan(b, "Nxe5") == m);
+        CHECK(uci::move_to_san(b, m) == "Nxe5");
+        REQUIRE(uci::parse_san(b, "Nxe5") == m);
     }
 
     TEST_CASE("Parse No Move") {
         Position b;
 
-        REQUIRE(uci::parseSan(b, "") == Move::NO_MOVE);
+        REQUIRE(uci::parse_san(b, "") == Move::NO_MOVE);
     }
 
     TEST_CASE("Should throw on ambiguous move") {
@@ -886,7 +886,7 @@ TEST_SUITE("SAN Parser") {
 
         Move san = Move::NO_MOVE;
 
-        CHECK_THROWS_AS(san = uci::parseSan(b, "Nec3"), uci::AmbiguousMoveException);
+        CHECK_THROWS_AS(san = uci::parse_san(b, "Nec3"), uci::AmbiguousMoveException);
         CHECK(san == Move::NO_MOVE);
     }
 
@@ -895,7 +895,7 @@ TEST_SUITE("SAN Parser") {
 
         Move san = Move::NO_MOVE;
 
-        CHECK_THROWS_WITH_AS(san = uci::parseSan(b, "Nec4"),
+        CHECK_THROWS_WITH_AS(san = uci::parse_san(b, "Nec4"),
                              "illegal san: 'Nec4' in 8/8/6K1/4k3/4N3/p4r2/N3N3/8 w - - 3 82",
                              uci::IllegalMoveException);
         CHECK(san == Move::NO_MOVE);
@@ -906,8 +906,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make<Move::CASTLING>(Square::SQ_E1, Square::SQ_H1);
 
-        CHECK(uci::moveToSan(b, m) == "O-O#");
-        REQUIRE(uci::parseSan(b, "O-O#") == m);
+        CHECK(uci::move_to_san(b, m) == "O-O#");
+        REQUIRE(uci::parse_san(b, "O-O#") == m);
     }
 
     TEST_CASE("Check castle should have +") {
@@ -915,8 +915,8 @@ TEST_SUITE("SAN Parser") {
 
         Move m = Move::make<Move::CASTLING>(Square::SQ_E1, Square::SQ_H1);
 
-        CHECK(uci::moveToSan(b, m) == "O-O+");
-        REQUIRE(uci::parseSan(b, "O-O+") == m);
+        CHECK(uci::move_to_san(b, m) == "O-O+");
+        REQUIRE(uci::parse_san(b, "O-O+") == m);
     }
 }
 
@@ -925,7 +925,7 @@ TEST_SUITE("misc tests") {
         Position pos(Position::START_CHESS960_FEN, true);
         REQUIRE(pos.fen(false) == Position::START_CHESS960_FEN);
         REQUIRE(pos.fen() == Position::START_FEN);
-        pos.setFEN(Position::START_CHESS960_FEN, true, chess::MODE_SMK);
+        pos.set_fen(Position::START_CHESS960_FEN, true, chess::MODE_SMK);
         REQUIRE(pos.fen(false) == Position::START_CHESS960_FEN);
         REQUIRE(pos.fen() == Position::START_FEN);
     }

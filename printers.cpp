@@ -52,7 +52,7 @@ template <typename PieceC, typename> std::ostream &operator<<(std::ostream &os, 
     os << "   a   b   c   d   e   f   g   h\n";
 
     // Ensure key is printed in hex, but restores after this function
-    os << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase << std::setfill('0') << std::setw(16) << pos.key()
+    os << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase << std::setfill('0') << std::setw(16) << pos.hash()
        << '\n';
 
     return os;

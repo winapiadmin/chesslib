@@ -30,7 +30,7 @@ void genKnightMoves(const _Position<T, void> &, Movelist &, Bitboard, Bitboard);
 template <typename T, Color c, bool capturesOnly = false> void genKingMoves(const _Position<T, void> &, Movelist &, Bitboard);
 template <typename T, Color c, PieceType pt, bool capturesOnly = false>
 void genSlidingMoves(const _Position<T, void> &, Movelist &, Bitboard, Bitboard, Bitboard);
-extern std::array<std::array<Bitboard, 65>, 65> SQUARES_BETWEEN_BB;
+extern std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB;
 /*
  * [(file(sq1), rank(sq1)), (file(sq2), rank(sq2))] -> bitboard of squares between sq1 and sq2, excluding sq1 and sq2
  */

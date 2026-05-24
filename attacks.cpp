@@ -184,34 +184,22 @@ _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, 0x1900
     generate_magic_table<_chess::_HyperbolaRookAttacks, 0x19000, false>();
 _POSSIBLY_CONSTEXPR std::array<Magic, 64> RookTable = rookData.first;
 _POSSIBLY_CONSTEXPR std::array<Bitboard, 0x19000> RookAttacks = rookData.second;
-/**
- * @brief Returns the bishop attacks for a given square
- * @param sq
- * @param occupied
- * @return
- */
+
 [[nodiscard]] Bitboard bishop(Square sq, Bitboard occupied) {
     return BishopAttacks[BishopTable[(int)sq].index + BishopTable[(int)sq](occupied)];
 }
 
-/**
- * @brief Returns the rook attacks for a given square
- * @param sq
- * @param occupied
- * @return
- */
 [[nodiscard]] Bitboard rook(Square sq, Bitboard occupied) {
     return RookAttacks[RookTable[(int)sq].index + RookTable[(int)sq](occupied)];
 }
-
 } // namespace chess::attacks
 namespace chess::movegen {
 inline static Bitboard att(PieceType pt, Square sq, Bitboard occ) {
     return (pt == BISHOP) ? chess::_chess::_HyperbolaBishopAttacks(sq, occ) : chess::_chess::_HyperbolaRookAttacks(sq, occ);
 }
 
-inline static std::array<std::array<Bitboard, SQ_NONE + 1>, SQ_NONE + 1> generate_between() {
-    std::array<std::array<Bitboard, SQ_NONE + 1>, SQ_NONE + 1> squares_between_bb{};
+inline static std::array<std::array<Bitboard, 64>, 64> generate_between() {
+    std::array<std::array<Bitboard, 64>, 64> squares_between_bb{};
 
     for (int sq1 = 0; sq1 < 64; ++sq1) {
         for (PieceType pt : { BISHOP, ROOK }) {
@@ -226,5 +214,5 @@ inline static std::array<std::array<Bitboard, SQ_NONE + 1>, SQ_NONE + 1> generat
 
     return squares_between_bb;
 }
-std::array<std::array<Bitboard, SQ_NONE + 1>, SQ_NONE + 1> SQUARES_BETWEEN_BB = generate_between();
+std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB = generate_between();
 } // namespace chess::movegen

@@ -374,13 +374,12 @@ class Move {
     constexpr int from_to() const { return data & 0xFFF; }
 
     constexpr MoveType type_of() const { return MoveType(data & (3 << 14)); }
-    constexpr MoveType typeOf() const { return type_of(); }
+
+    constexpr bool is_ok() const { return none().data != data && null().data != data; }
 
     constexpr PieceType promotion_type() const {
-        return static_cast<PieceType>(((data >> 12) & 3) + static_cast<int>(PieceType::KNIGHT));
+        return PieceType(((data >> 12) & 3) + KNIGHT);
     }
-    constexpr PieceType promotionType() const { return promotion_type(); }
-    constexpr bool is_ok() const { return none().data != data && null().data != data; }
 
     static constexpr Move null() { return Move(65); }
     static constexpr Move none() { return Move(0); }

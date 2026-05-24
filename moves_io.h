@@ -18,6 +18,7 @@
 */
 #pragma once
 #include "fwd_decl.h"
+#include "types.h"
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -46,5 +47,14 @@ template <typename T, typename P = void> Move uciToMove(const _Position<T, P> &p
 template <typename T, typename P = void>
 Move parseSan(const _Position<T, P> &pos, std::string_view uci, bool remove_illegals = false);
 template <typename T, typename P = void>
+Move parse_san(const _Position<T, P> &pos, std::string_view uci, bool remove_illegals = false) {
+    return parseSan(pos, uci, remove_illegals);
+}
+
+template <typename T, typename P = void>
 std::string moveToSan(const _Position<T, P> &pos, Move move, bool long_ = false, bool suffix = true);
+template <typename T, typename P = void>
+std::string move_to_san(const _Position<T, P> &pos, Move move, bool long_ = false, bool suffix = true) {
+    return moveToSan(pos, move, long_, suffix);
+}
 } // namespace chess::uci

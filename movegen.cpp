@@ -126,7 +126,7 @@ inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
 namespace chess {
 template <typename T, Color c> void movegen::genEP(const _Position<T, void> &pos, Movelist &mv) {
 
-    const Square king_sq = pos.kingSq(c);
+    const Square king_sq = pos.king_sq(c);
     const Square ep_sq = pos.ep_square();
     if (ep_sq == SQ_NONE)
         return;
@@ -139,12 +139,12 @@ template <typename T, Color c> void movegen::genEP(const _Position<T, void> &pos
     const Bitboard ep_mask = (1ULL << ep_pawn_sq) | (1ULL << ep_sq);
     // ASSUME(popcount(candidates) <= 32);
 
+    Bitboard occ_all = pos.occ();
     while (candidates) {
         Square from = static_cast<Square>(pop_lsb(candidates));
 
         // Remove the EP pawn and this attacker from occupancy
-        Bitboard occ_temp = pos.occ();
-        occ_temp ^= (1ULL << from) | ep_mask;
+        Bitboard occ_temp = occ_all ^ ((1ULL << from) | ep_mask);
 
         // attackers check
         Bitboard atks = 0;
@@ -165,7 +165,7 @@ void movegen::genPawnDoubleMoves(const _Position<T, void> &pos, Movelist &moves,
     Bitboard pawns = pos.template pieces<PAWN, c>() & RANK_2;
 
     // Split pin types
-    Bitboard pin_file = pin_mask & attacks::MASK_FILE[file_of(pos.kingSq(c))];
+    Bitboard pin_file = pin_mask & attacks::MASK_FILE[file_of(pos.king_sq(c))];
 
     Bitboard unpinned = pawns & ~pin_mask;
     Bitboard file_pinned = pawns & pin_file;
@@ -283,7 +283,7 @@ void movegen::genKnightMoves(const _Position<T, void> &pos, Movelist &list, Bitb
 template <typename T, Color c, bool capturesOnly>
 void movegen::genKingMoves(const _Position<T, void> &pos, Movelist &out, Bitboard _pin_mask) {
     constexpr Color them = ~c;
-    const Square kingSq = pos.kingSq(c);
+    const Square kingSq = pos.king_sq(c);
     const Bitboard occAll = pos.occ();
     const Bitboard myOcc = pos.occ(c);
 
@@ -307,7 +307,7 @@ void movegen::genKingMoves(const _Position<T, void> &pos, Movelist &out, Bitboar
     enemyAttacks |= attacks::pawn<them>(pos.template pieces<PAWN, them>());
 
     // Enemy king (adjacent control squares)
-    enemyAttacks |= attacks::king(pos.kingSq(them));
+    enemyAttacks |= attacks::king(pos.king_sq(them));
 
     Bitboard moves = attacks::king(kingSq) & ~myOcc & ~enemyAttacks;
     if constexpr (capturesOnly)
@@ -322,11 +322,11 @@ void movegen::genKingMoves(const _Position<T, void> &pos, Movelist &out, Bitboar
         Bitboard enemy_attacks = enemyAttacks;
         constexpr CastlingRights kingRights = KING_SIDE & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING),
                                  queenRights = QUEEN_SIDE & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING);
-        Bitboard OO_EMPTY = pos.getCastlingPath(c, true);
+        Bitboard OO_EMPTY = pos.get_castling_path(c, true);
         Bitboard OO_SAFE = between(kingSq, castling_king_square(c, true));
-        Bitboard OOO_EMPTY = pos.getCastlingPath(c, false);
+        Bitboard OOO_EMPTY = pos.get_castling_path(c, false);
         Bitboard OOO_SAFE = between(kingSq, castling_king_square(c, false));
-        Square rookKing = pos.getCastlingMetadata(c).rook_start_ks, rookQueen = pos.getCastlingMetadata(c).rook_start_qs;
+        Square rookKing = pos.get_castling_metadata(c).rook_start_ks, rookQueen = pos.get_castling_metadata(c).rook_start_qs;
 
         if (pos.castlingRights() & kingRights &&
             !(occupancy & OO_EMPTY || enemy_attacks & OO_SAFE || _pin_mask & 1ULL << rookKing)) {
@@ -350,6 +350,7 @@ void movegen::genSlidingMoves(
         sliders &= ~rook_pinners;
     if constexpr (pt == ROOK)
         sliders &= ~bishop_pinners;
+    Bitboard occ_opp = pos.occ(~c);
     Bitboard filter_list = ~pos.occ(c) & _check_mask;
     while (sliders) {
         Square from = static_cast<Square>(pop_lsb(sliders));
@@ -368,7 +369,7 @@ void movegen::genSlidingMoves(
         Bitboard filtered_pin = pin_mask & filter_list;
         Bitboard targets = func(from, occ_all) & filtered_pin;
         if constexpr (capturesOnly)
-            targets &= pos.occ(~c);
+            targets &= occ_opp;
         _chess::splat_moves(moves.data() + moves.size_, from, targets);
         moves.size_ += popcount(targets);
     }
