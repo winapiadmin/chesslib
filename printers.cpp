@@ -16,6 +16,10 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+
+/// @file printers.cpp
+/// @brief Stream-operator overloads for board display, move printing, and FEN output.
+
 #include "printers.h"
 #include "moves_io.h"
 #include "position.h"
@@ -26,6 +30,7 @@
 namespace chess {
 template <typename T> using DescriptiveNameNotation = std::unordered_map<T, std::string>;
 
+/// @brief Print a Position as a text board (ranks 8-1, pieces, side-to-move, castling rights, EP square).
 template <typename PieceC, typename> std::ostream &operator<<(std::ostream &os, const _Position<PieceC, void> &pos) {
     // RAII guard to save/restore stream state
     struct ios_guard {
@@ -52,15 +57,17 @@ template <typename PieceC, typename> std::ostream &operator<<(std::ostream &os, 
     os << "   a   b   c   d   e   f   g   h\n";
 
     // Ensure key is printed in hex, but restores after this function
-    os << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase << std::setfill('0') << std::setw(16) << pos.key()
+    os << "\nFen: " << pos.fen() << "\nKey: " << std::hex << std::uppercase << std::setfill('0') << std::setw(16) << pos.hash()
        << '\n';
 
     return os;
 }
+/// @brief Print a Move as UCI string.
 std::ostream &operator<<(std::ostream &os, const Move mv) {
-    os << uci::moveToUci(mv);
-    return os;
+    return os << mv.uci();
 }
+
+/// @brief Print a Color as "w" or "b".
 std::ostream &operator<<(std::ostream &os, const Color c) {
     DescriptiveNameNotation<Color> colors = {
         {    WHITE,    "WHITE" },
@@ -69,6 +76,7 @@ std::ostream &operator<<(std::ostream &os, const Color c) {
     };
     return os << colors[c];
 }
+/// @brief Print a PieceType as "p", "n", "b", "r", "q", "k".
 std::ostream &operator<<(std::ostream &os, const PieceType c) {
     DescriptiveNameNotation<PieceType> pieces = {
         { NO_PIECE_TYPE, "NO_PIECE_TYPE/ALL_PIECES" },
@@ -82,6 +90,7 @@ std::ostream &operator<<(std::ostream &os, const PieceType c) {
     };
     return os << pieces[c];
 }
+/// @brief Print CastlingRights as "KkQq" style string.
 std::ostream &operator<<(std::ostream &os, const CastlingRights cr) {
     DescriptiveNameNotation<CastlingRights> castlingFlags = {
         {                      NO_CASTLING,                      "NO_CASTLING" },
@@ -108,10 +117,12 @@ static std::string str_toupper(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::toupper(c); });
     return s;
 }
+/// @brief Print a Square as algebraic notation (e.g. "e2").
 std::ostream &operator<<(std::ostream &os, const Square sq) {
-    os << "SQ_" << str_toupper(chess::uci::squareToString(sq));
-    return os;
+    return os << uci::squareToString(sq);
 }
+
+/// @brief Print a piece (color + type), e.g. "wP", "bK".
 template <typename PieceC, typename> std::ostream &operator<<(std::ostream &os, PieceC p) {
     char c = '.';
     switch (p) {

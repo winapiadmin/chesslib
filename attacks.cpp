@@ -16,12 +16,17 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+
+/// @file attacks.cpp
+/// @brief Magic-bitboard generation, hyperbola-quintessence helpers, and between-square table.
+
 #include "attacks.h"
 
 namespace chess::_chess {
 // [INTERNAL]
 
-// Reverse bits horizontally in 64-bit integer
+/// @brief Reverse bits horizontally in a 64-bit integer.
+/// @details Used by the hyperbola quintessence algorithm.
 static constexpr Bitboard reverse(Bitboard b) {
     b = (b & 0x5555555555555555ULL) << 1 | ((b >> 1) & 0x5555555555555555ULL);
     b = (b & 0x3333333333333333ULL) << 2 | ((b >> 2) & 0x3333333333333333ULL);
@@ -32,6 +37,11 @@ static constexpr Bitboard reverse(Bitboard b) {
     return b;
 }
 
+/// @brief Hyperbola quintessence attack computation for a single line.
+/// @param sliderBB Bitboard with the slider's square set.
+/// @param occ Occupancy bitboard.
+/// @param mask Line mask (rank, file, or diagonal).
+/// @return Attacks along the masked line.
 static constexpr Bitboard hyp_quint(Bitboard sliderBB, Bitboard occ, Bitboard mask) {
     Bitboard occ_masked = occ & mask;
     Bitboard left = occ_masked - 2 * sliderBB;
@@ -39,7 +49,7 @@ static constexpr Bitboard hyp_quint(Bitboard sliderBB, Bitboard occ, Bitboard ma
     return (left ^ reverse(right)) & mask;
 }
 
-// For Bishop: Mask for diagonal and anti-diagonal
+/// @brief Compute the diagonal mask through a square.
 static constexpr Bitboard diag_mask(Square sq) {
     int r = rank_of(sq);
     int f = file_of(sq);
@@ -53,6 +63,7 @@ static constexpr Bitboard diag_mask(Square sq) {
     }
     return mask;
 }
+/// @brief Compute the anti-diagonal mask through a square.
 static constexpr Bitboard antidiag_mask(Square sq) {
     int r = rank_of(sq);
     int f = file_of(sq);
@@ -68,7 +79,7 @@ static constexpr Bitboard antidiag_mask(Square sq) {
     return mask;
 }
 
-// Hyperbola Quintessence for Bishop
+/// @brief Bishop attacks via hyperbola quintessence.
 static constexpr Bitboard _HyperbolaBishopAttacks(Square sq, Bitboard occ) {
     Bitboard slider = 1ULL << sq;
     Bitboard d_mask = diag_mask(sq);
@@ -76,12 +87,13 @@ static constexpr Bitboard _HyperbolaBishopAttacks(Square sq, Bitboard occ) {
     return hyp_quint(slider, occ, d_mask) | hyp_quint(slider, occ, ad_mask);
 }
 
-// For Rook: Rank and File Masks
+/// @brief Rank mask for a square.
 static constexpr Bitboard rank_mask(Square sq) { return attacks::MASK_RANK[rank_of(sq)]; }
 
+/// @brief File mask for a square.
 static constexpr Bitboard file_mask(Square sq) { return attacks::MASK_FILE[file_of(sq)]; }
 
-// Hyperbola Quintessence for Rook
+/// @brief Rook attacks via hyperbola quintessence.
 static constexpr Bitboard _HyperbolaRookAttacks(Square sq, Bitboard occ) {
     Bitboard slider = 1ULL << sq;
     Bitboard r_mask = rank_mask(sq);
@@ -134,6 +146,12 @@ _POSSIBLY_CONSTEXPR std::array<uint64_t, 64> BishopMagics = {
 };
 
 // clang-format on
+
+/// @brief Generate magic-bitboard lookup tables.
+/// @tparam AttackFunc The hyperbola attack function to use.
+/// @tparam TableSize Total number of attack entries.
+/// @tparam IsBishop true for bishop, false for rook.
+/// @return Pair of (magic table, attack table).
 template <auto AttackFunc, size_t TableSize, bool IsBishop>
 _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, TableSize>> generate_magic_table() {
     std::array<Magic, 64> table{};
@@ -184,34 +202,27 @@ _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, 0x1900
     generate_magic_table<_chess::_HyperbolaRookAttacks, 0x19000, false>();
 _POSSIBLY_CONSTEXPR std::array<Magic, 64> RookTable = rookData.first;
 _POSSIBLY_CONSTEXPR std::array<Bitboard, 0x19000> RookAttacks = rookData.second;
-/**
- * @brief Returns the bishop attacks for a given square
- * @param sq
- * @param occupied
- * @return
- */
+
+/// @brief Look up bishop attacks from the precomputed magic table.
 [[nodiscard]] Bitboard bishop(Square sq, Bitboard occupied) {
     return BishopAttacks[BishopTable[(int)sq].index + BishopTable[(int)sq](occupied)];
 }
 
-/**
- * @brief Returns the rook attacks for a given square
- * @param sq
- * @param occupied
- * @return
- */
+/// @brief Look up rook attacks from the precomputed magic table.
 [[nodiscard]] Bitboard rook(Square sq, Bitboard occupied) {
     return RookAttacks[RookTable[(int)sq].index + RookTable[(int)sq](occupied)];
 }
-
 } // namespace chess::attacks
 namespace chess::movegen {
+
+/// @brief Hyperbola attack for bishop or rook (used for between-table generation).
 inline static Bitboard att(PieceType pt, Square sq, Bitboard occ) {
     return (pt == BISHOP) ? chess::_chess::_HyperbolaBishopAttacks(sq, occ) : chess::_chess::_HyperbolaRookAttacks(sq, occ);
 }
 
-inline static std::array<std::array<Bitboard, SQ_NONE + 1>, SQ_NONE + 1> generate_between() {
-    std::array<std::array<Bitboard, SQ_NONE + 1>, SQ_NONE + 1> squares_between_bb{};
+/// @brief Generate the between-square table at program startup.
+inline static std::array<std::array<Bitboard, 64>, 64> generate_between() {
+    std::array<std::array<Bitboard, 64>, 64> squares_between_bb{};
 
     for (int sq1 = 0; sq1 < 64; ++sq1) {
         for (PieceType pt : { BISHOP, ROOK }) {
@@ -226,5 +237,5 @@ inline static std::array<std::array<Bitboard, SQ_NONE + 1>, SQ_NONE + 1> generat
 
     return squares_between_bb;
 }
-std::array<std::array<Bitboard, SQ_NONE + 1>, SQ_NONE + 1> SQUARES_BETWEEN_BB = generate_between();
+std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB = generate_between();
 } // namespace chess::movegen

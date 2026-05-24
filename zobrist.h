@@ -19,9 +19,22 @@
 #pragma once
 #include <array>
 #include <cstdint>
+
+/// @file zobrist.h
+/// @brief Zobrist hashing random constants.
+
 namespace chess::zobrist {
+
+/// @brief Random values for piece-square XOR.
+/// @details Indexed as RandomPiece[piece_enum_idx][piece_value][square].
 extern std::array<uint64_t, 64> *RandomPiece[];
+
+/// @brief Random values for castling rights (indexed by CastlingRights bitmask, 0-15).
 extern uint64_t RandomCastle[16];
+
+/// @brief Random values for en-passant file (0-7 = files A-H, 8 = no EP).
 extern uint64_t RandomEP[9];
+
+/// @brief Random value XORed when it is black's turn to move.
 extern uint64_t RandomTurn;
 } // namespace chess::zobrist

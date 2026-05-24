@@ -19,6 +19,10 @@
 // UCI moves parsing
 
 // License: https://github.com/Disservin/chess-library/blob/master/LICENSE
+
+/// @file moves_io.cpp
+/// @brief UCI move parsing and conversion (moveToUci, uciToMove).
+
 #include "moves_io.h"
 #include "position.h"
 #include "types.h"
@@ -31,6 +35,7 @@
 #endif
 namespace chess {
 namespace uci {
+/// @brief Convert a Square to algebraic notation string (e.g. 0→"a1").
 std::string squareToString(Square sq) {
     constexpr std::string_view fileChars[65] = {
         "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1", "a2", "b2", "c2", "d2", "e2", "f2",  "g2", "h2", "a3",
@@ -40,6 +45,7 @@ std::string squareToString(Square sq) {
     };
     return std::string{ fileChars[sq] };
 }
+/// @brief Convert a Move to UCI string representation.
 std::string moveToUci(Move mv, bool chess960) {
     if (!mv.is_ok()) {
         // null move
@@ -90,6 +96,7 @@ std::string moveToUci(Move mv, bool chess960) {
     }
     return move;
 }
+/// @brief Convert a UCI string (e.g. "e2e4") to a Move object.
 template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std::string_view uci) {
     if (uci.length() < 4) {
         THROW_IF_EXCEPTIONS_ON(IllegalMoveException("example: a2a4 or d7d8q"));
@@ -111,7 +118,7 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
     }
     // castling in chess960
     if (pos.chess960() && pt == PieceType::KING && pos.template at<PieceType>(target) == PieceType::ROOK &&
-        pos.template at<Color>(target) == pos.sideToMove()) {
+        pos.template at<Color>(target) == pos.side_to_move()) {
         move = Move::make<Move::CASTLING>(source, target);
     }
 
@@ -122,12 +129,12 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
         move = Move::make<Move::CASTLING>(source, target);
     }
     // en passant
-    else if (pt == PAWN && target == pos.enpassantSq()) {
+    else if (pt == PAWN && target == pos.ep_square()) {
         move = Move::make<EN_PASSANT>(source, target);
     }
 
     // promotion
-    else if (pt == PAWN && uci.length() == 5 && (rank_of(target) == (pos.sideToMove() == WHITE ? RANK_8 : RANK_1))) {
+    else if (pt == PAWN && uci.length() == 5 && (rank_of(target) == (pos.side_to_move() == WHITE ? RANK_8 : RANK_1))) {
         auto promotion = parse_pt(uci[4]);
 
         if (promotion == NO_PIECE_TYPE || promotion == KING || promotion == PAWN) {
@@ -152,6 +159,7 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
 #endif
     return move;
 }
+/// @brief Parse a SAN (Standard Algebraic Notation) move string.
 template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std::string_view raw_san, bool remove_illegals) {
     auto do_parse = [&](std::string_view input_san) -> Move {
         if (input_san.empty())
@@ -164,8 +172,8 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
 
         // 1) Castling shortcuts
         if (san == "O-O" || san == "0-0" || san == "O-O+" || san == "0-0+" || san == "O-O#" || san == "0-0#") {
-            const auto from = pos.kingSq(pos.side_to_move());
-            const auto to = pos.getCastlingMetadata(pos.sideToMove()).rook_start_ks;
+            const auto from = pos.king_sq(pos.side_to_move());
+            const auto to = pos.get_castling_metadata(pos.side_to_move()).rook_start_ks;
             Move km = chess::Move::make<CASTLING>(from, to);
 
             if (std::find(moves.begin(), moves.end(), km) != moves.end())
@@ -174,8 +182,8 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
             return Move::none();
         }
         if (san == "O-O-O" || san == "0-0-0" || san == "O-O-O+" || san == "0-0-0+" || san == "O-O-O#" || san == "0-0-0#") {
-            const auto from = pos.kingSq(pos.side_to_move());
-            const auto to = pos.getCastlingMetadata(pos.sideToMove()).rook_start_qs;
+            const auto from = pos.king_sq(pos.side_to_move());
+            const auto to = pos.get_castling_metadata(pos.side_to_move()).rook_start_qs;
             Move qm = chess::Move::make<CASTLING>(from, to);
 
             if (std::find(moves.begin(), moves.end(), qm) != moves.end())
@@ -381,6 +389,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
         return do_parse(raw_san);
     }
 }
+/// @brief Convert a Move to SAN or LAN (Long Algebraic Notation) string.
 template <typename T, typename P> std::string moveToSan(const _Position<T, P> &pos, Move move, bool long_, bool suffix) {
     constexpr char FILE_NAMES[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' };
 
@@ -473,7 +482,7 @@ appendCheck:
     if (!suffix)
         return san;
     _Position<T> p = pos;
-    p.doMove(move);
+    p.do_move(move);
     const bool _check = p.is_check();
     Movelist moves;
     p.legals(moves);

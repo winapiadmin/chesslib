@@ -16,10 +16,16 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+
+/// @file zobrist.cpp
+/// @brief Zobrist-hashing random constants pre-generated from a PRNG.
+
 #include "zobrist.h"
 #include "types.h"
 namespace chess::zobrist {
 // clang-format off
+
+/// @brief All-zero placeholder array for unused EnginePiece indices.
 std::array<uint64_t, 64> Empty = {
     0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
     0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
@@ -38,6 +44,7 @@ std::array<uint64_t, 64> Empty = {
     0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
     0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000
 };
+/// @brief Random piece-square values indexed by PolyglotPiece (0-11).
 std::array<uint64_t, 64> _RandomPiece[12] = {
     {
         0x9D39247E33776D41, 0x2AF7398005AAA5C7, 0x44DB015024623547, 0x9C15F73E62A76AE2,

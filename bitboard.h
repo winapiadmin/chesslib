@@ -23,10 +23,15 @@
 #include <intrin.h>
 #endif
 #include <immintrin.h>
+
+/// @file bitboard.h
+/// @brief Bitboard utility functions (popcount, LSB, MSB, etc.).
+
 namespace chess {
-// -------------------------------
-// constexpr fallbacks
-// -------------------------------
+
+/// @brief constexpr fallback for population count.
+/// @param x Input bitboard.
+/// @return Number of set bits.
 constexpr int popcount_constexpr(Bitboard x) noexcept {
     int count = 0;
     while (x) {
@@ -36,6 +41,9 @@ constexpr int popcount_constexpr(Bitboard x) noexcept {
     return count;
 }
 
+/// @brief constexpr fallback for least-significant bit index.
+/// @param x Input bitboard.
+/// @return Index of the lowest set bit (0-based).
 constexpr int lsb_constexpr(Bitboard x) noexcept {
     int pos = 0;
     while ((x & 1) == 0) {
@@ -45,6 +53,9 @@ constexpr int lsb_constexpr(Bitboard x) noexcept {
     return pos;
 }
 
+/// @brief constexpr fallback for most-significant bit index.
+/// @param x Input bitboard.
+/// @return Index of the highest set bit (0-based).
 constexpr int msb_constexpr(Bitboard x) noexcept {
     int pos = 63;
     Bitboard mask = 1ULL << 63;
@@ -55,9 +66,9 @@ constexpr int msb_constexpr(Bitboard x) noexcept {
     return pos;
 }
 
-// -------------------------------
-// runtime + constexpr aware
-// -------------------------------
+/// @brief Population count (uses hardware POPCNT when available).
+/// @param x Input bitboard.
+/// @return Number of set bits.
 #if defined(__GNUG__) || defined(__clang__)
 [[gnu::const]]
 #endif
@@ -72,6 +83,9 @@ inline constexpr int popcount(Bitboard x) noexcept {
     return popcount_constexpr(x);
 }
 
+/// @brief Least-significant bit index (uses hardware BSF when available).
+/// @param x Input bitboard (must be non-zero).
+/// @return Index of the lowest set bit.
 #if defined(__GNUG__) || defined(__clang__)
 [[gnu::const]]
 #endif
@@ -89,6 +103,9 @@ inline constexpr int lsb(Bitboard x) noexcept {
     return lsb_constexpr(x);
 }
 
+/// @brief Most-significant bit index (uses hardware BSR when available).
+/// @param x Input bitboard (must be non-zero).
+/// @return Index of the highest set bit.
 #if defined(__GNUG__) || defined(__clang__)
 [[gnu::const]]
 #endif
@@ -106,9 +123,9 @@ inline constexpr int msb(Bitboard x) noexcept {
     return msb_constexpr(x);
 }
 
-// -------------------------------
-// destructive variants
-// -------------------------------
+/// @brief Extract and pop the least-significant bit (destructive).
+/// @param b Bitboard reference; modified in place.
+/// @return Index of the lowest set bit before removal.
 inline int pop_lsb(Bitboard &b) noexcept {
     int c = lsb(b);
 #ifndef __BMI2__
@@ -119,6 +136,9 @@ inline int pop_lsb(Bitboard &b) noexcept {
     return c;
 }
 
+/// @brief Extract and pop the most-significant bit (destructive).
+/// @param b Bitboard reference; modified in place.
+/// @return Index of the highest set bit before removal.
 inline int pop_msb(Bitboard &b) noexcept {
     int c = msb(b);
     b &= ~(1ULL << c);

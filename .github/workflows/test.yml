@@ -11,6 +11,7 @@ on:
 
 jobs:
   format:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -30,7 +31,6 @@ jobs:
 
       - name: Commit and push changes
         id: auto-commit
-        if: github.actor != 'github-actions[bot]' && github.event.pull_request.head.repo.full_name == github.repository
         uses: stefanzweifel/git-auto-commit-action@v7
 
   build:
