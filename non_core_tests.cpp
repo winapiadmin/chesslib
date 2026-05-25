@@ -441,7 +441,7 @@ TEST_SUITE("SAN Parser") {
                                "illegal san: '0-0+?!' in rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 17",
                                chess::uci::IllegalMoveException);
 #endif
-	REQUIRE(m2 == Move::none());
+        REQUIRE(m2 == Move::none());
         REQUIRE(uci::parseSan(b, "0-0+?!", true) == m);
     }
 
@@ -456,7 +456,7 @@ TEST_SUITE("SAN Parser") {
                                "illegal san: '0-0-0+?!' in rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1",
                                chess::uci::IllegalMoveException);
 #endif
-	REQUIRE(m2 == Move::none());
+        REQUIRE(m2 == Move::none());
 
         REQUIRE(uci::parseSan(b, "0-0-0+?!", true) == m);
     }
