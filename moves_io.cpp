@@ -149,7 +149,10 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
     Movelist moves;
     pos.legals(moves);
     auto it = std::find(moves.begin(), moves.end(), move);
-    INVALID_ARG_IF(it == moves.end(), IllegalMoveException("Move is illegal"));
+    if (it == moves.end()) {
+        INVALID_ARG_IF(true, IllegalMoveException("Move is illegal"));
+        return Move::NO_MOVE;
+    }
     return move;
 }
 /// @brief Parse a SAN (Standard Algebraic Notation) move string.
