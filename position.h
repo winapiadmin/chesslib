@@ -262,9 +262,9 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Bitboard of a piece type for a colour (compile-time colour).
     template <PieceType pt> [[nodiscard]] inline Bitboard pieces(Color c) const {
-#if defined(_CHESSLIB_ERROR_MODE_ASSERTS)
+#if defined(_CHESSLIB_ERROR_MODE_ASSERT)
         assert(c != COLOR_NB && "color is COLOR_NB");
-#elif defined(_CHESSLIB_ERROR_MODE_THROWS)
+#elif defined(_CHESSLIB_ERROR_MODE_THROW)
         if (c == COLOR_NB)
             throw std::runtime_error("color is COLOR_NB");
 #endif
@@ -291,9 +291,9 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Bitboard of a piece type for a colour (runtime both).
     [[nodiscard]] inline Bitboard pieces(PieceType pt, Color c) const {
-#if defined(_CHESSLIB_ERROR_MODE_ASSERTS)
+#if defined(_CHESSLIB_ERROR_MODE_ASSERT)
         assert(c != COLOR_NB && "color is COLOR_NB");
-#elif defined(_CHESSLIB_ERROR_MODE_THROWS)
+#elif defined(_CHESSLIB_ERROR_MODE_THROW)
         if (c == COLOR_NB)
             throw std::runtime_error("color is COLOR_NB");
 #endif
@@ -439,10 +439,10 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Piece on a square.
     inline PieceC piece_on(Square s) const {
-#if defined(_CHESSLIB_ERROR_MODE_ASSERTS)
-        assert(chess::is_valid(sq) && "sq is out-of-bounds");
-#elif defined(_CHESSLIB_ERROR_MODE_THROWS)
-        if (!chess::is_valid(sq))
+#if defined(_CHESSLIB_ERROR_MODE_ASSERT)
+        assert(chess::is_valid(s) && "sq is out-of-bounds");
+#elif defined(_CHESSLIB_ERROR_MODE_THROW)
+        if (!chess::is_valid(s))
             throw std::runtime_error("sq is out-of-bounds");
 #endif
 #if !defined(_DEBUG) || defined(NDEBUG)
@@ -463,9 +463,9 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
             }
         }
         auto p = pieces_list[s];
-#if defined(_CHESSLIB_ERROR_MODE_ASSERTS)
+#if defined(_CHESSLIB_ERROR_MODE_ASSERT)
         assert(p == _p2 && "Inconsistient piece map");
-#elif defined(_CHESSLIB_ERROR_MODE_THROWS)
+#elif defined(_CHESSLIB_ERROR_MODE_THROW)
         if (p != _p2)
             throw std::runtime_error("Inconsistient piece map");
 #endif

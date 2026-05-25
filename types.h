@@ -556,7 +556,8 @@ template <typename T, std::size_t MaxSize> class ValueList {
 
     /// @brief Indexed access.
     inline T &operator[](int index) {
-        assert(index < size_);
+        // intentionally placed
+        assert(0 <= index && index < MaxSize);
         return values_[index];
     }
 

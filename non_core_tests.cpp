@@ -431,7 +431,7 @@ TEST_SUITE("SAN Parser") {
 
         REQUIRE(uci::parseSan(b, "0-0-0") == m);
     }
-    // These are removed due to illegal move (annotations aren't allowed strictly)
+#if !defined(_CHESSLIB_ERROR_MODE_THROW)
     TEST_CASE("Test King Castling Short move with Annotation") {
         auto b = Position{ "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 17" };
 
@@ -457,7 +457,7 @@ TEST_SUITE("SAN Parser") {
 
         REQUIRE(uci::parseSan(b, "0-0-0+?!", true) == m);
     }
-
+#endif
     TEST_CASE("Test Queen Capture Ambiguity") {
         auto b = Position{ "3k4/8/4b3/8/2Q3Q1/8/8/3K4 w - - 0 1" };
 
@@ -880,7 +880,7 @@ TEST_SUITE("SAN Parser") {
 
         REQUIRE(uci::parseSan(b, "") == Move::NO_MOVE);
     }
-
+#if !defined(_CHESSLIB_ERROR_MODE_THROW)
     TEST_CASE("Should throw on ambiguous move") {
         auto b = Position{ "8/8/6K1/4k3/4N3/p4r2/N3N3/8 w - - 3 82" };
 
@@ -900,7 +900,7 @@ TEST_SUITE("SAN Parser") {
                              uci::IllegalMoveException);
         CHECK(san == Move::NO_MOVE);
     }
-
+#endif
     TEST_CASE("Checkmate castle should have #") {
         auto b = Position{ "RRR5/8/8/8/8/8/PPPPPP2/k3K2R w K - 0 1" };
 

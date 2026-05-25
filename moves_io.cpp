@@ -81,7 +81,7 @@ std::string moveToUci(Move mv, bool chess960) {
                 move += "c8"; // black queenside castling
                 break;
             default:
-                INVALID_ARG_IF(false, std::runtime_error("This isn't Chess960"));
+                INVALID_ARG_IF(true, std::runtime_error("This isn't Chess960"));
             }
         }
     } break;
@@ -219,8 +219,10 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
         }
 
         // 4) Destination square: always the last [file][rank]
-        if (san.size() < 2)
+        if (san.size() < 2) {
             INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+            return Move::none();
+        }
         char dfile = san[san.size() - 2];
         char drank = san[san.size() - 1];
         if (!(dfile >= 'a' && dfile <= 'h' && drank >= '1' && drank <= '8')) {

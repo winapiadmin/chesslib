@@ -38,6 +38,8 @@
     throw(exception)
 #elif defined(_CHESSLIB_ERROR_MODE_ASSERT)
 #define INVALID_ARG_IF(c, exception) assert(!(c) && #exception);
+#else
+#define INVALID_ARG_IF(c, exception)
 #endif
 namespace chess {
 
@@ -313,7 +315,7 @@ void _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
                     placePiece<KING>(make_sq(r, f), WHITE);
                     break;
                 default:
-                    INVALID_ARG_IF(false, std::runtime_error("Invalid FEN character"));
+                    INVALID_ARG_IF(true, std::runtime_error("Invalid FEN character"));
                     break;
                 }
 
