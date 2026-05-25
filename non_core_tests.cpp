@@ -16,7 +16,7 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#define DOCTEST_CONFIG_IMPLEMENT
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #ifndef __EXCEPTIONS
 #define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
 #endif
@@ -933,10 +933,4 @@ TEST_SUITE("misc tests") {
         REQUIRE(pos.fen(false) == Position::START_CHESS960_FEN);
         REQUIRE(pos.fen() == Position::START_FEN);
     }
-}
-int main(int argc, char **argv) {
-    doctest::Context ctx;
-    ctx.setOption("success", true);
-    ctx.setOption("no-breaks", true);
-    return ctx.run();
 }

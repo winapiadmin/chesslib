@@ -86,9 +86,9 @@ if(BUILD_TESTING)
     target_link_libraries(NonImportantTests PRIVATE chesslib doctest::doctest)
     target_link_libraries(test_chess960 PRIVATE chesslib doctest::doctest)
 
-    add_test(NAME test_normal COMMAND test_normal --success --abort-after=1)
-    add_test(NAME test_api COMMAND NonImportantTests)
-    add_test(NAME test_chess960 COMMAND test_chess960 --success --abort-after=1)
+    add_test(NAME test_normal COMMAND test_normal --abort-after=1)
+    add_test(NAME test_api COMMAND NonImportantTests --abort-after=1)
+    add_test(NAME test_chess960 COMMAND test_chess960 --abort-after=1)
     if (UNIX AND CMAKE_BUILD_TYPE MATCHES "Debug")
         set(SANITIZERS "" CACHE STRING "sanitizers such as undefined,address")
     

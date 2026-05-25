@@ -17,7 +17,9 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#ifndef __EXCEPTIONS
 #define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
+#endif
 #include "moves_io.h"
 #include "position.h"
 #include "printers.h"
