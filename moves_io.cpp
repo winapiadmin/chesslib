@@ -82,6 +82,7 @@ std::string moveToUci(Move mv, bool chess960) {
                 break;
             default:
                 INVALID_ARG_IF(true, std::runtime_error("This isn't Chess960"));
+                return {};
             }
         }
     } break;
