@@ -170,7 +170,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
 
             if (std::find(moves.begin(), moves.end(), km) != moves.end())
                 return km;
-            INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));
+            if (!remove_illegals) INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));
             return Move::none();
         }
         if (san == "O-O-O" || san == "0-0-0" || san == "O-O-O+" || san == "0-0-0+" || san == "O-O-O#" || san == "0-0-0#") {
@@ -180,7 +180,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
 
             if (std::find(moves.begin(), moves.end(), qm) != moves.end())
                 return qm;
-            INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));
+            if (!remove_illegals) INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));
             return Move::none();
         }
         // 2) Strip trailing annotations (+, #) that aren't required in the standard (except "e.p. "). Repeated occurrences too.
@@ -192,7 +192,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
                 break;
         }
         if (san.empty()) {
-            INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));
+            if (!remove_illegals) INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + san + "' in " + pos.fen()));
             return Move::none();
         }
 
@@ -205,7 +205,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
             if (penult == '=') {
                 promotion = parse_pt(last);
                 if (promotion == NO_PIECE_TYPE) {
-                    INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+                    if (!remove_illegals) INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
                     return Move::none();
                 }
                 san.pop_back(); // remove piece letter
@@ -220,19 +220,19 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
 
         // 4) Destination square: always the last [file][rank]
         if (san.size() < 2) {
-            INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+            if (!remove_illegals) INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
             return Move::none();
         }
         char dfile = san[san.size() - 2];
         char drank = san[san.size() - 1];
         if (!(dfile >= 'a' && dfile <= 'h' && drank >= '1' && drank <= '8')) {
-            INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+            if (!remove_illegals) INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
             return Move::none();
         }
         std::string dest_sq_str = san.substr(san.size() - 2, 2);
         Square to_square = parse_square(dest_sq_str);
         if (to_square == SQ_NONE) {
-            INVALID_ARG_IF(to_square == SQ_NONE, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+            if (!remove_illegals) INVALID_ARG_IF(to_square == SQ_NONE, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
             return Move::none();
         }
         san.resize(san.size() - 2); // chop off destination
@@ -259,7 +259,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
                 std::string src_sq_str = prefix.substr(prefix.size() - 2, 2);
                 src_square = parse_square(src_sq_str);
                 if (src_square == SQ_NONE) {
-                    INVALID_ARG_IF(src_square == SQ_NONE, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+                    if (!remove_illegals) INVALID_ARG_IF(src_square == SQ_NONE, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
                     return Move::none();
                 }
                 prefix.resize(prefix.size() - 2);
@@ -291,7 +291,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
                 dis_rank = c - '1';
             else {
                 // unexpected char in prefix
-                INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+                if (!remove_illegals) INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
                 return Move::none();
             }
         }
@@ -351,7 +351,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
 
             // Everything matches -> accept candidate
             if (found) {
-                INVALID_ARG_IF(found, AmbiguousMoveException("ambiguous san: '" + _san + "' in " + pos.fen()));
+                if (!remove_illegals) INVALID_ARG_IF(found, AmbiguousMoveException("ambiguous san: '" + _san + "' in " + pos.fen()));
                 return Move::none();
             }
             matched = m;
@@ -359,30 +359,25 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
         }
 
         if (!found) {
-            INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
+            if (!remove_illegals) INVALID_ARG_IF(true, IllegalMoveException("illegal san: '" + _san + "' in " + pos.fen()));
             return Move::none();
         }
 
         return matched;
     };
 
-#if !defined(_CHESSLIB_ERROR_MODE_THROW)
     if (remove_illegals) {
         std::string trimmed_san(raw_san);
         while (!trimmed_san.empty()) {
-            try {
-                Move attempt = do_parse(trimmed_san);
-                if (attempt.is_ok())
-                    return attempt;
-            } catch (...) {
-            }
+            Move attempt = do_parse(trimmed_san);
+            if (attempt.is_ok())
+                return attempt;
             trimmed_san.pop_back();
         }
         INVALID_ARG_IF(trimmed_san.empty(),
                        IllegalMoveException("illegal san: '" + std::string(raw_san) + "' in " + pos.fen()));
         return Move::none();
     } else
-#endif
         return do_parse(raw_san);
 }
 /// @brief Convert a Move to SAN or LAN (Long Algebraic Notation) string.
