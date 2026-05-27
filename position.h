@@ -745,5 +745,5 @@ template <typename T, typename = std::enable_if_t<is_piece_enum<T>::value>>
 } // namespace attacks
 
 using Position = _Position<EnginePiece>;
-using Board [[deprecated]] = _Position<EnginePiece>;
+using Board [[deprecated("Use Position instead")]] = _Position<EnginePiece>;
 }; // namespace chess
