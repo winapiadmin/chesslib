@@ -540,9 +540,9 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     CastlingRights clean_castling_rights() const;
 
     /// @brief Set position from FEN.
-    void setFEN(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_AUTO);
-    inline void set_fen(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_AUTO) {
-        setFEN(str, chess960, xfen);
+    bool setFEN(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_AUTO);
+    inline bool set_fen(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_AUTO) {
+        return setFEN(str, chess960, xfen);
     }
 
     /// @brief Parse a UCI move string for this position.

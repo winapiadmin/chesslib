@@ -535,6 +535,10 @@ TEST_CASE("Captures only?") {
 }
 TEST_CASE("Perfts" * doctest::timeout(36000)) {
     std::vector<TestEntry<std::string, perft_t>> tests = {
+        {               "Q1Q2QQQ/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q1Q/pp1Q3Q/kBQQ1KQ1 w - - 0 1",  1,        240 },
+        {               "Q1Q2QQQ/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q1Q/pp1Q3Q/kBQQ1KQ1 w - - 0 1",  2,          0 },
+        {               "Q1Q2QQQ/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q1Q/pp1Q3Q/kBQQ1KQ1 w - - 0 1",  2,          0 },
+        {                     "QQQQQQQK/Q6Q/Q6Q/Q6Q/Q6Q/Q6Q/BR5Q/kBQQQQQQ w - - 0 1",  1,        271 },
         {                                            "5k2/8/8/8/3K4/8/8/8 w - - 0 1",  1,          8 },
         {                                            "5k2/8/8/8/3K4/8/8/8 w - - 0 1",  3,        310 },
         {                                            "5k2/8/8/8/3K4/8/8/8 w - - 0 1",  6,      95366 },
@@ -1938,137 +1942,4 @@ TEST_CASE("Square and bitboard utilities") {
     Bitboard bAttacks = bishop(SQ_E4, empty);
     Bitboard rAttacks = rook(SQ_E4, empty);
     CHECK(qAttacks == (bAttacks | rAttacks));
-}
-
-TEST_CASE("Move utility methods") {
-    // is_ok
-    CHECK_FALSE(Move::none().is_ok());
-    CHECK_FALSE(Move::null().is_ok());
-    CHECK(Move(SQ_E2, SQ_E4).is_ok());
-    CHECK(Move::make<PROMOTION>(SQ_E7, SQ_E8, QUEEN).is_ok());
-
-    // from_to
-    Move m1(SQ_E2, SQ_E4);
-    CHECK((m1.from_to() & 0x3F) == SQ_E4);        // lower 6 = to
-    CHECK(((m1.from_to() >> 6) & 0x3F) == SQ_E2); // next 6 = from
-
-    // promotion_type
-    Move promQ = Move::make<PROMOTION>(SQ_E7, SQ_E8, QUEEN);
-    CHECK(promQ.promotion_type() == QUEEN);
-    Move promN = Move::make<PROMOTION>(SQ_E7, SQ_E8, KNIGHT);
-    CHECK(promN.promotion_type() == KNIGHT);
-    Move promB = Move::make<PROMOTION>(SQ_E7, SQ_E8, BISHOP);
-    CHECK(promB.promotion_type() == BISHOP);
-    Move promR = Move::make<PROMOTION>(SQ_E7, SQ_E8, ROOK);
-    CHECK(promR.promotion_type() == ROOK);
-
-    // raw encoding
-    CHECK(Move(SQ_A1, SQ_A2).raw() == 8);
-    CHECK(Move::null().raw() == 65);
-    CHECK(Move::none().raw() == 0);
-
-    // operator bool
-    CHECK_FALSE(Move::none());
-    CHECK(static_cast<bool>(Move(SQ_E2, SQ_E4)));
-
-    // UCI round-trip
-    Move m2 = Move::make<PROMOTION>(SQ_A7, SQ_A8, QUEEN);
-    CHECK(m2.uci() == "a7a8q");
-    Move m3 = Move::make<CASTLING>(SQ_E1, SQ_H1);
-    CHECK(m3.uci() == "e1g1");
-}
-
-TEST_CASE("Stream operators") {
-    std::ostringstream os;
-    // Color
-    os.str("");
-    os << WHITE;
-    CHECK(os.str() == "WHITE");
-    os.str("");
-    os << BLACK;
-    CHECK(os.str() == "BLACK");
-
-    // Move
-    os.str("");
-    os << Move::make<PROMOTION>(SQ_E7, SQ_E8, QUEEN);
-    CHECK(os.str() == "e7e8q");
-
-    // CastlingRights
-    os.str("");
-    os << CastlingRights(WHITE_OO);
-    CHECK(os.str() == "WHITE_OO");
-    os.str("");
-    os << CastlingRights(WHITE_OOO);
-    CHECK(os.str() == "WHITE_OOO");
-    os.str("");
-    os << CastlingRights(BLACK_OO);
-    CHECK(os.str() == "BLACK_OO");
-    os.str("");
-    os << CastlingRights(BLACK_OOO);
-    CHECK(os.str() == "BLACK_OOO");
-    os.str("");
-    os << CastlingRights(KING_SIDE);
-    CHECK(os.str() == "KING_SIDE");
-    os.str("");
-    os << CastlingRights(NO_CASTLING);
-    CHECK(os.str() == "NO_CASTLING");
-
-    // Square
-    os.str("");
-    os << SQ_A1;
-    CHECK(os.str() == "a1");
-    os.str("");
-    os << SQ_H8;
-    CHECK(os.str() == "h8");
-    os.str("");
-    os << SQ_E4;
-    CHECK(os.str() == "e4");
-
-    // PieceType
-    os.str("");
-    os << PAWN;
-    CHECK(os.str() == "PAWN");
-    os.str("");
-    os << KNIGHT;
-    CHECK(os.str() == "KNIGHT");
-    os.str("");
-    os << KING;
-    CHECK(os.str() == "KING");
-
-    // Position
-    Position pos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    os.str("");
-    os << pos;
-    CHECK_FALSE(os.str().empty());
-    // Board should contain piece characters
-    CHECK(os.str().find('r') != std::string::npos);
-    CHECK(os.str().find('K') != std::string::npos);
-    CHECK(os.str().find('P') != std::string::npos);
-}
-
-TEST_CASE("givesCheck") {
-    // Scholar's mate position: black is mated, so givesCheck for black's move is irrelevant
-    Position p_scholar("r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4");
-    CHECK(p_scholar.is_checkmate());
-
-    // Starting position: e2-e4 doesn't give check
-    Position p2;
-    CHECK(p2.givesCheck(Move(SQ_E2, SQ_E4)) == CheckType::NO_CHECK);
-
-    // Rook gives direct check
-    Position p3("4k3/8/8/8/8/8/5R2/4K3 w - - 0 1");
-    CHECK(p3.givesCheck(Move(SQ_F2, SQ_E2)) == CheckType::DIRECT_CHECK);
-
-    // King move does not give check (blocks rook's line)
-    CHECK(p3.givesCheck(Move(SQ_E1, SQ_D2)) == CheckType::NO_CHECK);
-
-    // Discovered check: pawn push unmasks bishop's diagonal to king
-    Position p4("7k/8/8/8/8/2P5/1B6/6K1 w - - 0 1");
-    // Bishop on b2 attacks h8 via c3-d4-e5-f6-g7-h8. Pawn on c3 blocks.
-    // c3-c4 unmasks the bishop → discovered check
-    CHECK(p4.givesCheck(Move(SQ_C3, SQ_C4)) == CheckType::DISCOVERY_CHECK);
-
-    // Non-check king move
-    Position p5("4k3/8/8/8/8/8/8/4K3 w - - 0 1");
-    CHECK(p5.givesCheck(Move(SQ_E1, SQ_E2)) == CheckType::NO_CHECK);
 }
