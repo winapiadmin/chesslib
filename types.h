@@ -572,8 +572,8 @@ template <typename T, std::size_t MaxSize> class ValueList {
 };
 
 /// @typedef Movelist
-/// @brief Fixed-capacity list of up to 256 moves.
-using Movelist = ValueList<Move, 256>;
+/// @brief Fixed-capacity list of up to 300 moves.
+using Movelist = ValueList<Move, 300>;
 
 /// @brief Chebyshev distance between two squares.
 /// @return max(|dfile|, |drank|)
