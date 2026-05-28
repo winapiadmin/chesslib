@@ -17,7 +17,7 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#if defined(__cpp_exceptions) || defined(_CPPUNWIND) || defined(__EXCEPTIONS) || defined(_CHESSLIB_ERROR_MODE_THROW)
+#if !defined(__cpp_exceptions) && !defined(_CPPUNWIND) && !defined(__EXCEPTIONS) && !defined(_CHESSLIB_ERROR_MODE_THROW)
 #define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
 #endif
 #include "moves_io.h"
@@ -150,12 +150,8 @@ TEST_CASE("push_uci/parse_uci") {
 }
 template <typename T> void check_was_into_check(std::vector<TestEntry<std::string, bool>> &tests) {
     for (auto &tc : tests) {
-        try {
-            _Position<T> pos(tc.input);
-            REQUIRE(pos.was_into_check() == tc.info);
-        } catch (...) {
-            std::cout << tc.input << '\n';
-        }
+        _Position<T> pos(tc.input);
+        REQUIRE(pos.was_into_check() == tc.info);
     }
 }
 TEST_CASE("was_into_check") {
@@ -1063,7 +1059,7 @@ TEST_CASE("Fuzzer (excludes illegal, unreachable, etc. positions)") {
 
         if (setjmp(global_fuzzer_env) == 0) {
             Position p;
-            ok = p.set_fen(test.fen);
+            ok = p.setFEN(test.fen);
         } else {
             ok = false;
         }
@@ -1072,7 +1068,7 @@ TEST_CASE("Fuzzer (excludes illegal, unreachable, etc. positions)") {
 
         try {
             Position p;
-            ok = p.set_fen(test.fen);
+            ok = p.setFEN(test.fen);
         } catch (...) {
             ok = false;
         }

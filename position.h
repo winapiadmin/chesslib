@@ -36,18 +36,18 @@ namespace chess {
 /// @brief Saved position state for undo operations.
 /// @tparam Piece Piece-enum type.
 template <typename Piece> struct alignas(64) HistoryEntry {
-    Bitboard pieces[7];      ///< Bitboards per piece type.
-    Bitboard occ[COLOR_NB];  ///< Occupancy per colour.
-    Color turn;              ///< Side to move.
-    Move mv;                 ///< The move that led to this position.
-    Key hash;                ///< Zobrist hash.
-    uint8_t halfMoveClock;   ///< Half-move clock for 50/75-move rule.
-    uint16_t fullMoveNumber; ///< Full-move number (starts at 1).
-    bool epIncluded;
-    int8_t repetition; ///< Repetition counter from this position.
+    Bitboard pieces[7]{};      ///< Bitboards per piece type.
+    Bitboard occ[COLOR_NB]{};  ///< Occupancy per colour.
+    Color turn = COLOR_NB;              ///< Side to move.
+    Move mv = Move::none();                 ///< The move that led to this position.
+    Key hash = 0;                ///< Zobrist hash.
+    uint8_t halfMoveClock = 0;   ///< Half-move clock for 50/75-move rule.
+    uint16_t fullMoveNumber = 1; ///< Full-move number (starts at 1).
+    bool epIncluded = false;
+    int8_t repetition = 0; ///< Repetition counter from this position.
     uint8_t pliesFromNull = 0;
     Square enPassant = SQ_NONE; ///< En-passant target square.
-    Square kings[COLOR_NB] = { SQ_NONE };
+    Square kings[COLOR_NB] = { SQ_NONE, SQ_NONE };
     CastlingRights castlingRights; ///< Castling rights bitmask.
     Square incr_sqs[4] = { SQ_NONE, SQ_NONE, SQ_NONE, SQ_NONE };
     Piece incr_pc[4] = { Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE };
@@ -493,6 +493,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     /// @brief Construct from a FEN string.
     inline _Position(std::string fen = START_FEN, bool chess960 = false, FENParsingMode xfen = MODE_AUTO) {
         history.reserve(6144);
+        history.emplace_back();
         rep_hashes_.reserve(6144);
         setFEN(fen, chess960, xfen);
     }
