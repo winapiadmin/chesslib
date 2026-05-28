@@ -1324,7 +1324,7 @@ TEST_CASE("Draw detection") {
 
         // K+B vs K
         Position p2("4k3/8/8/8/5B2/8/8/4K3 w - - 0 1");
-        CHECK(p2.is_insufficient_material());      // both sides insufficient
+        CHECK(p2.is_insufficient_material()); // both sides insufficient
 
         // K+N vs K
         Position p3("4k3/8/8/8/5N2/8/8/4K3 w - - 0 1");
