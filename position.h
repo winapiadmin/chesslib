@@ -36,10 +36,10 @@ namespace chess {
 /// @brief Saved position state for undo operations.
 /// @tparam Piece Piece-enum type.
 template <typename Piece> struct alignas(64) HistoryEntry {
-    Bitboard pieces[7]{};      ///< Bitboards per piece type.
-    Bitboard occ[COLOR_NB]{};  ///< Occupancy per colour.
-    Color turn = COLOR_NB;              ///< Side to move.
-    Move mv = Move::none();                 ///< The move that led to this position.
+    Bitboard pieces[7]{};        ///< Bitboards per piece type.
+    Bitboard occ[COLOR_NB]{};    ///< Occupancy per colour.
+    Color turn = COLOR_NB;       ///< Side to move.
+    Move mv = Move::none();      ///< The move that led to this position.
     Key hash = 0;                ///< Zobrist hash.
     uint8_t halfMoveClock = 0;   ///< Half-move clock for 50/75-move rule.
     uint16_t fullMoveNumber = 1; ///< Full-move number (starts at 1).
