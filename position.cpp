@@ -946,7 +946,7 @@ template <typename PieceC, typename T> Square _Position<PieceC, T>::_valid_ep_sq
     return ep_square();
 }
 /// @brief Check if a given color has insufficient mating material.
-template <typename PieceC, typename T> bool _Position<PieceC, T>::is_insufficient_material(Color c) const {
+template <typename PieceC, typename T> bool _Position<PieceC, T>::is_insufficient_material() const {
     const auto count = popcount(occ());
 
     if (count <= 2)
@@ -1031,7 +1031,7 @@ template Move _Position<PieceC, void>::push_uci(std::string); \
 template bool _Position<PieceC, void>::is_valid<false>() const; \
 template bool _Position<PieceC, void>::is_valid<true>() const; \
 template CheckType _Position<PieceC, void>::givesCheck(Move) const; \
-template bool _Position<PieceC, void>::is_insufficient_material(Color c) const;
+template bool _Position<PieceC, void>::is_insufficient_material() const;
 // clang-format off
 INSTANTIATE(PolyglotPiece)
 INSTANTIATE(EnginePiece)

@@ -567,8 +567,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     inline int ply() const { return 2 * (state().fullMoveNumber - 1) + (side_to_move() == BLACK); }
 
     /// @brief Test for draw by insufficient material.
-    bool is_insufficient_material(Color c) const;
-    inline bool is_insufficient_material() const { return is_insufficient_material(WHITE) && is_insufficient_material(BLACK); }
+    bool is_insufficient_material() const;
 
     /// @brief Whether a colour has any non-pawn, non-king material.
     inline bool hasNonPawnMaterial(Color c) const { return bool(us(c) & ~(pieces(PAWN) | pieces(KING)) & occ(c)); }
