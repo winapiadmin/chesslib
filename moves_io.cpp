@@ -30,12 +30,27 @@
 #include <string_view>
 #if defined(_CHESSLIB_ERROR_MODE_THROW)
 #define INVALID_ARG_IF(c, exception)                                                                                           \
-    if (c)                                                                                                                     \
-    throw(exception)
+    do {                                                                                                                       \
+        if (c)                                                                                                                 \
+            throw(exception);                                                                                                  \
+    } while (0)
 #elif defined(_CHESSLIB_ERROR_MODE_ASSERT)
-#define INVALID_ARG_IF(c, exception) assert(!(c) && #exception);
+#define INVALID_ARG_IF(c, exception)                                                                                           \
+    do {                                                                                                                       \
+        assert(!(c) && #exception);                                                                                            \
+    } while (0)
+#elif defined(_DEBUG) && !defined(NDEBUG)
+#include <iostream>
+#define INVALID_ARG_IF(c, exception)                                                                                           \
+    do {                                                                                                                       \
+        if (c)                                                                                                                 \
+            std::cerr << #c << ", message: " << #exception << " (at " << __FILE__ << ":" << __LINE__ << ")\n";                 \
+    } while (0)
 #else
-#define INVALID_ARG_IF(a, b)
+#define INVALID_ARG_IF(c, exception)                                                                                           \
+    do {                                                                                                                       \
+        (void)(c);                                                                                                             \
+    } while (0)
 #endif
 namespace chess {
 namespace uci {

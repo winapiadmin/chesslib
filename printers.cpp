@@ -28,7 +28,7 @@
 #include <iostream>
 #include <unordered_map>
 namespace chess {
-template <typename T> using DescriptiveNameNotation = std::unordered_map<T, std::string>;
+template <typename T> using DescriptiveNameNotation = const std::unordered_map<T, std::string>;
 
 /// @brief Print a Position as a text board (ranks 8-1, pieces, side-to-move, castling rights, EP square).
 template <typename PieceC, typename> std::ostream &operator<<(std::ostream &os, const _Position<PieceC, void> &pos) {
@@ -120,48 +120,22 @@ std::ostream &operator<<(std::ostream &os, const Square sq) { return os << uci::
 
 /// @brief Print a piece (color + type), e.g. "wP", "bK".
 template <typename PieceC, typename> std::ostream &operator<<(std::ostream &os, PieceC p) {
-    char c = '.';
-    switch (p) {
-    case PieceC::WPAWN:
-        c = 'P';
-        break;
-    case PieceC::BPAWN:
-        c = 'p';
-        break;
-    case PieceC::WKNIGHT:
-        c = 'N';
-        break;
-    case PieceC::BKNIGHT:
-        c = 'n';
-        break;
-    case PieceC::WBISHOP:
-        c = 'B';
-        break;
-    case PieceC::BBISHOP:
-        c = 'b';
-        break;
-    case PieceC::WROOK:
-        c = 'R';
-        break;
-    case PieceC::BROOK:
-        c = 'r';
-        break;
-    case PieceC::WQUEEN:
-        c = 'Q';
-        break;
-    case PieceC::BQUEEN:
-        c = 'q';
-        break;
-    case PieceC::WKING:
-        c = 'K';
-        break;
-    case PieceC::BKING:
-        c = 'k';
-        break;
-    default:
-        break;
-    }
-    return os << c;
+    DescriptiveNameNotation<PieceC> pieces = {
+        {    PieceC::WPAWN, "P" },
+        {    PieceC::BPAWN, "p" },
+        {  PieceC::WKNIGHT, "N" },
+        {  PieceC::BKNIGHT, "n" },
+        {  PieceC::WBISHOP, "B" },
+        {  PieceC::BBISHOP, "b" },
+        {    PieceC::WROOK, "R" },
+        {    PieceC::BROOK, "r" },
+        {   PieceC::WQUEEN, "Q" },
+        {   PieceC::BQUEEN, "q" },
+        {    PieceC::WKING, "K" },
+        {    PieceC::BKING, "k" },
+        { PieceC::NO_PIECE, "." },
+    };
+    return os << pieces.at(p);
 }
 
 #define INSTANTITATE(PieceC)                                                                                                   \

@@ -167,6 +167,17 @@ enum Color : uint8_t { WHITE = 0, BLACK = 1, COLOR_NB = 2 };
 /// @brief Toggle colour.
 constexpr Color operator~(const Color c) { return static_cast<Color>(c ^ BLACK); }
 
+constexpr Bitboard BB_LIGHT_SQUARES =
+    0x55AA55AA55AA55AAULL;
+
+constexpr Bitboard BB_DARK_SQUARES =
+    ~BB_LIGHT_SQUARES;
+
+/// @brief Color of the square, given color of A1 is black
+constexpr Color square_color(Square s) {
+    return (BB_LIGHT_SQUARES >> s) & 1 ? WHITE : BLACK;
+}
+
 /// @enum PieceType
 /// @brief Piece type without colour information.
 /// @note ALL_PIECES aliases NO_PIECE_TYPE (0).

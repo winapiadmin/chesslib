@@ -34,14 +34,26 @@
 
 #if defined(_CHESSLIB_ERROR_MODE_THROW)
 #define INVALID_ARG_IF(c, exception)                                                                                           \
-    if (c)                                                                                                                     \
-    throw(exception)
+    do {                                                                                                                       \
+        if (c)                                                                                                                 \
+            throw(exception);                                                                                                  \
+    } while (0)
 #elif defined(_CHESSLIB_ERROR_MODE_ASSERT)
-#define INVALID_ARG_IF(c, exception) assert(!(c) && #exception);
+#define INVALID_ARG_IF(c, exception)                                                                                           \
+    do {                                                                                                                       \
+        assert(!(c) && #exception);                                                                                            \
+    } while (0)
+#elif defined(_DEBUG) && !defined(NDEBUG)
+#define INVALID_ARG_IF(c, exception)                                                                                           \
+    do {                                                                                                                       \
+        if (c)                                                                                                                 \
+            std::cerr << #c << ", message: " << #exception << " (at " << __FILE__ << ":" << __LINE__ << ")\n";                 \
+    } while (0)
 #else
 #define INVALID_ARG_IF(c, exception)                                                                                           \
-    if (c)                                                                                                                     \
-        std::cerr << #c << ", message: " << #exception << " (at " << #__FILE__ << ":" << __LINE__ << ")\n";
+    do {                                                                                                                       \
+        (void)(c);                                                                                                             \
+    } while (0)
 #endif
 namespace chess {
 
@@ -969,24 +981,54 @@ template <typename PieceC, typename T> bool _Position<PieceC, T>::is_insufficien
         return false;
     }
 
-    if (count == 4) {
-        if (has_white_bishop && has_black_bishop) {
-            auto w = static_cast<Square>(lsb(white_bishops)), b = static_cast<Square>(lsb(black_bishops));
-            if (((9 * (w ^ b)) & 8) == 0)
+if (count == 4) {
+
+    Bitboard wb = white_bishops;
+    Bitboard bb = black_bishops;
+
+    int wb_cnt = popcount(wb);
+    int bb_cnt = popcount(bb);
+
+    Bitboard bishops = wb | bb;
+    Bitboard knights = pieces(KNIGHT, WHITE) | pieces(KNIGHT, BLACK);
+    Bitboard rooks   = pieces(ROOK, WHITE) | pieces(ROOK, BLACK);
+    Bitboard queens  = pieces(QUEEN, WHITE) | pieces(QUEEN, BLACK);
+    Bitboard pawns   = pieces(PAWN, WHITE) | pieces(PAWN, BLACK);
+
+    // no heavy pieces allowed for "insufficient material" cases
+    if (rooks || queens || pawns)
+        return false;
+
+    // K + K + 2 minor pieces total scenario
+    if (popcount(knights) + popcount(bishops) == 2) {
+
+        // K + N + N vs K
+        if (popcount(knights) == 2)
+            return true;
+
+        // K + B + B vs K (same color bishops only)
+        if (popcount(bishops) == 2) {
+            Square s1 = static_cast<Square>(lsb(bishops));
+            Square s2 = static_cast<Square>(msb(bishops));
+
+            if (square_color(s1) == square_color(s2))
                 return true;
         }
 
-        if (popcount(white_bishops) == 2) {
-            auto b1 = static_cast<Square>(lsb(white_bishops)), b2 = static_cast<Square>(msb(white_bishops));
-            if (((9 * (b1 ^ b2)) & 8) == 0)
-                return true;
-        } else if (popcount(black_bishops) == 2) {
-            auto b1 = static_cast<Square>(lsb(black_bishops)), b2 = static_cast<Square>(msb(black_bishops));
-            if (((9 * (b1 ^ b2)) & 8) == 0)
-                return true;
-        }
+        // K + N + B vs K (still insufficient)
+        if (popcount(knights) == 1 && popcount(bishops) == 1)
+            return true;
     }
 
+    // mixed bishop-only edge case (rare but clean)
+    if (popcount(bishops) == 2 && popcount(knights) == 0) {
+        Square s1 = static_cast<Square>(lsb(bishops));
+        Square s2 = static_cast<Square>(msb(bishops));
+
+        if (square_color(s1) == square_color(s2))
+            return true;
+    }
+}
     return false;
 }
 /// @brief Compute the set of castling rights that are physically valid on the board.
