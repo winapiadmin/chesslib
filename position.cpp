@@ -601,8 +601,12 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
     // 6. Fullmove number
     state().fullMoveNumber = fullmove;
     rep_hashes_.push_back(state().hash);
-    if (popcount(pieces(WHITE, KING)) == 1 && popcount(pieces(BLACK, KING)) == 1)
+    if (popcount(pieces(WHITE, KING)) == 1 && popcount(pieces(BLACK, KING)) == 1) {
         refresh_attacks();
+    } else {
+        _rook_pin = _bishop_pin = _checkers = _check_mask = 0;
+        _pin_mask = 0;
+    }
     return true;
 }
 
