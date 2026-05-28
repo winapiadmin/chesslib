@@ -981,54 +981,54 @@ template <typename PieceC, typename T> bool _Position<PieceC, T>::is_insufficien
         return false;
     }
 
-if (count == 4) {
+    if (count == 4) {
 
-    Bitboard wb = white_bishops;
-    Bitboard bb = black_bishops;
+        Bitboard wb = white_bishops;
+        Bitboard bb = black_bishops;
 
-    int wb_cnt = popcount(wb);
-    int bb_cnt = popcount(bb);
+        int wb_cnt = popcount(wb);
+        int bb_cnt = popcount(bb);
 
-    Bitboard bishops = wb | bb;
-    Bitboard knights = pieces(KNIGHT, WHITE) | pieces(KNIGHT, BLACK);
-    Bitboard rooks   = pieces(ROOK, WHITE) | pieces(ROOK, BLACK);
-    Bitboard queens  = pieces(QUEEN, WHITE) | pieces(QUEEN, BLACK);
-    Bitboard pawns   = pieces(PAWN, WHITE) | pieces(PAWN, BLACK);
+        Bitboard bishops = wb | bb;
+        Bitboard knights = pieces(KNIGHT, WHITE) | pieces(KNIGHT, BLACK);
+        Bitboard rooks = pieces(ROOK, WHITE) | pieces(ROOK, BLACK);
+        Bitboard queens = pieces(QUEEN, WHITE) | pieces(QUEEN, BLACK);
+        Bitboard pawns = pieces(PAWN, WHITE) | pieces(PAWN, BLACK);
 
-    // no heavy pieces allowed for "insufficient material" cases
-    if (rooks || queens || pawns)
-        return false;
+        // no heavy pieces allowed for "insufficient material" cases
+        if (rooks || queens || pawns)
+            return false;
 
-    // K + K + 2 minor pieces total scenario
-    if (popcount(knights) + popcount(bishops) == 2) {
+        // K + K + 2 minor pieces total scenario
+        if (popcount(knights) + popcount(bishops) == 2) {
 
-        // K + N + N vs K
-        if (popcount(knights) == 2)
-            return true;
+            // K + N + N vs K
+            if (popcount(knights) == 2)
+                return true;
 
-        // K + B + B vs K (same color bishops only)
-        if (popcount(bishops) == 2) {
+            // K + B + B vs K (same color bishops only)
+            if (popcount(bishops) == 2) {
+                Square s1 = static_cast<Square>(lsb(bishops));
+                Square s2 = static_cast<Square>(msb(bishops));
+
+                if (square_color(s1) == square_color(s2))
+                    return true;
+            }
+
+            // K + N + B vs K (still insufficient)
+            if (popcount(knights) == 1 && popcount(bishops) == 1)
+                return true;
+        }
+
+        // mixed bishop-only edge case (rare but clean)
+        if (popcount(bishops) == 2 && popcount(knights) == 0) {
             Square s1 = static_cast<Square>(lsb(bishops));
             Square s2 = static_cast<Square>(msb(bishops));
 
             if (square_color(s1) == square_color(s2))
                 return true;
         }
-
-        // K + N + B vs K (still insufficient)
-        if (popcount(knights) == 1 && popcount(bishops) == 1)
-            return true;
     }
-
-    // mixed bishop-only edge case (rare but clean)
-    if (popcount(bishops) == 2 && popcount(knights) == 0) {
-        Square s1 = static_cast<Square>(lsb(bishops));
-        Square s2 = static_cast<Square>(msb(bishops));
-
-        if (square_color(s1) == square_color(s2))
-            return true;
-    }
-}
     return false;
 }
 /// @brief Compute the set of castling rights that are physically valid on the board.
