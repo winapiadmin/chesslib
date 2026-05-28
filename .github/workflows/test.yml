@@ -71,7 +71,7 @@ jobs:
                 -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
                 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
                 -DSANITIZERS=${SANITIZERS} \
-                -DCHESSLIB_ERROR_MODE=${ matrix.error_mode } \
+                -DCHESSLIB_ERROR_MODE=${{ matrix.error_mode }} \
                 -DDART_TESTING_TIMEOUT=0 \
                 -S "${{ github.workspace }}"
 
