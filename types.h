@@ -588,7 +588,7 @@ using Movelist = ValueList<Move, 300>;
 
 /// @brief Counting-only move list — same interface as Movelist but discards move data.
 class CountOnlyList {
-public:
+  public:
     using size_type = std::size_t;
     CountOnlyList() = default;
     inline size_type size() const { return size_; }

@@ -741,7 +741,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
             Square s = static_cast<Square>(pop_lsb(bLike));
             int fd = (ksq & 7) - (s & 7);
             int rd = (ksq >> 3) - (s >> 3);
-            if (fd != rd && fd != -rd) continue;
+            if (fd != rd && fd != -rd)
+                continue;
             Bitboard possible = movegen::between(ksq, s);
             Bitboard blockers = (possible & ~(1ULL << s)) & occ_all;
             int n = popcount(blockers);
@@ -755,7 +756,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         Bitboard rLike = pieces<ROOK>(~c) | pieces<QUEEN>(~c);
         while (rLike) {
             Square s = static_cast<Square>(pop_lsb(rLike));
-            if ((ksq ^ s) & 7 && (ksq ^ s) & 56) continue;
+            if ((ksq ^ s) & 7 && (ksq ^ s) & 56)
+                continue;
             Bitboard possible = movegen::between(ksq, s);
             Bitboard blockers = (possible & ~(1ULL << s)) & occ_all;
             int n = popcount(blockers);
