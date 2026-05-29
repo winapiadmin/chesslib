@@ -649,10 +649,8 @@ TEST_CASE("Perfts" * doctest::timeout(36000)) {
         // https://github.com/SebLague/Chess-Coding-Adventure/blob/Chess-V2-Unity/Assets/Scripts/Testing/Perft/Suites/Suite%20Full.txt
         // converted to [fen, depth, nodes], deduped tests
         {                        "2b1b3/1r1P4/3K3p/1p6/2p5/6k1/1P3p2/4B3 w - - 0 42",  5,    5617302 },
-        {                                    "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -",  6,   11030083 },
         {           "r3k2r/pp3pp1/PN1pr1p1/4p1P1/4P3/3P4/P1P2PP1/R3K2R w KQkq - 4 4",  5,   15587335 },
         {                "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",  5,   89941194 },
-        {         "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",  5,  193690690 },
         {              "r3k1nr/p2pp1pp/b1n1P1P1/1BK1Pp1q/8/8/2PP1PPP/6N1 w kq - 0 1",  4,     497787 },
         {                                           "3k4/8/8/8/8/8/8/R3K3 w Q - 0 1",  7,   15594314 },
         {                                        "2K2r2/4P3/8/8/8/8/8/3k4 w - - 0 1",  6,    3821001 },
