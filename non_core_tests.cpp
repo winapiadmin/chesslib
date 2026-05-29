@@ -996,7 +996,7 @@ struct FenTest {
     bool should_pass;
 };
 TEST_CASE("Fuzzer (excludes illegal, unreachable, etc. positions)") {
-
+    setup_os_specific_hooks();
     static constexpr FenTest fen_tests[] = {
         // ---------------- VALID ----------------
 
