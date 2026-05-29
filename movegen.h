@@ -30,8 +30,7 @@ namespace chess::movegen {
 template <typename T, Color c, typename ListT> void genEP(const _Position<T, void> &, ListT &);
 
 /// @brief Generate double-pawn pushes (from the starting rank).
-template <typename T, Color c, typename ListT>
-void genPawnDoubleMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard);
+template <typename T, Color c, typename ListT> void genPawnDoubleMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard);
 
 /// @brief Generate single-pawn moves (pushes and captures).
 template <typename T, Color c, bool capturesOnly, typename ListT>

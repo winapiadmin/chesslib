@@ -44,11 +44,11 @@ template <typename T, MoveGenType mt, Color c, bool EnableDiv = false> uint64_t 
     if (depth == 0) {
         return 1;
     } else if (depth == 1) {
-        if constexpr (EnableDiv){
+        if constexpr (EnableDiv) {
             Movelist moves;
             pos.template legals<mt>(moves);
-                for (const Move &m : moves)
-                    std::cout << m << ": 1\n";
+            for (const Move &m : moves)
+                std::cout << m << ": 1\n";
             return moves.size();
         } else {
             CountOnlyList moves;
@@ -141,9 +141,10 @@ void check_perft_type(TestEntry<std::string, perft_t> &entry, uint64_t &nodes, d
     using namespace std::chrono;
     _Position<T> pos(entry.input, true);
     auto start_time = high_resolution_clock::now();
-        if (pos.side_to_move() == WHITE)
-            REQUIRE(perft<T, mt, WHITE, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
-        else REQUIRE(perft<T, mt, BLACK, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
+    if (pos.side_to_move() == WHITE)
+        REQUIRE(perft<T, mt, WHITE, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
+    else
+        REQUIRE(perft<T, mt, BLACK, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
     auto end_time = high_resolution_clock::now();
     elapsed += duration<double>(end_time - start_time).count();
     nodes += entry.info.nodes;
@@ -153,7 +154,8 @@ void check_perft_type(TestEntry<std::string, perft_t> &entry, uint64_t &nodes, d
         start_time = high_resolution_clock::now();
         if (pos2.side_to_move() == WHITE)
             REQUIRE(perft<T, mt, WHITE, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
-        else REQUIRE(perft<T, mt, BLACK, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
+        else
+            REQUIRE(perft<T, mt, BLACK, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
         end_time = high_resolution_clock::now();
         elapsed += duration<double>(end_time - start_time).count();
         nodes += entry.info.nodes;
@@ -178,7 +180,6 @@ void check_perfts(std::vector<TestEntry<std::string, perft_t>> &entries) {
     double mnps = (nodes / elapsed) / 1'000'000.0;
     std::cout << "Speed: " << mnps << "Mnps\n";
 }
-
 
 TEST_CASE("Chess960" * doctest::timeout(36000)) {
     std::vector<TestEntry<std::string, perft_t>> tests = {
