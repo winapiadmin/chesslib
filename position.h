@@ -142,8 +142,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     /// @brief Generate legal moves filtered by type.
     /// @tparam type Bitmask of MoveGenType flags.
     /// @tparam c Colour to move.
+    /// @brief Generate legal moves filtered by type.
+    /// @tparam type Bitmask of MoveGenType flags.
+    /// @tparam c Colour to move.
+    /// @tparam ListT Move-list type (Movelist or CountOnlyList).
     /// @param out Output move list.
-    template <MoveGenType type = MoveGenType::ALL, Color c> void legals(Movelist &out) const {
+    template <MoveGenType type = MoveGenType::ALL, Color c, typename ListT = Movelist> void legals(ListT &out) const {
         constexpr auto raw = static_cast<uint16_t>(type);
         constexpr uint16_t pieceBits = raw & static_cast<uint16_t>(MoveGenType::PIECE_MASK);
         constexpr uint16_t modeBits =
@@ -161,31 +165,38 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
             return;
 
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::PAWN)) {
-            movegen::genPawnSingleMoves<PieceC, c, captureOnly>(*this, out, _rook_pin, _bishop_pin, _check_mask);
+            movegen::genPawnSingleMoves<PieceC, c, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask);
             if constexpr (includeQuiet)
-                movegen::genPawnDoubleMoves<PieceC, c>(*this, out, _pin_mask, _check_mask);
+                movegen::genPawnDoubleMoves<PieceC, c, ListT>(*this, out, _pin_mask, _check_mask);
             if constexpr (includeCaps)
-                movegen::genEP<PieceC, c>(*this, out);
+                movegen::genEP<PieceC, c, ListT>(*this, out);
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::KNIGHT)) {
-            movegen::genKnightMoves<PieceC, c, captureOnly>(*this, out, _pin_mask, _check_mask);
+            movegen::genKnightMoves<PieceC, c, captureOnly, ListT>(*this, out, _pin_mask, _check_mask);
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::KING)) {
-            movegen::genKingMoves<PieceC, c, captureOnly>(*this, out, _pin_mask);
+            movegen::genKingMoves<PieceC, c, captureOnly, ListT>(*this, out, _pin_mask);
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::BISHOP)) {
-            movegen::genSlidingMoves<PieceC, c, BISHOP, captureOnly>(*this, out, _rook_pin, _bishop_pin, _check_mask);
+            movegen::genSlidingMoves<PieceC, c, BISHOP, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask);
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::ROOK)) {
-            movegen::genSlidingMoves<PieceC, c, ROOK, captureOnly>(*this, out, _rook_pin, _bishop_pin, _check_mask);
+            movegen::genSlidingMoves<PieceC, c, ROOK, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask);
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::QUEEN)) {
-            movegen::genSlidingMoves<PieceC, c, QUEEN, captureOnly>(*this, out, _rook_pin, _bishop_pin, _check_mask);
+            movegen::genSlidingMoves<PieceC, c, QUEEN, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask);
         }
     }
 
+    /// @brief Count legal moves without storing them (uses CountOnlyList).
+    template <Color c> inline uint64_t count_legals() const noexcept {
+        CountOnlyList moves;
+        legals<MoveGenType::ALL, c>(moves);
+        return moves.size_;
+    }
+
     /// @brief Generate legal moves (runtime colour dispatch).
-    template <MoveGenType type = MoveGenType::ALL> inline void legals(Movelist &out) const {
+    template <MoveGenType type = MoveGenType::ALL, typename ListT = Movelist> inline void legals(ListT &out) const {
         switch (side_to_move()) {
         case WHITE:
             legals<type, WHITE>(out);
@@ -715,8 +726,67 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         }
     }
 
-    /// @brief Recompute cached attack data (pins, checkers, check mask).
-    void refresh_attacks();
+    /// @brief Recompute cached attack data (pins, checkers, check mask) — iterative, no magic lookups.
+    [[gnu::always_inline]] void refresh_attacks() {
+        const Color c = side_to_move();
+        const Square ksq = kingSq(c);
+        const Bitboard occ_all = occ();
+        const Bitboard occ_us = occ(c);
+
+        Bitboard bishop_pin = 0, rook_pin = 0, checkers = 0;
+
+        // Bishop-like: iterate all enemy bishops/queens
+        Bitboard bLike = pieces<BISHOP>(~c) | pieces<QUEEN>(~c);
+        while (bLike) {
+            Square s = static_cast<Square>(pop_lsb(bLike));
+            int fd = (ksq & 7) - (s & 7);
+            int rd = (ksq >> 3) - (s >> 3);
+            if (fd != rd && fd != -rd) continue;
+            Bitboard possible = movegen::between(ksq, s);
+            Bitboard blockers = (possible & ~(1ULL << s)) & occ_all;
+            int n = popcount(blockers);
+            if (n == 0)
+                checkers |= 1ULL << s;
+            else if (n == 1 && (blockers & occ_us))
+                bishop_pin |= possible;
+        }
+
+        // Rook-like: iterate all enemy rooks/queens
+        Bitboard rLike = pieces<ROOK>(~c) | pieces<QUEEN>(~c);
+        while (rLike) {
+            Square s = static_cast<Square>(pop_lsb(rLike));
+            if ((ksq ^ s) & 7 && (ksq ^ s) & 56) continue;
+            Bitboard possible = movegen::between(ksq, s);
+            Bitboard blockers = (possible & ~(1ULL << s)) & occ_all;
+            int n = popcount(blockers);
+            if (n == 0)
+                checkers |= 1ULL << s;
+            else if (n == 1 && (blockers & occ_us))
+                rook_pin |= possible;
+        }
+
+        // Pawn and knight checkers (precomputed tables, no magic lookups)
+        checkers |= (attacks::pawn(c, ksq) & pieces<PAWN>(~c));
+        checkers |= (attacks::knight(ksq) & pieces<KNIGHT>(~c));
+
+        _bishop_pin = bishop_pin;
+        _rook_pin = rook_pin;
+        _pin_mask = rook_pin | bishop_pin;
+        _checkers = checkers;
+        switch (popcount(_checkers)) {
+        case 0:
+            _check_mask = ~0ULL;
+            break;
+        case 1: {
+            auto sq = static_cast<Square>(lsb(_checkers));
+            _check_mask = 1ULL << sq | movegen::between(ksq, sq);
+            break;
+        }
+        default:
+            _check_mask = 0ULL;
+            break;
+        }
+    }
 
     inline const auto &state() const { return history.back(); }
     inline auto &state() { return history.back(); }

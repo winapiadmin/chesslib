@@ -27,7 +27,7 @@
 #include <doctest/doctest.h>
 #include <variant>
 using namespace chess;
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) && !defined(NDEBUG)
 #define IS_RELEASE 0
 #else
 #define IS_RELEASE 1
@@ -40,17 +40,21 @@ template <typename InputT, typename CheckInfo> struct TestEntry {
     InputT input;
     CheckInfo info;
 };
-template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Position<T> &pos, int depth) {
+template <typename T, MoveGenType mt, Color c, bool EnableDiv = false> uint64_t perft(_Position<T> &pos, int depth) {
     if (depth == 0) {
         return 1;
     } else if (depth == 1) {
-        Movelist moves;
-        pos.template legals<mt>(moves);
-        if constexpr (EnableDiv)
-            for (const Move &m : moves) {
-                std::cout << m << ": 1\n";
-            }
-        return moves.size();
+        if constexpr (EnableDiv){
+            Movelist moves;
+            pos.template legals<mt>(moves);
+                for (const Move &m : moves)
+                    std::cout << m << ": 1\n";
+            return moves.size();
+        } else {
+            CountOnlyList moves;
+            pos.template legals<mt>(moves);
+            return moves.size_;
+        }
     } else {
         Movelist moves;
         pos.template legals<mt>(moves);
@@ -59,32 +63,27 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
             pos.template doMove<false>(m);
 #if !IS_RELEASE
             {
-                const auto pre_nm_hash_1 = pos.hash();
-                const auto pre_nm_fen_1 = pos.fen();
-                if (pos.zobrist() != pos.hash())
-                    REQUIRE(pos.zobrist() == pos.hash());
+                const auto pre_nm_hash = pos.hash();
                 pos.doNullMove();
                 pos.undoMove();
-                if (!(pos.hash() == pre_nm_hash_1 && pos.fen() == pre_nm_fen_1 && pos.zobrist() == pre_nm_hash_1)) {
-                    REQUIRE(pos.hash() == pre_nm_hash_1);
-                    REQUIRE(pos.fen() == pre_nm_fen_1);
-                    REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                if (pos.hash() != pre_nm_hash || pos.zobrist() != pre_nm_hash) {
+                    // Compute fen() only on failure (extremely rare)
+                    const auto post_fen = pos.fen();
+                    REQUIRE(!"Hash changed after null move");
+                    REQUIRE(pos.zobrist() == pre_nm_hash);
                 }
             }
 #endif
-            const uint64_t nodes = perft<T, mt, false>(pos, depth - 1);
+            const uint64_t nodes = perft<T, mt, ~c, false>(pos, depth - 1);
 #if !IS_RELEASE
             {
-                const auto pre_nm_hash_1 = pos.hash();
-                const auto pre_nm_fen_1 = pos.fen();
-                if (pos.zobrist() != pos.hash())
-                    REQUIRE(pos.zobrist() == pos.hash());
+                const auto pre_nm_hash = pos.hash();
                 pos.doNullMove();
                 pos.undoMove();
-                if (!(pos.hash() == pre_nm_hash_1 && pos.fen() == pre_nm_fen_1 && pos.zobrist() == pre_nm_hash_1)) {
-                    REQUIRE(pos.hash() == pre_nm_hash_1);
-                    REQUIRE(pos.fen() == pre_nm_fen_1);
-                    REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                if (pos.hash() != pre_nm_hash || pos.zobrist() != pre_nm_hash) {
+                    const auto post_fen = pos.fen();
+                    REQUIRE(!"Hash changed after null move");
+                    REQUIRE(pos.zobrist() == pre_nm_hash);
                 }
             }
 #endif
@@ -138,14 +137,25 @@ auto split_testcases(std::vector<TestEntry<std::string, perft_t>> &entries) {
 }
 #endif
 template <typename T, MoveGenType mt, bool EnableDiv>
-void check_perft_type(TestEntry<std::string, perft_t> &entry, uint64_t &nodes) {
+void check_perft_type(TestEntry<std::string, perft_t> &entry, uint64_t &nodes, double &elapsed) {
+    using namespace std::chrono;
     _Position<T> pos(entry.input, true);
-    REQUIRE(perft<T, mt, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
+    auto start_time = high_resolution_clock::now();
+        if (pos.side_to_move() == WHITE)
+            REQUIRE(perft<T, mt, WHITE, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
+        else REQUIRE(perft<T, mt, BLACK, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
+    auto end_time = high_resolution_clock::now();
+    elapsed += duration<double>(end_time - start_time).count();
     nodes += entry.info.nodes;
     if (entry.info.nodes < 5e6) {
         _Position<T> pos2 = pos;
         REQUIRE(pos.fen() == pos2.fen());
-        REQUIRE(perft<T, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
+        start_time = high_resolution_clock::now();
+        if (pos2.side_to_move() == WHITE)
+            REQUIRE(perft<T, mt, WHITE, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
+        else REQUIRE(perft<T, mt, BLACK, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
+        end_time = high_resolution_clock::now();
+        elapsed += duration<double>(end_time - start_time).count();
         nodes += entry.info.nodes;
     } else {
         std::cerr << "\n(skipped copying test)\n";
@@ -155,23 +165,21 @@ template <MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false>
 void check_perfts(std::vector<TestEntry<std::string, perft_t>> &entries) {
     uint64_t nodes = 0;
     double elapsed = 0;
-    using namespace std::chrono;
 #if !IS_RELEASE
     entries = split_testcases(entries);
 #endif
-    auto start_time = high_resolution_clock::now();
     for (auto &entry : entries) {
         std::cerr << entry.input << " (chess960=true) " << entry.info.depth;
         std::cerr << '\n';
-        check_perft_type<PolyglotPiece, mt, EnableDiv>(entry, nodes);
-        check_perft_type<EnginePiece, mt, EnableDiv>(entry, nodes);
-        check_perft_type<ContiguousMappingPiece, mt, EnableDiv>(entry, nodes);
+        check_perft_type<PolyglotPiece, mt, EnableDiv>(entry, nodes, elapsed);
+        check_perft_type<EnginePiece, mt, EnableDiv>(entry, nodes, elapsed);
+        check_perft_type<ContiguousMappingPiece, mt, EnableDiv>(entry, nodes, elapsed);
     }
-    auto end_time = high_resolution_clock::now();
-    elapsed = duration<double>(end_time - start_time).count();
     double mnps = (nodes / elapsed) / 1'000'000.0;
     std::cout << "Speed: " << mnps << "Mnps\n";
 }
+
+
 TEST_CASE("Chess960" * doctest::timeout(36000)) {
     std::vector<TestEntry<std::string, perft_t>> tests = {
         {      "bqnb1rkr/pp3ppp/3ppn2/2p5/5P2/P2P4/NPP1P1PP/BQ1BNRKR w HFhf - 2 9", 1,         21 },

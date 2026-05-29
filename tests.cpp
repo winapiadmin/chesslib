@@ -187,7 +187,7 @@ static_assert(make_sq(RANK_8, FILE_A) == SQ_A8, "incorrect indexing");
 static_assert(make_sq(RANK_1, FILE_H) == SQ_H1, "incorrect indexing");
 static_assert(file_of(SQ_H7) == FILE_H, "incorrect indexing");
 static_assert(rank_of(SQ_C3) == RANK_3, "incorrect indexing");
-#if defined(_DEBUG) || !defined(NDEBUG)
+#if defined(_DEBUG) && !defined(NDEBUG)
 #define IS_RELEASE 0
 #else
 #define IS_RELEASE 1
@@ -200,17 +200,21 @@ template <typename InputT, typename CheckInfo> struct TestEntry {
     InputT input;
     CheckInfo info;
 };
-template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Position<T> &pos, int depth) {
+template <typename T, MoveGenType mt, Color c, bool EnableDiv = false> uint64_t perft(_Position<T> &pos, int depth) {
     if (depth == 0) {
         return 1;
     } else if (depth == 1) {
-        Movelist moves;
-        pos.template legals<mt>(moves);
-        if constexpr (EnableDiv)
-            for (const Move &m : moves) {
-                std::cout << m << ": 1\n";
-            }
-        return moves.size();
+        if constexpr (EnableDiv){
+            Movelist moves;
+            pos.template legals<mt>(moves);
+                for (const Move &m : moves)
+                    std::cout << m << ": 1\n";
+            return moves.size();
+        } else {
+            CountOnlyList moves;
+            pos.template legals<mt>(moves);
+            return moves.size_;
+        }
     } else {
         Movelist moves;
         pos.template legals<mt>(moves);
@@ -219,32 +223,27 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
             pos.template doMove<false>(m);
 #if !IS_RELEASE
             {
-                const auto pre_nm_hash_1 = pos.hash();
-                const auto pre_nm_fen_1 = pos.fen();
-                if (pos.zobrist() != pos.hash())
-                    REQUIRE(pos.zobrist() == pos.hash());
+                const auto pre_nm_hash = pos.hash();
                 pos.doNullMove();
                 pos.undoMove();
-                if (!(pos.hash() == pre_nm_hash_1 && pos.fen() == pre_nm_fen_1 && pos.zobrist() == pre_nm_hash_1)) {
-                    REQUIRE(pos.hash() == pre_nm_hash_1);
-                    REQUIRE(pos.fen() == pre_nm_fen_1);
-                    REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                if (pos.hash() != pre_nm_hash || pos.zobrist() != pre_nm_hash) {
+                    // Compute fen() only on failure (extremely rare)
+                    const auto post_fen = pos.fen();
+                    REQUIRE(!"Hash changed after null move");
+                    REQUIRE(pos.zobrist() == pre_nm_hash);
                 }
             }
 #endif
-            const uint64_t nodes = perft<T, mt, false>(pos, depth - 1);
+            const uint64_t nodes = perft<T, mt, ~c, false>(pos, depth - 1);
 #if !IS_RELEASE
             {
-                const auto pre_nm_hash_1 = pos.hash();
-                const auto pre_nm_fen_1 = pos.fen();
-                if (pos.zobrist() != pos.hash())
-                    REQUIRE(pos.zobrist() == pos.hash());
+                const auto pre_nm_hash = pos.hash();
                 pos.doNullMove();
                 pos.undoMove();
-                if (!(pos.hash() == pre_nm_hash_1 && pos.fen() == pre_nm_fen_1 && pos.zobrist() == pre_nm_hash_1)) {
-                    REQUIRE(pos.hash() == pre_nm_hash_1);
-                    REQUIRE(pos.fen() == pre_nm_fen_1);
-                    REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                if (pos.hash() != pre_nm_hash || pos.zobrist() != pre_nm_hash) {
+                    const auto post_fen = pos.fen();
+                    REQUIRE(!"Hash changed after null move");
+                    REQUIRE(pos.zobrist() == pre_nm_hash);
                 }
             }
 #endif
@@ -293,7 +292,9 @@ void check_perft_type(TestEntry<std::string, perft_t> &entry, uint64_t &nodes, d
     using namespace std::chrono;
     _Position<T> pos(entry.input);
     auto start_time = high_resolution_clock::now();
-    REQUIRE(perft<T, mt, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
+        if (pos.side_to_move() == WHITE)
+            REQUIRE(perft<T, mt, WHITE, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
+        else REQUIRE(perft<T, mt, BLACK, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
     auto end_time = high_resolution_clock::now();
     elapsed += duration<double>(end_time - start_time).count();
     nodes += entry.info.nodes;
@@ -301,7 +302,9 @@ void check_perft_type(TestEntry<std::string, perft_t> &entry, uint64_t &nodes, d
         _Position<T> pos2 = pos;
         REQUIRE(pos.fen() == pos2.fen());
         start_time = high_resolution_clock::now();
-        REQUIRE(perft<T, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
+        if (pos2.side_to_move() == WHITE)
+            REQUIRE(perft<T, mt, WHITE, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
+        else REQUIRE(perft<T, mt, BLACK, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
         end_time = high_resolution_clock::now();
         elapsed += duration<double>(end_time - start_time).count();
         nodes += entry.info.nodes;

@@ -1330,17 +1330,19 @@ TEST_CASE("Draw detection") {
         Position p3("4k3/8/8/8/5N2/8/8/4K3 w - - 0 1");
         CHECK(p3.is_insufficient_material());
 
-        // K+N+N vs K is not insufficient (can mate with two knights)
+        // K+N+N vs K is insufficient
         Position p4("4k3/8/8/8/5N2/8/4N3/4K3 w - - 0 1");
-        CHECK_FALSE(p4.is_insufficient_material());
+        CHECK(p4.is_insufficient_material());
 
         // K+R vs K is not draw
         Position p5("4k3/8/8/8/5R2/8/8/4K3 w - - 0 1");
         CHECK_FALSE(p5.is_insufficient_material());
-
-        // K+B+B vs K - still drawn (unless same colour bishops... but two bishops can mate)
-        Position p6("4k3/8/8/8/3B1B2/8/8/4K3 w - - 0 1");
-        CHECK(p6.is_insufficient_material());
+        // K+B+N vs K - can mate
+        Position p6("4k3/8/8/8/3B1N2/8/8/4K3 w - - 0 1");
+        CHECK_FALSE(p6.is_insufficient_material());
+        // K+B+B vs K - draw
+        Position p7("4k3/8/8/8/3B1B2/8/8/4K3 w - - 0 1");
+        CHECK(p7.is_insufficient_material());
     }
 
     // hasNonPawnMaterial

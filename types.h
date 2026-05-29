@@ -586,6 +586,23 @@ template <typename T, std::size_t MaxSize> class ValueList {
 /// @brief Fixed-capacity list of up to 300 moves.
 using Movelist = ValueList<Move, 300>;
 
+/// @brief Counting-only move list — same interface as Movelist but discards move data.
+class CountOnlyList {
+public:
+    using size_type = std::size_t;
+    CountOnlyList() = default;
+    inline size_type size() const { return size_; }
+    inline void push_back(const Move &) { ++size_; }
+    inline Move &operator[](size_type) {
+        thread_local static Move dummy(0);
+        return dummy;
+    }
+    inline Move *data() { return nullptr; }
+    inline const Move *begin() const { return nullptr; }
+    inline const Move *end() const { return nullptr; }
+    size_type size_ = 0;
+};
+
 /// @brief Chebyshev distance between two squares.
 /// @return max(|dfile|, |drank|)
 constexpr int square_distance(Square a, Square b) {

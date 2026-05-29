@@ -874,33 +874,7 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
     assert(false);
     return CheckType::NO_CHECK; // Prevent a compiler warning
 }
-/// @brief Recompute cached attack info (checkers, check mask, pins).
-/// @details Called after setFEN and undoMove (when not restoring from history).
-template <typename PieceC, typename T> void _Position<PieceC, T>::refresh_attacks() {
-    const Color c = side_to_move();
 
-    Square king_square = king_sq(c);
-    pinMasks(c, king_square, _rook_pin, _bishop_pin);
-    _pin_mask = _rook_pin | _bishop_pin;
-
-    _checkers = attackers(~c, king_square);
-
-    switch (popcount(_checkers)) {
-    case 0:
-        _check_mask = ~0ULL; // no checks, full mask
-        break;
-
-    case 1: {
-        auto sq = static_cast<Square>(lsb(_checkers));
-        _check_mask = 1ULL << sq | movegen::between(king_square, sq);
-        break;
-    }
-
-    default:
-        _check_mask = 0ULL; // multiple checks, no blocking mask
-        break;
-    }
-}
 /// @brief Compute Zobrist hash for the current position.
 template <typename PieceC, typename T> uint64_t _Position<PieceC, T>::zobrist() const {
     uint64_t hash = 0;
@@ -1015,9 +989,9 @@ template <typename PieceC, typename T> bool _Position<PieceC, T>::is_insufficien
                     return true;
             }
 
-            // K + N + B vs K (still insufficient)
+            // K + N + B vs K
             if (popcount(knights) == 1 && popcount(bishops) == 1)
-                return true;
+                return false;
         }
 
         // mixed bishop-only edge case (rare but clean)
@@ -1070,7 +1044,6 @@ template bool _Position<PieceC, void>::setFEN(const std::string &, bool, FENPars
 template std::string _Position<PieceC, void>::fen(bool) const; \
 template void _Position<PieceC, void>::doMove<false>(const Move &move); \
 template void _Position<PieceC, void>::doMove<true>(const Move &move); \
-template void _Position<PieceC, void>::refresh_attacks(); \
 template uint64_t _Position<PieceC, void>::zobrist() const; \
 template Move _Position<PieceC, void>::parse_uci(std::string) const; \
 template Move _Position<PieceC, void>::push_uci(std::string); \
