@@ -527,7 +527,7 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
 
                     PieceC p = pieces_list[rook_sq];
                     INVALID_ARG_IF(p == PieceC::NO_PIECE || type_of(p) != ROOK || color_of(p) != WHITE,
-                                   std::runtime_error("Invalid white Chess960 rook"))
+                                   std::runtime_error("Invalid white Chess960 rook"));
                     if (p == PieceC::NO_PIECE || type_of(p) != ROOK || color_of(p) != WHITE) {
                         result_castling = false;
                         return;
