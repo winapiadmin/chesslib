@@ -187,7 +187,7 @@ static_assert(make_sq(RANK_8, FILE_A) == SQ_A8, "incorrect indexing");
 static_assert(make_sq(RANK_1, FILE_H) == SQ_H1, "incorrect indexing");
 static_assert(file_of(SQ_H7) == FILE_H, "incorrect indexing");
 static_assert(rank_of(SQ_C3) == RANK_3, "incorrect indexing");
-#if defined(_DEBUG) && !defined(NDEBUG)
+#ifndef NDEBUG
 #define IS_RELEASE 0
 #else
 #define IS_RELEASE 1
@@ -552,7 +552,6 @@ TEST_CASE("Perfts" * doctest::timeout(36000)) {
         {                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  3,       8902 },
         {                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  4,     197281 },
         {                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  5,    4865609 },
-        {                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  6,  119060324 },
         {                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  6,  119060324 },
         {                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  7, 3195901860 },
         {               "rnbqkbnr/pppppppp/8/8/8/3P4/PPP1PPPP/RNBQKBNR b KQkq - 0 1",  4,     328511 },

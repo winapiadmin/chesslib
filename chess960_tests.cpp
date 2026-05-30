@@ -27,7 +27,7 @@
 #include <doctest/doctest.h>
 #include <variant>
 using namespace chess;
-#if defined(_DEBUG) && !defined(NDEBUG)
+#if !defined(NDEBUG)
 #define IS_RELEASE 0
 #else
 #define IS_RELEASE 1
