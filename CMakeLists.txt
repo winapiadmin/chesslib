@@ -39,22 +39,22 @@ endif()
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
     # clang-cl: forward GCC/Clang style constexpr flags via /clang:
-    target_compile_options(chesslib PUBLIC 
+    target_compile_options(chesslib PRIVATE
       /clang:-march=native
       /clang:-mtune=native
     )
   else()
     # native clang++ on *nix or Windows
-    target_compile_options(chesslib PUBLIC
+    target_compile_options(chesslib PRIVATE
       -march=native -mtune=native
     )
   endif()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-	target_compile_options(chesslib PUBLIC -march=native -mtune=native -static)
+	target_compile_options(chesslib PRIVATE -march=native -mtune=native)
 
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   set(ARCH_FLAG "/arch:AVX2" CACHE STRING "MSVC architecture flag (/arch:SSE2, /arch:AVX, /arch:AVX2, /arch:AVX512)")
-  target_compile_options(chesslib PUBLIC ${ARCH_FLAG})
+  target_compile_options(chesslib PRIVATE ${ARCH_FLAG})
 endif()
 
 target_compile_definitions(chesslib PUBLIC _CHESSLIB_ERROR_MODE_${CHESSLIB_ERROR_MODE})
