@@ -21,38 +21,6 @@ project(chesslib LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# --- Compiler tuning ---
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
-    # clang-cl: forward GCC/Clang style constexpr flags via /clang:
-    add_compile_options(
-      /clang:-fconstexpr-steps=2000000000
-      /clang:-fconstexpr-depth=1024
-      /clang:-march=native
-      /clang:-mtune=native
-      /clang:-ftemplate-backtrace-limit=0
-    )
-  else()
-    # native clang++ on *nix or Windows
-    add_compile_options(
-      -fconstexpr-steps=2000000000
-      -fconstexpr-depth=1024
-      -march=native -mtune=native
-      -ftemplate-backtrace-limit=0 -static
-    )
-  endif()
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  add_compile_options(-fconstexpr-ops-limit=2000000000 -fconstexpr-depth=1024 -march=native -mtune=native -ftemplate-backtrace-limit=0 -static)
-
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  set(ARCH_FLAG "/arch:AVX2" CACHE STRING "MSVC architecture flag (/arch:SSE2, /arch:AVX, /arch:AVX2, /arch:AVX512)")
-  add_compile_options(/constexpr:steps2000000000 /constexpr:depth1024 ${ARCH_FLAG})
-endif()
-
-add_compile_definitions(GENERATE_AT_RUNTIME)
-if(CMAKE_BUILD_TYPE MATCHES "Debug")
-  add_compile_definitions(_DEBUG)
-endif()
 # --- Core Library ---
 set(SOURCES
     position.cpp
@@ -60,6 +28,36 @@ set(SOURCES
  "moves_io.cpp" "printers.cpp" "movegen.cpp")
 add_library(chesslib STATIC ${SOURCES})
 target_include_directories(chesslib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_definitions(chesslib PRIVATE GENERATE_AT_RUNTIME)
+set(CHESSLIB_ERROR_MODE "THROW" CACHE STRING "ASSERT|THROW|NONE")
+set_property(CACHE CHESSLIB_ERROR_MODE PROPERTY STRINGS ASSERT THROW NONE)
+
+if(NOT CHESSLIB_ERROR_MODE MATCHES "^(ASSERT|THROW|NONE)$")
+    message(FATAL_ERROR "Invalid ERROR_MODE: ${CHESSLIB_ERROR_MODE}")
+endif()
+# --- Compiler tuning ---
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    # clang-cl: forward GCC/Clang style constexpr flags via /clang:
+    target_compile_options(chesslib PRIVATE
+      /clang:-march=native
+      /clang:-mtune=native
+    )
+  else()
+    # native clang++ on *nix or Windows
+    target_compile_options(chesslib PRIVATE
+      -march=native -mtune=native
+    )
+  endif()
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+	target_compile_options(chesslib PRIVATE -march=native -mtune=native)
+
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  set(ARCH_FLAG "/arch:AVX2" CACHE STRING "MSVC architecture flag (/arch:SSE2, /arch:AVX, /arch:AVX2, /arch:AVX512)")
+  target_compile_options(chesslib PRIVATE ${ARCH_FLAG})
+endif()
+
+target_compile_definitions(chesslib PUBLIC _CHESSLIB_ERROR_MODE_${CHESSLIB_ERROR_MODE})
 # --- Enable CTest integration ---
 include(CTest)
 
@@ -81,9 +79,9 @@ if(BUILD_TESTING)
     target_link_libraries(NonImportantTests PRIVATE chesslib doctest::doctest)
     target_link_libraries(test_chess960 PRIVATE chesslib doctest::doctest)
 
-    add_test(NAME test_normal COMMAND test_normal)
-    add_test(NAME test_api COMMAND NonImportantTests)
-    add_test(NAME test_chess960 COMMAND test_chess960)
+    add_test(NAME test_normal COMMAND test_normal --abort-after=1)
+    add_test(NAME test_api COMMAND NonImportantTests --abort-after=1)
+    add_test(NAME test_chess960 COMMAND test_chess960 --abort-after=1)
     if (UNIX AND CMAKE_BUILD_TYPE MATCHES "Debug")
         set(SANITIZERS "" CACHE STRING "sanitizers such as undefined,address")
     

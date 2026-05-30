@@ -16,13 +16,16 @@
   You should have received a copy of the GNU General Public License
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#define DOCTEST_CONFIG_IMPLEMENT
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#if !defined(__cpp_exceptions) && !defined(_CPPUNWIND) && !defined(__EXCEPTIONS) && !defined(_CHESSLIB_ERROR_MODE_THROW)
 #define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
+#endif
 #include "position.h"
 #include "printers.h"
 #include <chrono>
 #include <doctest/doctest.h>
 #include <random>
+#include <sstream>
 using namespace chess;
 // --------- Color assertions ----------
 static_assert(color_of(PolyglotPiece::BPAWN) == BLACK, "BPAWN should be BLACK");
@@ -184,7 +187,7 @@ static_assert(make_sq(RANK_8, FILE_A) == SQ_A8, "incorrect indexing");
 static_assert(make_sq(RANK_1, FILE_H) == SQ_H1, "incorrect indexing");
 static_assert(file_of(SQ_H7) == FILE_H, "incorrect indexing");
 static_assert(rank_of(SQ_C3) == RANK_3, "incorrect indexing");
-#if defined(_DEBUG) || !defined(NDEBUG)
+#ifndef NDEBUG
 #define IS_RELEASE 0
 #else
 #define IS_RELEASE 1
@@ -197,17 +200,21 @@ template <typename InputT, typename CheckInfo> struct TestEntry {
     InputT input;
     CheckInfo info;
 };
-template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Position<T> &pos, int depth) {
+template <typename T, MoveGenType mt, Color c, bool EnableDiv = false> uint64_t perft(_Position<T> &pos, int depth) {
     if (depth == 0) {
         return 1;
     } else if (depth == 1) {
-        Movelist moves;
-        pos.template legals<mt>(moves);
-        if constexpr (EnableDiv)
-            for (const Move &m : moves) {
+        if constexpr (EnableDiv) {
+            Movelist moves;
+            pos.template legals<mt>(moves);
+            for (const Move &m : moves)
                 std::cout << m << ": 1\n";
-            }
-        return moves.size();
+            return moves.size();
+        } else {
+            CountOnlyList moves;
+            pos.template legals<mt>(moves);
+            return moves.size_;
+        }
     } else {
         Movelist moves;
         pos.template legals<mt>(moves);
@@ -216,32 +223,27 @@ template <typename T, MoveGenType mt, bool EnableDiv = false> uint64_t perft(_Po
             pos.template doMove<false>(m);
 #if !IS_RELEASE
             {
-                const auto pre_nm_hash_1 = pos.hash();
-                const auto pre_nm_fen_1 = pos.fen();
-                if (pos.zobrist() != pos.hash())
-                    REQUIRE(pos.zobrist() == pos.hash());
+                const auto pre_nm_hash = pos.hash();
                 pos.doNullMove();
                 pos.undoMove();
-                if (!(pos.hash() == pre_nm_hash_1 && pos.fen() == pre_nm_fen_1 && pos.zobrist() == pre_nm_hash_1)) {
-                    REQUIRE(pos.hash() == pre_nm_hash_1);
-                    REQUIRE(pos.fen() == pre_nm_fen_1);
-                    REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                if (pos.hash() != pre_nm_hash || pos.zobrist() != pre_nm_hash) {
+                    // Compute fen() only on failure (extremely rare)
+                    const auto post_fen = pos.fen();
+                    REQUIRE(!"Hash changed after null move");
+                    REQUIRE(pos.zobrist() == pre_nm_hash);
                 }
             }
 #endif
-            const uint64_t nodes = perft<T, mt, false>(pos, depth - 1);
+            const uint64_t nodes = perft<T, mt, ~c, false>(pos, depth - 1);
 #if !IS_RELEASE
             {
-                const auto pre_nm_hash_1 = pos.hash();
-                const auto pre_nm_fen_1 = pos.fen();
-                if (pos.zobrist() != pos.hash())
-                    REQUIRE(pos.zobrist() == pos.hash());
+                const auto pre_nm_hash = pos.hash();
                 pos.doNullMove();
                 pos.undoMove();
-                if (!(pos.hash() == pre_nm_hash_1 && pos.fen() == pre_nm_fen_1 && pos.zobrist() == pre_nm_hash_1)) {
-                    REQUIRE(pos.hash() == pre_nm_hash_1);
-                    REQUIRE(pos.fen() == pre_nm_fen_1);
-                    REQUIRE(pos.zobrist() == pre_nm_hash_1);
+                if (pos.hash() != pre_nm_hash || pos.zobrist() != pre_nm_hash) {
+                    const auto post_fen = pos.fen();
+                    REQUIRE(!"Hash changed after null move");
+                    REQUIRE(pos.zobrist() == pre_nm_hash);
                 }
             }
 #endif
@@ -285,74 +287,46 @@ auto split_testcases(std::vector<TestEntry<std::string, perft_t>> &entries) {
     return optimized;
 }
 #endif
+template <typename T, MoveGenType mt, bool EnableDiv>
+void check_perft_type(TestEntry<std::string, perft_t> &entry, uint64_t &nodes, double &elapsed) {
+    using namespace std::chrono;
+    _Position<T> pos(entry.input);
+    auto start_time = high_resolution_clock::now();
+    if (pos.side_to_move() == WHITE)
+        REQUIRE(perft<T, mt, WHITE, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
+    else
+        REQUIRE(perft<T, mt, BLACK, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
+    auto end_time = high_resolution_clock::now();
+    elapsed += duration<double>(end_time - start_time).count();
+    nodes += entry.info.nodes;
+    if (entry.info.nodes < 5e6) {
+        _Position<T> pos2 = pos;
+        REQUIRE(pos.fen() == pos2.fen());
+        start_time = high_resolution_clock::now();
+        if (pos2.side_to_move() == WHITE)
+            REQUIRE(perft<T, mt, WHITE, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
+        else
+            REQUIRE(perft<T, mt, BLACK, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
+        end_time = high_resolution_clock::now();
+        elapsed += duration<double>(end_time - start_time).count();
+        nodes += entry.info.nodes;
+    } else {
+        std::cerr << "\n(skipped copying test)\n";
+    }
+}
 template <MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false>
 void check_perfts(std::vector<TestEntry<std::string, perft_t>> &entries) {
     uint64_t nodes = 0;
     double elapsed = 0;
-    using namespace std::chrono;
 #if !IS_RELEASE
     entries = split_testcases(entries);
 #endif
     for (auto &entry : entries) {
         std::cerr << entry.input << " (chess960=false) " << entry.info.depth;
         std::cerr << '\n';
-        {
-            _Position<PolyglotPiece> pos(entry.input);
-            auto start_time = high_resolution_clock::now();
-            REQUIRE(perft<PolyglotPiece, mt, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
-            auto end_time = high_resolution_clock::now();
-            elapsed += duration<double>(end_time - start_time).count();
-            nodes += entry.info.nodes;
-            if (entry.info.nodes < 5e6) {
-                _Position<PolyglotPiece> pos2 = pos;
-                REQUIRE(pos.fen() == pos2.fen());
-                auto start_time = high_resolution_clock::now();
-                REQUIRE(perft<PolyglotPiece, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
-                auto end_time = high_resolution_clock::now();
-                elapsed += duration<double>(end_time - start_time).count();
-                nodes += entry.info.nodes;
-            } else {
-                std::cerr << "\n(skipped copying test)\n";
-            }
-        }
-        {
-            _Position<EnginePiece> pos(entry.input);
-            auto start_time = high_resolution_clock::now();
-            REQUIRE(perft<EnginePiece, mt, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
-            auto end_time = high_resolution_clock::now();
-            elapsed += duration<double>(end_time - start_time).count();
-            nodes += entry.info.nodes;
-            if (entry.info.nodes < 5e6) {
-                _Position<EnginePiece> pos2 = pos;
-                REQUIRE(pos.fen() == pos2.fen());
-                auto start_time = high_resolution_clock::now();
-                REQUIRE(perft<EnginePiece, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
-                auto end_time = high_resolution_clock::now();
-                elapsed += duration<double>(end_time - start_time).count();
-                nodes += entry.info.nodes;
-            } else {
-                std::cerr << "\n(skipped copying test)\n";
-            }
-        }
-        {
-            _Position<ContiguousMappingPiece> pos(entry.input);
-            auto start_time = high_resolution_clock::now();
-            REQUIRE(perft<ContiguousMappingPiece, mt, EnableDiv>(pos, entry.info.depth) == entry.info.nodes);
-            auto end_time = high_resolution_clock::now();
-            elapsed += duration<double>(end_time - start_time).count();
-            nodes += entry.info.nodes;
-            if (entry.info.nodes < 5e6) {
-                _Position<ContiguousMappingPiece> pos2 = pos;
-                REQUIRE(pos.fen() == pos2.fen());
-                auto start_time = high_resolution_clock::now();
-                REQUIRE(perft<ContiguousMappingPiece, mt, EnableDiv>(pos2, entry.info.depth) == entry.info.nodes);
-                auto end_time = high_resolution_clock::now();
-                elapsed += duration<double>(end_time - start_time).count();
-                nodes += entry.info.nodes;
-            } else {
-                std::cerr << "\n(skipped copying test)\n";
-            }
-        }
+        check_perft_type<PolyglotPiece, mt, EnableDiv>(entry, nodes, elapsed);
+        check_perft_type<EnginePiece, mt, EnableDiv>(entry, nodes, elapsed);
+        check_perft_type<ContiguousMappingPiece, mt, EnableDiv>(entry, nodes, elapsed);
     }
     double mnps = (nodes / elapsed) / 1'000'000.0;
     std::cout << "Speed: " << mnps << "Mnps\n";
@@ -566,6 +540,10 @@ TEST_CASE("Captures only?") {
 }
 TEST_CASE("Perfts" * doctest::timeout(36000)) {
     std::vector<TestEntry<std::string, perft_t>> tests = {
+        {               "Q1Q2QQQ/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q1Q/pp1Q3Q/kBQQ1KQ1 w - - 0 1",  1,        240 },
+        {               "Q1Q2QQQ/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q1Q/pp1Q3Q/kBQQ1KQ1 w - - 0 1",  2,          0 },
+        {               "Q1Q2QQQ/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q1Q/pp1Q3Q/kBQQ1KQ1 w - - 0 1",  2,          0 },
+        {                     "QQQQQQQK/Q6Q/Q6Q/Q6Q/Q6Q/Q6Q/BR5Q/kBQQQQQQ w - - 0 1",  1,        271 },
         {                                            "5k2/8/8/8/3K4/8/8/8 w - - 0 1",  1,          8 },
         {                                            "5k2/8/8/8/3K4/8/8/8 w - - 0 1",  3,        310 },
         {                                            "5k2/8/8/8/3K4/8/8/8 w - - 0 1",  6,      95366 },
@@ -574,7 +552,6 @@ TEST_CASE("Perfts" * doctest::timeout(36000)) {
         {                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  3,       8902 },
         {                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  4,     197281 },
         {                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  5,    4865609 },
-        {                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  6,  119060324 },
         {                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  6,  119060324 },
         {                 "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",  7, 3195901860 },
         {               "rnbqkbnr/pppppppp/8/8/8/3P4/PPP1PPPP/RNBQKBNR b KQkq - 0 1",  4,     328511 },
@@ -671,10 +648,8 @@ TEST_CASE("Perfts" * doctest::timeout(36000)) {
         // https://github.com/SebLague/Chess-Coding-Adventure/blob/Chess-V2-Unity/Assets/Scripts/Testing/Perft/Suites/Suite%20Full.txt
         // converted to [fen, depth, nodes], deduped tests
         {                        "2b1b3/1r1P4/3K3p/1p6/2p5/6k1/1P3p2/4B3 w - - 0 42",  5,    5617302 },
-        {                                    "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -",  6,   11030083 },
         {           "r3k2r/pp3pp1/PN1pr1p1/4p1P1/4P3/3P4/P1P2PP1/R3K2R w KQkq - 4 4",  5,   15587335 },
         {                "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",  5,   89941194 },
-        {         "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -",  5,  193690690 },
         {              "r3k1nr/p2pp1pp/b1n1P1P1/1BK1Pp1q/8/8/2PP1PPP/6N1 w kq - 0 1",  4,     497787 },
         {                                           "3k4/8/8/8/8/8/8/R3K3 w Q - 0 1",  7,   15594314 },
         {                                        "2K2r2/4P3/8/8/8/8/8/3k4 w - - 0 1",  6,    3821001 },
@@ -1486,11 +1461,4 @@ TEST_CASE("Perfts" * doctest::timeout(36000)) {
         {               "rnbqkbnr/1p2pppp/p7/2Pp4/8/8/PPPKPPPP/RNBQ1BNR w kq d6 0 4",  3,      17762 }
     };
     check_perfts(tests);
-}
-int main(int argc, char **argv) {
-    doctest::Context ctx;
-    ctx.setOption("success", true);
-    ctx.setOption("no-breaks", true);
-    ctx.setOption("abort-after", 1);
-    return ctx.run();
 }

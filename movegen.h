@@ -18,21 +18,45 @@
 */
 #pragma once
 #include "fwd_decl.h"
+#include "types.h"
 #include <array>
+
+/// @file movegen.h
+/// @brief Move-generation declarations and between-square table.
+
 namespace chess::movegen {
 
-template <typename T, Color c> void genEP(const _Position<T, void> &, Movelist &);
-template <typename T, Color c> void genPawnDoubleMoves(const _Position<T, void> &, Movelist &, Bitboard, Bitboard);
-template <typename T, Color c, bool capturesOnly = false>
-void genPawnSingleMoves(const _Position<T, void> &, Movelist &, Bitboard, Bitboard, Bitboard);
-template <typename T, Color c, bool capturesOnly = false>
-void genKnightMoves(const _Position<T, void> &, Movelist &, Bitboard, Bitboard);
-template <typename T, Color c, bool capturesOnly = false> void genKingMoves(const _Position<T, void> &, Movelist &, Bitboard);
-template <typename T, Color c, PieceType pt, bool capturesOnly = false>
-void genSlidingMoves(const _Position<T, void> &, Movelist &, Bitboard, Bitboard, Bitboard);
-extern std::array<std::array<Bitboard, 65>, 65> SQUARES_BETWEEN_BB;
-/*
- * [(file(sq1), rank(sq1)), (file(sq2), rank(sq2))] -> bitboard of squares between sq1 and sq2, excluding sq1 and sq2
- */
+/// @brief Generate en-passant captures for the given colour.
+template <typename T, Color c, typename ListT> void genEP(const _Position<T, void> &, ListT &);
+
+/// @brief Generate double-pawn pushes (from the starting rank).
+template <typename T, Color c, typename ListT> void genPawnDoubleMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard);
+
+/// @brief Generate single-pawn moves (pushes and captures).
+template <typename T, Color c, bool capturesOnly, typename ListT>
+void genPawnSingleMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard, Bitboard);
+
+/// @brief Generate knight moves.
+template <typename T, Color c, bool capturesOnly, typename ListT>
+void genKnightMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard);
+
+/// @brief Generate king moves.
+template <typename T, Color c, bool capturesOnly, typename ListT>
+void genKingMoves(const _Position<T, void> &, ListT &, Bitboard);
+
+/// @brief Generate sliding-piece moves (bishop, rook, queen).
+template <typename T, Color c, PieceType pt, bool capturesOnly, typename ListT>
+void genSlidingMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard, Bitboard);
+
+/// @brief Precomputed between-square bitboards.
+/// @details squares_between_bb[sq1][sq2] contains a bitboard of all squares
+///          strictly between sq1 and sq2 (excluding both endpoints).
+extern std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB;
+
+/// @brief Look up the squares between two squares.
+/// @param sq1 First square.
+/// @param sq2 Second square.
+/// @return Bitboard of squares between sq1 and sq2, excluding sq1 and sq2.
+///         Returns 1ULL << sq2 if the squares are not on the same line.
 [[nodiscard]] inline Bitboard between(Square sq1, Square sq2) noexcept { return SQUARES_BETWEEN_BB[sq1][sq2]; }
 } // namespace chess::movegen

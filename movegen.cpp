@@ -22,6 +22,10 @@
 // movegen references
 
 // License: https://github.com/Disservin/chess-library/blob/master/LICENSE
+
+/// @file movegen.cpp
+/// @brief Move generator: AVX-512 accelerated splatting and per-piece-type move generation.
+
 #include "movegen.h"
 #include "position.h"
 
@@ -122,11 +126,23 @@ inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
 }
 #endif
 } // namespace _chess
+
+// Count-only dispatch helpers — splat_moves/splat_pawn_moves when storing is needed, no-op when counting.
+template <typename ListT> inline void record_moves(ListT &list, Square from, Bitboard targets) {
+    if constexpr (std::is_same_v<ListT, Movelist>) {
+        _chess::splat_moves(list.data() + list.size_, from, targets);
+    }
+}
+template <Direction offset, typename ListT> inline void record_pawn_moves(ListT &list, Bitboard targets) {
+    if constexpr (std::is_same_v<ListT, Movelist>) {
+        _chess::splat_pawn_moves<offset>(list.data() + list.size_, targets);
+    }
+}
 } // namespace chess
 namespace chess {
-template <typename T, Color c> void movegen::genEP(const _Position<T, void> &pos, Movelist &mv) {
+template <typename T, Color c, typename ListT> [[gnu::hot]] void movegen::genEP(const _Position<T, void> &pos, ListT &mv) {
 
-    const Square king_sq = pos.kingSq(c);
+    const Square king_sq = pos.king_sq(c);
     const Square ep_sq = pos.ep_square();
     if (ep_sq == SQ_NONE)
         return;
@@ -139,12 +155,12 @@ template <typename T, Color c> void movegen::genEP(const _Position<T, void> &pos
     const Bitboard ep_mask = (1ULL << ep_pawn_sq) | (1ULL << ep_sq);
     // ASSUME(popcount(candidates) <= 32);
 
+    Bitboard occ_all = pos.occ();
     while (candidates) {
         Square from = static_cast<Square>(pop_lsb(candidates));
 
         // Remove the EP pawn and this attacker from occupancy
-        Bitboard occ_temp = pos.occ();
-        occ_temp ^= (1ULL << from) | ep_mask;
+        Bitboard occ_temp = occ_all ^ ((1ULL << from) | ep_mask);
 
         // attackers check
         Bitboard atks = 0;
@@ -156,8 +172,9 @@ template <typename T, Color c> void movegen::genEP(const _Position<T, void> &pos
         }
     }
 }
-template <typename T, Color c>
-void movegen::genPawnDoubleMoves(const _Position<T, void> &pos, Movelist &moves, Bitboard pin_mask, Bitboard check_mask) {
+template <typename T, Color c, typename ListT>
+[[gnu::hot]] void
+movegen::genPawnDoubleMoves(const _Position<T, void> &pos, ListT &moves, Bitboard pin_mask, Bitboard check_mask) {
     constexpr Bitboard RANK_2 = (c == WHITE) ? attacks::MASK_RANK[1] : attacks::MASK_RANK[6];
     constexpr Direction UP = pawn_push(c);
 
@@ -165,7 +182,7 @@ void movegen::genPawnDoubleMoves(const _Position<T, void> &pos, Movelist &moves,
     Bitboard pawns = pos.template pieces<PAWN, c>() & RANK_2;
 
     // Split pin types
-    Bitboard pin_file = pin_mask & attacks::MASK_FILE[file_of(pos.kingSq(c))];
+    Bitboard pin_file = pin_mask & attacks::MASK_FILE[file_of(pos.king_sq(c))];
 
     Bitboard unpinned = pawns & ~pin_mask;
     Bitboard file_pinned = pawns & pin_file;
@@ -180,12 +197,12 @@ void movegen::genPawnDoubleMoves(const _Position<T, void> &pos, Movelist &moves,
 
     Bitboard destinations = (step2_unpinned | step2_pinned) & check_mask;
 
-    _chess::splat_pawn_moves<2 * UP>(moves.data() + moves.size_, destinations);
+    record_pawn_moves<2 * UP>(moves, destinations);
     moves.size_ += popcount(destinations);
 }
-template <typename T, Color c, bool capturesOnly>
-void movegen::genPawnSingleMoves(
-    const _Position<T, void> &pos, Movelist &moves, Bitboard _rook_pin, Bitboard _bishop_pin, Bitboard _check_mask) {
+template <typename T, Color c, bool capturesOnly, typename ListT>
+[[gnu::hot]] void movegen::genPawnSingleMoves(
+    const _Position<T, void> &pos, ListT &moves, Bitboard _rook_pin, Bitboard _bishop_pin, Bitboard _check_mask) {
     constexpr auto UP = relative_direction(c, NORTH);
     constexpr auto UP_LEFT = relative_direction(c, NORTH_WEST);
     constexpr auto UP_RIGHT = relative_direction(c, NORTH_EAST);
@@ -259,16 +276,17 @@ void movegen::genPawnSingleMoves(
     l_pawns &= ~RANK_PROMO;
     r_pawns &= ~RANK_PROMO;
     if constexpr (!capturesOnly) {
-        _chess::splat_pawn_moves<UP>(moves.data() + moves.size_, single_push);
+        record_pawn_moves<UP>(moves, single_push);
         moves.size_ += popcount(single_push);
     }
-    _chess::splat_pawn_moves<UP_LEFT>(moves.data() + moves.size_, l_pawns);
+    record_pawn_moves<UP_LEFT>(moves, l_pawns);
     moves.size_ += popcount(l_pawns);
-    _chess::splat_pawn_moves<UP_RIGHT>(moves.data() + moves.size_, r_pawns);
+    record_pawn_moves<UP_RIGHT>(moves, r_pawns);
     moves.size_ += popcount(r_pawns);
 }
-template <typename T, Color c, bool capturesOnly>
-void movegen::genKnightMoves(const _Position<T, void> &pos, Movelist &list, Bitboard _pin_mask, Bitboard _check_mask) {
+template <typename T, Color c, bool capturesOnly, typename ListT>
+[[gnu::hot]] void
+movegen::genKnightMoves(const _Position<T, void> &pos, ListT &list, Bitboard _pin_mask, Bitboard _check_mask) {
     Bitboard knights = pos.template pieces<KNIGHT, c>() & ~_pin_mask;
     while (knights) {
         Square x = static_cast<Square>(pop_lsb(knights));
@@ -276,43 +294,50 @@ void movegen::genKnightMoves(const _Position<T, void> &pos, Movelist &list, Bitb
         moves &= _check_mask;
         if constexpr (capturesOnly)
             moves &= pos.occ(~c);
-        _chess::splat_moves(list.data() + list.size(), x, moves);
+        record_moves(list, x, moves);
         list.size_ += popcount(moves);
     }
 }
-template <typename T, Color c, bool capturesOnly>
-void movegen::genKingMoves(const _Position<T, void> &pos, Movelist &out, Bitboard _pin_mask) {
+template <typename T, Color c, bool capturesOnly, typename ListT>
+[[gnu::hot]] void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bitboard _pin_mask) {
     constexpr Color them = ~c;
-    const Square kingSq = pos.kingSq(c);
-    const Bitboard occAll = pos.occ();
+    const Square kingSq = pos.king_sq(c);
     const Bitboard myOcc = pos.occ(c);
+    const Bitboard occ_opp = pos.occ(~c);
 
-    // Remove king from board when computing enemy attacks
+    if constexpr (capturesOnly) {
+        Bitboard targets = attacks::king(kingSq) & occ_opp;
+        if (!targets) {
+            out.size_ += 0;
+            return;
+        }
+    }
+
+    const Bitboard occAll = pos.occ();
     const Bitboard occWithoutKing = occAll ^ 1ULL << kingSq;
     Bitboard enemyAttacks = 0ULL;
 
     // Sliding pieces
-    Bitboard bLike = pos.template pieces<BISHOP, them>() | pos.template pieces<QUEEN, them>();
-    while (bLike)
-        enemyAttacks |= attacks::bishop(static_cast<Square>(pop_lsb(bLike)), occWithoutKing);
+    {
+        Bitboard bLike = pos.template pieces<BISHOP, them>() | pos.template pieces<QUEEN, them>();
+        while (bLike)
+            enemyAttacks |= attacks::bishop(static_cast<Square>(pop_lsb(bLike)), occWithoutKing);
+    }
+    {
+        Bitboard rLike = pos.template pieces<ROOK, them>() | pos.template pieces<QUEEN, them>();
+        while (rLike)
+            enemyAttacks |= attacks::rook(static_cast<Square>(pop_lsb(rLike)), occWithoutKing);
+    }
 
-    Bitboard rLike = pos.template pieces<ROOK, them>() | pos.template pieces<QUEEN, them>();
-    while (rLike)
-        enemyAttacks |= attacks::rook(static_cast<Square>(pop_lsb(rLike)), occWithoutKing);
-
-    // Knights
+    // Knights, pawns, enemy king (precomputed tables)
     enemyAttacks |= attacks::knight(pos.template pieces<KNIGHT, them>());
-
-    // Pawns
     enemyAttacks |= attacks::pawn<them>(pos.template pieces<PAWN, them>());
-
-    // Enemy king (adjacent control squares)
-    enemyAttacks |= attacks::king(pos.kingSq(them));
+    enemyAttacks |= attacks::king(pos.king_sq(them));
 
     Bitboard moves = attacks::king(kingSq) & ~myOcc & ~enemyAttacks;
     if constexpr (capturesOnly)
-        moves &= pos.occ(~c);
-    _chess::splat_moves(out.data() + out.size(), kingSq, moves);
+        moves &= occ_opp;
+    record_moves(out, kingSq, moves);
     out.size_ += popcount(moves);
     if constexpr (!capturesOnly) {
         if (pos.checkers())
@@ -322,11 +347,11 @@ void movegen::genKingMoves(const _Position<T, void> &pos, Movelist &out, Bitboar
         Bitboard enemy_attacks = enemyAttacks;
         constexpr CastlingRights kingRights = KING_SIDE & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING),
                                  queenRights = QUEEN_SIDE & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING);
-        Bitboard OO_EMPTY = pos.getCastlingPath(c, true);
+        Bitboard OO_EMPTY = pos.get_castling_path(c, true);
         Bitboard OO_SAFE = between(kingSq, castling_king_square(c, true));
-        Bitboard OOO_EMPTY = pos.getCastlingPath(c, false);
+        Bitboard OOO_EMPTY = pos.get_castling_path(c, false);
         Bitboard OOO_SAFE = between(kingSq, castling_king_square(c, false));
-        Square rookKing = pos.getCastlingMetadata(c).rook_start_ks, rookQueen = pos.getCastlingMetadata(c).rook_start_qs;
+        Square rookKing = pos.get_castling_metadata(c).rook_start_ks, rookQueen = pos.get_castling_metadata(c).rook_start_qs;
 
         if (pos.castlingRights() & kingRights &&
             !(occupancy & OO_EMPTY || enemy_attacks & OO_SAFE || _pin_mask & 1ULL << rookKing)) {
@@ -338,9 +363,9 @@ void movegen::genKingMoves(const _Position<T, void> &pos, Movelist &out, Bitboar
         }
     }
 }
-template <typename T, Color c, PieceType pt, bool capturesOnly>
-void movegen::genSlidingMoves(
-    const _Position<T, void> &pos, Movelist &moves, Bitboard _rook_pin, Bitboard _bishop_pin, Bitboard _check_mask) {
+template <typename T, Color c, PieceType pt, bool capturesOnly, typename ListT>
+[[gnu::hot]] void movegen::genSlidingMoves(
+    const _Position<T, void> &pos, ListT &moves, Bitboard _rook_pin, Bitboard _bishop_pin, Bitboard _check_mask) {
     static_assert(pt == BISHOP || pt == ROOK || pt == QUEEN, "Sliding pieces only.");
     Bitboard sliders = pos.template pieces<pt, c>();
     Bitboard occ_all = pos.occ();
@@ -350,6 +375,7 @@ void movegen::genSlidingMoves(
         sliders &= ~rook_pinners;
     if constexpr (pt == ROOK)
         sliders &= ~bishop_pinners;
+    Bitboard occ_opp = pos.occ(~c);
     Bitboard filter_list = ~pos.occ(c) & _check_mask;
     while (sliders) {
         Square from = static_cast<Square>(pop_lsb(sliders));
@@ -359,140 +385,148 @@ void movegen::genSlidingMoves(
         Bitboard bishop_hit = bishop_pinners & from_bb;
         Bitboard pin_mask = rook_hit ? rook_pinners : bishop_hit ? bishop_pinners : ~0ULL;
 
-        auto func = attacks::queen;
-        if constexpr (pt == BISHOP)
-            func = attacks::bishop;
-        else if constexpr (pt == ROOK)
-            func = attacks::rook;
-        func = rook_hit ? attacks::rook : bishop_hit ? attacks::bishop : func;
         Bitboard filtered_pin = pin_mask & filter_list;
-        Bitboard targets = func(from, occ_all) & filtered_pin;
+        Bitboard targets;
+        if (rook_hit) {
+            targets = attacks::rook(from, occ_all) & filtered_pin;
+        } else if (bishop_hit) {
+            targets = attacks::bishop(from, occ_all) & filtered_pin;
+        } else if constexpr (pt == BISHOP) {
+            targets = attacks::bishop(from, occ_all) & filtered_pin;
+        } else if constexpr (pt == ROOK) {
+            targets = attacks::rook(from, occ_all) & filtered_pin;
+        } else {
+            targets = attacks::queen(from, occ_all) & filtered_pin;
+        }
         if constexpr (capturesOnly)
-            targets &= pos.occ(~c);
-        _chess::splat_moves(moves.data() + moves.size_, from, targets);
+            targets &= occ_opp;
+        record_moves(moves, from, targets);
         moves.size_ += popcount(targets);
     }
 }
-#define INSTANTIATE(PieceC)                                                                                                    \
-    template void chess::movegen::genEP<PieceC, Color::WHITE>(const _Position<PieceC, void> &, Movelist &);                    \
-    template void chess::movegen::genEP<PieceC, Color::BLACK>(const _Position<PieceC, void> &, Movelist &);                    \
-    template void chess::movegen::genPawnDoubleMoves<PieceC, Color::WHITE>(const _Position<PieceC, void> &,                    \
-                                                                           Movelist &,                                         \
-                                                                           Bitboard,                                           \
-                                                                           Bitboard);                                          \
-    template void chess::movegen::genPawnDoubleMoves<PieceC, Color::BLACK>(const _Position<PieceC, void> &,                    \
-                                                                           Movelist &,                                         \
-                                                                           Bitboard,                                           \
-                                                                           Bitboard);                                          \
-    template void chess::movegen::genPawnSingleMoves<PieceC, Color::WHITE, true>(const _Position<PieceC, void> &,              \
-                                                                                 Movelist &,                                   \
-                                                                                 Bitboard,                                     \
-                                                                                 Bitboard,                                     \
-                                                                                 Bitboard);                                    \
-    template void chess::movegen::genPawnSingleMoves<PieceC, Color::WHITE, false>(const _Position<PieceC, void> &,             \
-                                                                                  Movelist &,                                  \
-                                                                                  Bitboard,                                    \
+#define INSTANTIATE(PieceC, ListT)                                                                                             \
+    template void chess::movegen::genEP<PieceC, Color::WHITE, ListT>(const _Position<PieceC, void> &, ListT &);                \
+    template void chess::movegen::genEP<PieceC, Color::BLACK, ListT>(const _Position<PieceC, void> &, ListT &);                \
+    template void chess::movegen::genPawnDoubleMoves<PieceC, Color::WHITE, ListT>(const _Position<PieceC, void> &,             \
+                                                                                  ListT &,                                     \
                                                                                   Bitboard,                                    \
                                                                                   Bitboard);                                   \
-    template void chess::movegen::genPawnSingleMoves<PieceC, Color::BLACK, true>(const _Position<PieceC, void> &,              \
-                                                                                 Movelist &,                                   \
-                                                                                 Bitboard,                                     \
-                                                                                 Bitboard,                                     \
-                                                                                 Bitboard);                                    \
-    template void chess::movegen::genPawnSingleMoves<PieceC, Color::BLACK, false>(const _Position<PieceC, void> &,             \
-                                                                                  Movelist &,                                  \
-                                                                                  Bitboard,                                    \
+    template void chess::movegen::genPawnDoubleMoves<PieceC, Color::BLACK, ListT>(const _Position<PieceC, void> &,             \
+                                                                                  ListT &,                                     \
                                                                                   Bitboard,                                    \
                                                                                   Bitboard);                                   \
-    template void chess::movegen::genSlidingMoves<PieceC, Color::WHITE, BISHOP, true>(const _Position<PieceC, void> &,         \
-                                                                                      Movelist &,                              \
-                                                                                      Bitboard,                                \
-                                                                                      Bitboard,                                \
-                                                                                      Bitboard);                               \
-    template void chess::movegen::genSlidingMoves<PieceC, Color::WHITE, ROOK, true>(const _Position<PieceC, void> &,           \
-                                                                                    Movelist &,                                \
-                                                                                    Bitboard,                                  \
+    template void chess::movegen::genPawnSingleMoves<PieceC, Color::WHITE, true, ListT>(const _Position<PieceC, void> &,       \
+                                                                                        ListT &,                               \
+                                                                                        Bitboard,                              \
+                                                                                        Bitboard,                              \
+                                                                                        Bitboard);                             \
+    template void chess::movegen::genPawnSingleMoves<PieceC, Color::WHITE, false, ListT>(const _Position<PieceC, void> &,      \
+                                                                                         ListT &,                              \
+                                                                                         Bitboard,                             \
+                                                                                         Bitboard,                             \
+                                                                                         Bitboard);                            \
+    template void chess::movegen::genPawnSingleMoves<PieceC, Color::BLACK, true, ListT>(const _Position<PieceC, void> &,       \
+                                                                                        ListT &,                               \
+                                                                                        Bitboard,                              \
+                                                                                        Bitboard,                              \
+                                                                                        Bitboard);                             \
+    template void chess::movegen::genPawnSingleMoves<PieceC, Color::BLACK, false, ListT>(const _Position<PieceC, void> &,      \
+                                                                                         ListT &,                              \
+                                                                                         Bitboard,                             \
+                                                                                         Bitboard,                             \
+                                                                                         Bitboard);                            \
+    template void chess::movegen::genSlidingMoves<PieceC, Color::WHITE, BISHOP, true, ListT>(const _Position<PieceC, void> &,  \
+                                                                                             ListT &,                          \
+                                                                                             Bitboard,                         \
+                                                                                             Bitboard,                         \
+                                                                                             Bitboard);                        \
+    template void chess::movegen::genSlidingMoves<PieceC, Color::WHITE, ROOK, true, ListT>(const _Position<PieceC, void> &,    \
+                                                                                           ListT &,                            \
+                                                                                           Bitboard,                           \
+                                                                                           Bitboard,                           \
+                                                                                           Bitboard);                          \
+    template void chess::movegen::genSlidingMoves<PieceC, Color::WHITE, QUEEN, true, ListT>(const _Position<PieceC, void> &,   \
+                                                                                            ListT &,                           \
+                                                                                            Bitboard,                          \
+                                                                                            Bitboard,                          \
+                                                                                            Bitboard);                         \
+    template void chess::movegen::genSlidingMoves<PieceC, Color::WHITE, BISHOP, false, ListT>(const _Position<PieceC, void> &, \
+                                                                                              ListT &,                         \
+                                                                                              Bitboard,                        \
+                                                                                              Bitboard,                        \
+                                                                                              Bitboard);                       \
+    template void chess::movegen::genSlidingMoves<PieceC, Color::WHITE, ROOK, false, ListT>(const _Position<PieceC, void> &,   \
+                                                                                            ListT &,                           \
+                                                                                            Bitboard,                          \
+                                                                                            Bitboard,                          \
+                                                                                            Bitboard);                         \
+    template void chess::movegen::genSlidingMoves<PieceC, Color::WHITE, QUEEN, false, ListT>(const _Position<PieceC, void> &,  \
+                                                                                             ListT &,                          \
+                                                                                             Bitboard,                         \
+                                                                                             Bitboard,                         \
+                                                                                             Bitboard);                        \
+    template void chess::movegen::genSlidingMoves<PieceC, Color::BLACK, BISHOP, true, ListT>(const _Position<PieceC, void> &,  \
+                                                                                             ListT &,                          \
+                                                                                             Bitboard,                         \
+                                                                                             Bitboard,                         \
+                                                                                             Bitboard);                        \
+    template void chess::movegen::genSlidingMoves<PieceC, Color::BLACK, ROOK, true, ListT>(const _Position<PieceC, void> &,    \
+                                                                                           ListT &,                            \
+                                                                                           Bitboard,                           \
+                                                                                           Bitboard,                           \
+                                                                                           Bitboard);                          \
+    template void chess::movegen::genSlidingMoves<PieceC, Color::BLACK, QUEEN, true, ListT>(const _Position<PieceC, void> &,   \
+                                                                                            ListT &,                           \
+                                                                                            Bitboard,                          \
+                                                                                            Bitboard,                          \
+                                                                                            Bitboard);                         \
+    template void chess::movegen::genSlidingMoves<PieceC, Color::BLACK, BISHOP, false, ListT>(const _Position<PieceC, void> &, \
+                                                                                              ListT &,                         \
+                                                                                              Bitboard,                        \
+                                                                                              Bitboard,                        \
+                                                                                              Bitboard);                       \
+    template void chess::movegen::genSlidingMoves<PieceC, Color::BLACK, ROOK, false, ListT>(const _Position<PieceC, void> &,   \
+                                                                                            ListT &,                           \
+                                                                                            Bitboard,                          \
+                                                                                            Bitboard,                          \
+                                                                                            Bitboard);                         \
+    template void chess::movegen::genSlidingMoves<PieceC, Color::BLACK, QUEEN, false, ListT>(const _Position<PieceC, void> &,  \
+                                                                                             ListT &,                          \
+                                                                                             Bitboard,                         \
+                                                                                             Bitboard,                         \
+                                                                                             Bitboard);                        \
+    template void chess::movegen::genKnightMoves<PieceC, Color::WHITE, true, ListT>(const _Position<PieceC, void> &,           \
+                                                                                    ListT &,                                   \
                                                                                     Bitboard,                                  \
                                                                                     Bitboard);                                 \
-    template void chess::movegen::genSlidingMoves<PieceC, Color::WHITE, QUEEN, true>(const _Position<PieceC, void> &,          \
-                                                                                     Movelist &,                               \
-                                                                                     Bitboard,                                 \
-                                                                                     Bitboard,                                 \
-                                                                                     Bitboard);                                \
-    template void chess::movegen::genSlidingMoves<PieceC, Color::WHITE, BISHOP, false>(const _Position<PieceC, void> &,        \
-                                                                                       Movelist &,                             \
-                                                                                       Bitboard,                               \
-                                                                                       Bitboard,                               \
-                                                                                       Bitboard);                              \
-    template void chess::movegen::genSlidingMoves<PieceC, Color::WHITE, ROOK, false>(const _Position<PieceC, void> &,          \
-                                                                                     Movelist &,                               \
-                                                                                     Bitboard,                                 \
-                                                                                     Bitboard,                                 \
-                                                                                     Bitboard);                                \
-    template void chess::movegen::genSlidingMoves<PieceC, Color::WHITE, QUEEN, false>(const _Position<PieceC, void> &,         \
-                                                                                      Movelist &,                              \
-                                                                                      Bitboard,                                \
-                                                                                      Bitboard,                                \
-                                                                                      Bitboard);                               \
-    template void chess::movegen::genSlidingMoves<PieceC, Color::BLACK, BISHOP, true>(const _Position<PieceC, void> &,         \
-                                                                                      Movelist &,                              \
-                                                                                      Bitboard,                                \
-                                                                                      Bitboard,                                \
-                                                                                      Bitboard);                               \
-    template void chess::movegen::genSlidingMoves<PieceC, Color::BLACK, ROOK, true>(const _Position<PieceC, void> &,           \
-                                                                                    Movelist &,                                \
-                                                                                    Bitboard,                                  \
+    template void chess::movegen::genKnightMoves<PieceC, Color::BLACK, true, ListT>(const _Position<PieceC, void> &,           \
+                                                                                    ListT &,                                   \
                                                                                     Bitboard,                                  \
                                                                                     Bitboard);                                 \
-    template void chess::movegen::genSlidingMoves<PieceC, Color::BLACK, QUEEN, true>(const _Position<PieceC, void> &,          \
-                                                                                     Movelist &,                               \
-                                                                                     Bitboard,                                 \
-                                                                                     Bitboard,                                 \
-                                                                                     Bitboard);                                \
-    template void chess::movegen::genSlidingMoves<PieceC, Color::BLACK, BISHOP, false>(const _Position<PieceC, void> &,        \
-                                                                                       Movelist &,                             \
-                                                                                       Bitboard,                               \
-                                                                                       Bitboard,                               \
-                                                                                       Bitboard);                              \
-    template void chess::movegen::genSlidingMoves<PieceC, Color::BLACK, ROOK, false>(const _Position<PieceC, void> &,          \
-                                                                                     Movelist &,                               \
-                                                                                     Bitboard,                                 \
+    template void chess::movegen::genKnightMoves<PieceC, Color::WHITE, false, ListT>(const _Position<PieceC, void> &,          \
+                                                                                     ListT &,                                  \
                                                                                      Bitboard,                                 \
                                                                                      Bitboard);                                \
-    template void chess::movegen::genSlidingMoves<PieceC, Color::BLACK, QUEEN, false>(const _Position<PieceC, void> &,         \
-                                                                                      Movelist &,                              \
-                                                                                      Bitboard,                                \
-                                                                                      Bitboard,                                \
-                                                                                      Bitboard);                               \
-    template void chess::movegen::genKnightMoves<PieceC, Color::WHITE, true>(const _Position<PieceC, void> &,                  \
-                                                                             Movelist &,                                       \
-                                                                             Bitboard,                                         \
-                                                                             Bitboard);                                        \
-    template void chess::movegen::genKnightMoves<PieceC, Color::BLACK, true>(const _Position<PieceC, void> &,                  \
-                                                                             Movelist &,                                       \
-                                                                             Bitboard,                                         \
-                                                                             Bitboard);                                        \
-    template void chess::movegen::genKnightMoves<PieceC, Color::WHITE, false>(const _Position<PieceC, void> &,                 \
-                                                                              Movelist &,                                      \
-                                                                              Bitboard,                                        \
-                                                                              Bitboard);                                       \
-    template void chess::movegen::genKnightMoves<PieceC, Color::BLACK, false>(const _Position<PieceC, void> &,                 \
-                                                                              Movelist &,                                      \
-                                                                              Bitboard,                                        \
-                                                                              Bitboard);                                       \
-    template void chess::movegen::genKingMoves<PieceC, Color::WHITE, true>(const _Position<PieceC, void> &,                    \
-                                                                           Movelist &,                                         \
-                                                                           Bitboard);                                          \
-    template void chess::movegen::genKingMoves<PieceC, Color::BLACK, true>(const _Position<PieceC, void> &,                    \
-                                                                           Movelist &,                                         \
-                                                                           Bitboard);                                          \
-    template void chess::movegen::genKingMoves<PieceC, Color::WHITE, false>(const _Position<PieceC, void> &,                   \
-                                                                            Movelist &,                                        \
-                                                                            Bitboard);                                         \
-    template void chess::movegen::genKingMoves<PieceC, Color::BLACK, false>(const _Position<PieceC, void> &,                   \
-                                                                            Movelist &,                                        \
-                                                                            Bitboard);
-INSTANTIATE(EnginePiece)
-INSTANTIATE(PolyglotPiece)
-INSTANTIATE(ContiguousMappingPiece)
+    template void chess::movegen::genKnightMoves<PieceC, Color::BLACK, false, ListT>(const _Position<PieceC, void> &,          \
+                                                                                     ListT &,                                  \
+                                                                                     Bitboard,                                 \
+                                                                                     Bitboard);                                \
+    template void chess::movegen::genKingMoves<PieceC, Color::WHITE, true, ListT>(const _Position<PieceC, void> &,             \
+                                                                                  ListT &,                                     \
+                                                                                  Bitboard);                                   \
+    template void chess::movegen::genKingMoves<PieceC, Color::BLACK, true, ListT>(const _Position<PieceC, void> &,             \
+                                                                                  ListT &,                                     \
+                                                                                  Bitboard);                                   \
+    template void chess::movegen::genKingMoves<PieceC, Color::WHITE, false, ListT>(const _Position<PieceC, void> &,            \
+                                                                                   ListT &,                                    \
+                                                                                   Bitboard);                                  \
+    template void chess::movegen::genKingMoves<PieceC, Color::BLACK, false, ListT>(const _Position<PieceC, void> &,            \
+                                                                                   ListT &,                                    \
+                                                                                   Bitboard);
+INSTANTIATE(EnginePiece, Movelist)
+INSTANTIATE(PolyglotPiece, Movelist)
+INSTANTIATE(ContiguousMappingPiece, Movelist)
+INSTANTIATE(EnginePiece, CountOnlyList)
+INSTANTIATE(PolyglotPiece, CountOnlyList)
+INSTANTIATE(ContiguousMappingPiece, CountOnlyList)
 } // namespace chess

@@ -21,17 +21,37 @@
 #include <cstdint>
 #include <iosfwd>
 #include <type_traits>
+
+/// @file printers.h
+/// @brief Stream-output operators for chess types.
+
 namespace chess {
-// disclaimer: please don't pass Chess960 moves for move functions, use uci::uciToMove
+
+/// @brief Print a Move as UCI string.
+/// @param os Output stream.
+/// @param mv The move.
+/// @return Reference to the stream.
 std::ostream &operator<<(std::ostream &os, const Move mv);
+
+/// @brief Print a Color ("WHITE" or "BLACK").
 std::ostream &operator<<(std::ostream &os, const Color c);
+
+/// @brief Print CastlingRights (e.g. "KQkq").
 std::ostream &operator<<(std::ostream &os, const CastlingRights cr);
+
+/// @brief Print a piece (e.g. "P", "N", "K").
 template <typename PieceC, typename = std::enable_if_t<is_piece_enum<PieceC>::value>>
 std::ostream &operator<<(std::ostream &os, PieceC p);
+
+/// @brief Print a square (e.g. "e4").
 std::ostream &operator<<(std::ostream &os, const Square sq);
+
+/// @brief Print a PieceType (e.g. "PAWN", "KNIGHT").
 std::ostream &operator<<(std::ostream &os, const PieceType pt);
+
 template <typename T, typename> class _Position;
 
+/// @brief Print a board position in human-readable ASCII.
 template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_enum<PieceC>::value>>
 std::ostream &operator<<(std::ostream &os, const _Position<PieceC, void> &pos);
 } // namespace chess
