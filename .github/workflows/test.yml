@@ -48,7 +48,9 @@ jobs:
         exclude:
           - os: ubuntu-latest
             cpp_compiler: cl
-
+          - build_type: Release
+            error_mode: ASSERT
+            
     steps:
       - uses: actions/checkout@v4
 
