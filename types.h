@@ -29,7 +29,41 @@
 
 /// @file types.h
 /// @brief Core chess type definitions: squares, pieces, colours, move encoding, and ValueList.
-
+#if defined(__clang__) || defined(__GNUC__)
+#define LIKELY(k) __builtin_expect(!!(k), 1)
+#define UNLIKELY(k) __builtin_expect(!!(k), 1)
+#elif __has_cpp_attribute(likely)
+#define LIKELY(k) [[likely(k)]]
+#define UNLIKELY(k) [[unlikely(k)]]
+#else
+#define LIKELY(k) k
+#define UNLIKELY(k) k
+#endif
+#if defined(__GNUC__) || defined(__clang__)
+/// @def HOT
+/// @brief Marks a function as hot (frequently called).
+    #define HOTFUNC  __attribute__((hot))
+/// @def COLD
+/// @brief Marks a function as cold (rarely called).
+    #define COLDFUNC __attribute__((cold))
+/// @def FLATTEN
+/// @brief Make subcalls forceinlined
+    #define FLATTEN __attribute__((flatten))
+/// @def FORCEINLINE
+/// @brief Make callers inline this function
+    #define FORCEINLINE __attribute__((forceinline))
+#else
+    #define HOTFUNC
+    #define COLDFUNC
+    #define FLATTEN
+    #if defined(_MSC_VER)
+/// @def FORCEINLINE
+/// @brief Make callers inline this function
+    #define FORCEINLINE __forceinline
+    #else
+    #define FORCEINLINE
+    #endif
+#endif
 /// @def UNREACHABLE()
 /// @brief Marks code paths that should never be reached.
 #if defined(_MSC_VER)

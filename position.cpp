@@ -264,10 +264,30 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
     std::istringstream ss(str);
     std::string board_fen, active_color, castling, enpassant;
     int halfmove = 0, fullmove = 1;
-    if (!(ss >> board_fen >> active_color >> castling >> enpassant >> halfmove >> fullmove)) {
-        INVALID_ARG_IF(true, std::runtime_error("Invalid FEN format"));
+    if (!(ss >> board_fen >> active_color >> castling >> enpassant)) {
+        INVALID_ARG_IF(true, std::runtime_error("Invalid FEN format (lack of required fields)"));
         return false;
     }
+    // Optional fields: halfmove clock and fullmove number
+    {
+        int temp_halfmove = 0;
+        int temp_fullmove = 0;
+
+        if (ss >> temp_halfmove) {
+            if (ss >> temp_fullmove) {
+                halfmove = temp_halfmove;
+                fullmove = temp_fullmove;
+            } else {
+                INVALID_ARG_IF(true, std::runtime_error("Invalid FEN format (has halfmove but lacks fullmove)"));
+                return false;
+            }
+        } else {
+            ss.clear();
+            halfmove = 0;
+            fullmove = 1;
+        }
+    }
+
     std::string extra;
     if (ss >> extra) {
         INVALID_ARG_IF(true, std::runtime_error("Trailing FEN data"));
@@ -962,9 +982,6 @@ template <typename PieceC, typename T> bool _Position<PieceC, T>::is_insufficien
 
         Bitboard wb = white_bishops;
         Bitboard bb = black_bishops;
-
-        // int wb_cnt = popcount(wb);
-        // int bb_cnt = popcount(bb);
 
         Bitboard bishops = wb | bb;
         Bitboard knights = pieces(KNIGHT, WHITE) | pieces(KNIGHT, BLACK);

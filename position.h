@@ -31,7 +31,53 @@
 /// @brief Chess position representation, move execution, and game-state queries.
 
 namespace chess {
+namespace attacks {
 
+/// @brief Scan for attacks along a ray and identify checkers and pins.
+/// @tparam RayDir Direction index of the ray to scan.
+/// @tparam FirstIncreases Whether the ray direction corresponds to increasing square indices (e.g. north/east) or decreasing
+/// (south/west).
+/// @param ksq King's square.
+/// @param occ_masked Occupancy bitboard masked to the ray (i.e. only squares on the ray are considered occupied).
+/// @param slider_mask Bitboard of potential slider attackers (rooks for orthogonal rays, bishops for diagonal rays).
+/// @param occ_us Occupancy bitboard of the attacking side (used to detect pinned pieces).
+/// @param checkers Output bitboard to accumulate discovered checkers.
+/// @param pin_bb Output bitboard to accumulate discovered pinned pieces (bits set for squares of pinned pieces, not the
+/// attackers).
+/// @details This function uses the precomputed ray bitboards to efficiently find the first occupied square along the ray and
+/// determine if it's a checker or a pinned piece. If the first occupied square is an enemy slider, it's a checker. If it's a
+/// friendly piece, we check if there's another enemy slider behind it on the same ray, which would indicate that the friendly
+/// piece is pinned.
+/// @note This function assumes that the occupancy bitboards have already been masked to only include pieces on the relevant
+/// ray, which allows it to use simple bit operations to find the first blocker and potential attackers without needing to
+/// iterate over squares.
+/// @return nothing (modified via refs)
+template <int RayDir, bool FirstIncreases>
+inline void scan_attacks_ray(Square ksq,
+                             Bitboard occ_masked,
+                             Bitboard slider_mask,
+                             Bitboard occ_us,
+                             Bitboard &checkers,
+                             Bitboard &pin_bb) {
+    const auto &ray = attacks::RAYS[RayDir][ksq];
+    Bitboard occ_on_ray = ray & occ_masked;
+    if (!occ_on_ray)
+        return;
+
+    int first_sq = FirstIncreases ? lsb(occ_on_ray) : msb(occ_on_ray);
+    Bitboard first_bb = 1ULL << first_sq;
+    if (first_bb & slider_mask) {
+        checkers |= first_bb;
+    } else if (first_bb & occ_us) {
+        Bitboard after = FirstIncreases ? occ_on_ray & ~((first_bb) | (first_bb - 1)) : occ_on_ray & (first_bb - 1);
+        if (after) {
+            int attacker_sq = FirstIncreases ? lsb(after) : msb(after);
+            if ((1ULL << attacker_sq) & slider_mask)
+                pin_bb |= movegen::between(ksq, static_cast<Square>(attacker_sq));
+        }
+    }
+}
+} // namespace attacks
 /// @struct HistoryEntry
 /// @brief Saved position state for undo operations.
 /// @tparam Piece Piece-enum type.
@@ -224,13 +270,11 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     /// @tparam Strict If true, validates that the move is legal.
     template <bool Strict = true> void doMove(const Move &move);
     /// @brief Snake-case alias for doMove().
-    /// @brief Snake-case alias for doMove().
     template <bool Strict = true> void do_move(const Move &move) { doMove<Strict>(move); }
 
-    /// @brief Undo the last move.
+    /// @brief Undo the last move. Returns saved HistoryEntry when RetAll=true.
     /// @tparam RetAll If true, return the popped HistoryEntry.
     /// @return The saved state if RetAll, otherwise void.
-    /// @brief Undo the last move (camelCase). Returns saved HistoryEntry when RetAll=true.
     template <bool RetAll = false> inline auto undoMove() -> std::conditional_t<RetAll, HistoryEntry<PieceC>, void> {
         pieces_list[state().incr_sqs[0]] = state().incr_pc[0];
         pieces_list[state().incr_sqs[1]] = state().incr_pc[1];
@@ -252,7 +296,6 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         }
     }
     /// @brief Undo the last move (snake_case). Returns saved HistoryEntry when RetAll=true.
-    /// @brief Snake-case alias for undoMove(). Returns saved HistoryEntry when RetAll=true.
     template <bool RetAll = false> inline auto undo_move() -> std::conditional_t<RetAll, HistoryEntry<PieceC>, void> {
         return undoMove<RetAll>();
     }
@@ -279,7 +322,6 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         refresh_attacks();
     }
     /// @brief Perform a null move (pass the turn).
-    /// @brief Snake-case alias for doNullMove().
     inline void do_null_move() { doNullMove(); }
 
     /// @name Occupancy queries
@@ -507,9 +549,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     /// @brief Zobrist hash of the current position.
     [[nodiscard]] inline uint64_t hash() const { return state().hash; }
     /// @brief Current side to move.
-    /// @brief Current side to move.
     [[nodiscard]] inline Color side_to_move() const { return state().turn; }
-    /// @brief Current en-passant target square, or SQ_NONE.
     /// @brief Current en-passant target square, or SQ_NONE.
     [[nodiscard]] inline Square ep_square() const { return state().enPassant; }
 
@@ -518,21 +558,16 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         return static_cast<Square>(lsb(pieces<pt>(c)));
     }
     /// @brief King's square for colour `c` (camelCase).
-    /// @brief King's square for colour `c` (camelCase).
     [[nodiscard]] inline Square kingSq(Color c) const { return state().kings[c]; }
-    /// @brief King's square for colour `c` (snake_case wrapper).
     /// @brief King's square for colour `c` (snake_case wrapper).
     [[nodiscard]] inline Square king_sq(Color c) const { return kingSq(c); }
 
     /// @brief Current checkers.
-    /// @brief Current checkers bitboard (pieces checking the king).
     [[nodiscard]] inline Bitboard checkers() const { return _checkers; }
 
     /// @brief Combined pin mask.
-    /// @brief Combined pin mask (rook|bishop pins).
     [[nodiscard]] inline Bitboard pin_mask() const { return _pin_mask; }
 
-    /// @brief Construct from a FEN string.
     /// @brief Construct from a FEN string.
     inline _Position(std::string fen = START_FEN, bool chess960 = false, FENParsingMode xfen = MODE_AUTO) {
         history.reserve(6144);
@@ -546,35 +581,27 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         return mv.type_of() == EN_PASSANT || (mv.type_of() != CASTLING && piece_on(mv.to_sq()) != PieceC::NO_PIECE);
     }
     /// @brief Whether the move captures a piece (camelCase wrapper).
-    /// @brief Returns true if the given move is a capture (camelCase wrapper).
     [[nodiscard]] inline bool isCapture(Move mv) const { return is_capture(mv); }
 
     /// @brief Whether the move resets the 50-move clock (capture or pawn move).
     [[nodiscard]] inline bool is_zeroing(Move mv) const { return is_capture(mv) || at<PieceType>(mv.from_sq()) == PAWN; }
     /// @brief Piece at square `sq` (snake_case wrapper).
-    /// @brief Return the piece at square `sq` (snake_case wrapper).
     [[nodiscard]] inline PieceC piece_at(Square sq) const { return piece_on(sq); }
 
     /// @brief Export position to FEN.
     [[nodiscard]] std::string fen(bool xfen = true) const;
 
-    /// @brief Fullmove number (starts at 1) (camelCase).
     /// @brief Full move number (starts at 1).
     [[nodiscard]] inline uint16_t fullmoveNumber() const { return state().fullMoveNumber; }
-    /// @brief Fullmove number (snake_case wrapper).
     /// @brief Full move number (snake_case wrapper).
     [[nodiscard]] inline uint16_t fullmove_number() const { return state().fullMoveNumber; }
     /// @brief Half-move clock for 50/75-move rule.
-    /// @brief Half-move clock for the 50-move rule.
     [[nodiscard]] inline uint8_t rule50_count() const { return state().halfMoveClock; }
 
     /// @brief Castling rights for a specific colour.
-    /// @brief Castling rights mask for colour `c`.
-    /// @brief Castling rights mask for a given colour.
     [[nodiscard]] inline CastlingRights castlingRights(Color c) const {
         return state().castlingRights & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING);
     }
-    /// @brief Castling rights for the current side to move.
     /// @brief Castling rights bitmask for both colours.
     [[nodiscard]] inline CastlingRights castlingRights() const { return state().castlingRights; }
 
@@ -597,10 +624,9 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     /// @brief Get the castling rights with only the active rook squares set.
     CastlingRights clean_castling_rights() const;
 
-    /// @brief Set position from FEN.
     /// @brief Set position from a FEN string. Returns true on success.
     bool setFEN(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_AUTO);
-    /// @brief Set position from FEN string. Returns true on success.
+
     /// @brief Snake-case wrapper for setFEN().
     inline bool set_fen(const std::string &str, bool chess960 = false, FENParsingMode xfen = MODE_AUTO) {
         return setFEN(str, chess960, xfen);
@@ -613,7 +639,6 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     Move push_uci(std::string);
 
     /// @brief Compute the valid en-passant square (if any).
-    /// @brief Validate and return en-passant square for internal checks.
     Square _valid_ep_square() const;
 
     /// @name Piece counts
@@ -681,9 +706,10 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     inline bool is_fivefold_repetition() const { return is_repetition(5); }
 
     /// @brief Whether a square is attacked by a colour (with optional custom occupancy).
+    [[deprecated("Future migration to isAttacked due to incompatible API")]]
     inline bool is_attacked_by(Color color, Square sq, Bitboard occupied = 0) const {
-        Bitboard occ_bb = occupied ? occupied : this->occ();
-        return attackers_mask(color, sq, occ_bb) != 0;
+        Bitboard occ_bb = occupied ? occupied : occ();
+        return isAttacked(sq, color, occ_bb);
     }
 
     /// @brief Whether the previous move left the opponent in check.
@@ -747,7 +773,6 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     [[nodiscard]] inline CheckType gives_check(Move move) const { return givesCheck(move); }
 
     /// @brief Whether the 50-move rule applies (>= 100 half-moves).
-    /// @brief Whether the 50-move rule draw applies (camelCase).
     [[nodiscard]] inline bool isHalfMoveDraw() const noexcept { return rule50_count() >= 100; }
     /// @brief Whether the 50-move rule draw applies (snake_case wrapper).
     [[nodiscard]] inline bool is_half_move_draw() const noexcept { return isHalfMoveDraw(); }
@@ -792,7 +817,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     }
 
     /// @brief Recompute cached attack data (pins, checkers, check mask) — iterative, no magic lookups.
-    [[gnu::always_inline]] void refresh_attacks() {
+    inline void refresh_attacks() {
         const Color c = side_to_move();
         const Square ksq = kingSq(c);
         const Bitboard occ_all = occ();
@@ -808,156 +833,16 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         // Use precomputed rays and direction-aware nearest-blocker extraction.
         const Bitboard occ_masked = occ_all;
         // Diagonals: NE,NW,SE,SW
-        {
-            const auto &ray = attacks::RAYS[attacks::RD_NE][ksq];
-            Bitboard occ_on_ray = ray & occ_masked;
-            if (occ_on_ray) {
-                int first_sq = lsb(occ_on_ray); // NE increases indices
-                Bitboard first_bb = 1ULL << first_sq;
-                if (first_bb & diag_sliders)
-                    checkers |= first_bb;
-                else if (first_bb & occ_us) {
-                    Bitboard after = occ_on_ray & ~((first_bb) | (first_bb - 1));
-                    if (after) {
-                        int attacker_sq = lsb(after);
-                        if ((1ULL << attacker_sq) & diag_sliders)
-                            bishop_pin |= movegen::between(ksq, static_cast<Square>(attacker_sq));
-                    }
-                }
-            }
-        }
-        {
-            const auto &ray = attacks::RAYS[attacks::RD_NW][ksq];
-            Bitboard occ_on_ray = ray & occ_masked;
-            if (occ_on_ray) {
-                int first_sq = lsb(occ_on_ray); // NW increases indices
-                Bitboard first_bb = 1ULL << first_sq;
-                if (first_bb & diag_sliders)
-                    checkers |= first_bb;
-                else if (first_bb & occ_us) {
-                    Bitboard after = occ_on_ray & ~((first_bb) | (first_bb - 1));
-                    if (after) {
-                        int attacker_sq = lsb(after);
-                        if ((1ULL << attacker_sq) & diag_sliders)
-                            bishop_pin |= movegen::between(ksq, static_cast<Square>(attacker_sq));
-                    }
-                }
-            }
-        }
-        {
-            const auto &ray = attacks::RAYS[attacks::RD_SE][ksq];
-            Bitboard occ_on_ray = ray & occ_masked;
-            if (occ_on_ray) {
-                int first_sq = msb(occ_on_ray); // SE decreases indices
-                Bitboard first_bb = 1ULL << first_sq;
-                if (first_bb & diag_sliders)
-                    checkers |= first_bb;
-                else if (first_bb & occ_us) {
-                    // next blocker is at lower indices
-                    Bitboard after = occ_on_ray & (first_bb - 1);
-                    if (after) {
-                        int attacker_sq = msb(after);
-                        if ((1ULL << attacker_sq) & diag_sliders)
-                            bishop_pin |= movegen::between(ksq, static_cast<Square>(attacker_sq));
-                    }
-                }
-            }
-        }
-        {
-            const auto &ray = attacks::RAYS[attacks::RD_SW][ksq];
-            Bitboard occ_on_ray = ray & occ_masked;
-            if (occ_on_ray) {
-                int first_sq = msb(occ_on_ray); // SW decreases indices
-                Bitboard first_bb = 1ULL << first_sq;
-                if (first_bb & diag_sliders)
-                    checkers |= first_bb;
-                else if (first_bb & occ_us) {
-                    // next blocker is at lower indices
-                    Bitboard after = occ_on_ray & (first_bb - 1);
-                    if (after) {
-                        int attacker_sq = msb(after);
-                        if ((1ULL << attacker_sq) & diag_sliders)
-                            bishop_pin |= movegen::between(ksq, static_cast<Square>(attacker_sq));
-                    }
-                }
-            }
-        }
+        attacks::scan_attacks_ray<attacks::RD_NE, true>(ksq, occ_masked, diag_sliders, occ_us, checkers, bishop_pin);
+        attacks::scan_attacks_ray<attacks::RD_NW, true>(ksq, occ_masked, diag_sliders, occ_us, checkers, bishop_pin);
+        attacks::scan_attacks_ray<attacks::RD_SE, false>(ksq, occ_masked, diag_sliders, occ_us, checkers, bishop_pin);
+        attacks::scan_attacks_ray<attacks::RD_SW, false>(ksq, occ_masked, diag_sliders, occ_us, checkers, bishop_pin);
 
         // Orthogonals: N,S,E,W
-        {
-            const auto &ray = attacks::RAYS[attacks::RD_NORTH][ksq];
-            Bitboard occ_on_ray = ray & occ_masked;
-            if (occ_on_ray) {
-                int first_sq = lsb(occ_on_ray); // NORTH increases
-                Bitboard first_bb = 1ULL << first_sq;
-                if (first_bb & ortho_sliders)
-                    checkers |= first_bb;
-                else if (first_bb & occ_us) {
-                    Bitboard after = occ_on_ray & ~((first_bb) | (first_bb - 1));
-                    if (after) {
-                        int attacker_sq = lsb(after);
-                        if ((1ULL << attacker_sq) & ortho_sliders)
-                            rook_pin |= movegen::between(ksq, static_cast<Square>(attacker_sq));
-                    }
-                }
-            }
-        }
-        {
-            const auto &ray = attacks::RAYS[attacks::RD_SOUTH][ksq];
-            Bitboard occ_on_ray = ray & occ_masked;
-            if (occ_on_ray) {
-                int first_sq = msb(occ_on_ray); // SOUTH decreases
-                Bitboard first_bb = 1ULL << first_sq;
-                if (first_bb & ortho_sliders)
-                    checkers |= first_bb;
-                else if (first_bb & occ_us) {
-                    // next blocker is at lower indices
-                    Bitboard after = occ_on_ray & (first_bb - 1);
-                    if (after) {
-                        int attacker_sq = msb(after);
-                        if ((1ULL << attacker_sq) & ortho_sliders)
-                            rook_pin |= movegen::between(ksq, static_cast<Square>(attacker_sq));
-                    }
-                }
-            }
-        }
-        {
-            const auto &ray = attacks::RAYS[attacks::RD_EAST][ksq];
-            Bitboard occ_on_ray = ray & occ_masked;
-            if (occ_on_ray) {
-                int first_sq = lsb(occ_on_ray); // EAST increases
-                Bitboard first_bb = 1ULL << first_sq;
-                if (first_bb & ortho_sliders)
-                    checkers |= first_bb;
-                else if (first_bb & occ_us) {
-                    Bitboard after = occ_on_ray & ~((first_bb) | (first_bb - 1));
-                    if (after) {
-                        int attacker_sq = lsb(after);
-                        if ((1ULL << attacker_sq) & ortho_sliders)
-                            rook_pin |= movegen::between(ksq, static_cast<Square>(attacker_sq));
-                    }
-                }
-            }
-        }
-        {
-            const auto &ray = attacks::RAYS[attacks::RD_WEST][ksq];
-            Bitboard occ_on_ray = ray & occ_masked;
-            if (occ_on_ray) {
-                int first_sq = msb(occ_on_ray); // WEST decreases
-                Bitboard first_bb = 1ULL << first_sq;
-                if (first_bb & ortho_sliders)
-                    checkers |= first_bb;
-                else if (first_bb & occ_us) {
-                    // next blocker is at lower indices
-                    Bitboard after = occ_on_ray & (first_bb - 1);
-                    if (after) {
-                        int attacker_sq = msb(after);
-                        if ((1ULL << attacker_sq) & ortho_sliders)
-                            rook_pin |= movegen::between(ksq, static_cast<Square>(attacker_sq));
-                    }
-                }
-            }
-        }
+        attacks::scan_attacks_ray<attacks::RD_NORTH, true>(ksq, occ_masked, ortho_sliders, occ_us, checkers, rook_pin);
+        attacks::scan_attacks_ray<attacks::RD_SOUTH, false>(ksq, occ_masked, ortho_sliders, occ_us, checkers, rook_pin);
+        attacks::scan_attacks_ray<attacks::RD_EAST, true>(ksq, occ_masked, ortho_sliders, occ_us, checkers, rook_pin);
+        attacks::scan_attacks_ray<attacks::RD_WEST, false>(ksq, occ_masked, ortho_sliders, occ_us, checkers, rook_pin);
 
         // Pawn and knight checkers (precomputed tables, no magic lookups)
         checkers |= (attacks::pawn(c, ksq) & pieces<PAWN>(~c));

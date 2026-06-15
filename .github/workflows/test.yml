@@ -18,7 +18,7 @@ jobs:
       commit_sha: ${{ steps.auto-commit.outputs.commit_hash }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.3
         with:
           ref: ${{ github.head_ref }}
 
@@ -52,7 +52,7 @@ jobs:
             error_mode: ASSERT
             
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.3
 
       - name: Set build dir
         id: vars
