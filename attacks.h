@@ -157,35 +157,7 @@ struct Magic {
     size_t index;   ///< Starting index into the attack table.
     Bitboard shift; ///< Right-shift amount.
     /// @brief Invoke magic to compute attack table index (multiply-and-shift path).
-    constexpr Bitboard operator()(Bitboard b) const {
-        if (is_constant_evaluated()) {
-            return (((b & mask)) * magic) >> shift;
-        } else {
-#if defined(__GNUC__) || defined(__clang__)
-            if (__builtin_cpu_supports("bmi2"))
-                return _pext_u64(b, mask);
-            else
-                return (((b & mask)) * magic) >> shift;
-#elif defined(_MSC_VER)
-            // Detect BMI2 at runtime using CPUID leaf 7 EBX[8]
-            static int has_bmi2 = -1;
-            if (has_bmi2 == -1) {
-                int cpuInfo[4] = {0, 0, 0, 0};
-#ifdef _MSC_VER
-                __cpuidex(cpuInfo, 7, 0);
-#endif
-                has_bmi2 = (cpuInfo[1] & (1 << 8)) != 0;
-            }
-            if (has_bmi2) {
-                return _pext_u64(b, mask);
-            } else {
-                return (((b & mask)) * magic) >> shift;
-            }
-#else
-            return (((b & mask)) * magic) >> shift;
-#endif
-        }
-    }
+    constexpr Bitboard operator()(Bitboard b) const { return (((b & mask)) * magic) >> shift; }
 };
 #endif
 
