@@ -42,27 +42,27 @@
 #if defined(__GNUC__) || defined(__clang__)
 /// @def HOT
 /// @brief Marks a function as hot (frequently called).
-    #define HOTFUNC  __attribute__((hot))
+#define HOTFUNC __attribute__((hot))
 /// @def COLD
 /// @brief Marks a function as cold (rarely called).
-    #define COLDFUNC __attribute__((cold))
+#define COLDFUNC __attribute__((cold))
 /// @def FLATTEN
 /// @brief Make subcalls forceinlined
-    #define FLATTEN __attribute__((flatten))
+#define FLATTEN __attribute__((flatten))
 /// @def FORCEINLINE
 /// @brief Make callers inline this function
-    #define FORCEINLINE __attribute__((forceinline))
+#define FORCEINLINE __attribute__((forceinline))
 #else
-    #define HOTFUNC
-    #define COLDFUNC
-    #define FLATTEN
-    #if defined(_MSC_VER)
+#define HOTFUNC
+#define COLDFUNC
+#define FLATTEN
+#if defined(_MSC_VER)
 /// @def FORCEINLINE
 /// @brief Make callers inline this function
-    #define FORCEINLINE __forceinline
-    #else
-    #define FORCEINLINE
-    #endif
+#define FORCEINLINE __forceinline
+#else
+#define FORCEINLINE
+#endif
 #endif
 /// @def UNREACHABLE()
 /// @brief Marks code paths that should never be reached.

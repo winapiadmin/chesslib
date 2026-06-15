@@ -53,12 +53,8 @@ namespace attacks {
 /// iterate over squares.
 /// @return nothing (modified via refs)
 template <int RayDir, bool FirstIncreases>
-inline void scan_attacks_ray(Square ksq,
-                             Bitboard occ_masked,
-                             Bitboard slider_mask,
-                             Bitboard occ_us,
-                             Bitboard &checkers,
-                             Bitboard &pin_bb) {
+inline void
+scan_attacks_ray(Square ksq, Bitboard occ_masked, Bitboard slider_mask, Bitboard occ_us, Bitboard &checkers, Bitboard &pin_bb) {
     const auto &ray = attacks::RAYS[RayDir][ksq];
     Bitboard occ_on_ray = ray & occ_masked;
     if (!occ_on_ray)

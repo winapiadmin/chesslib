@@ -214,8 +214,7 @@ template <typename T, Color c, typename ListT> HOTFUNC void movegen::genEP(const
     }
 }
 template <typename T, Color c, typename ListT>
-HOTFUNC void
-movegen::genPawnDoubleMoves(const _Position<T, void> &pos, ListT &moves, Bitboard pin_mask, Bitboard check_mask) {
+HOTFUNC void movegen::genPawnDoubleMoves(const _Position<T, void> &pos, ListT &moves, Bitboard pin_mask, Bitboard check_mask) {
     constexpr Bitboard RANK_2 = (c == WHITE) ? attacks::MASK_RANK[1] : attacks::MASK_RANK[6];
     constexpr Direction UP = pawn_push(c);
 
@@ -297,8 +296,7 @@ HOTFUNC void movegen::genPawnSingleMoves(
     record_pawn_moves<UP_RIGHT>(moves, r_pawns);
 }
 template <typename T, Color c, bool capturesOnly, typename ListT>
-HOTFUNC void
-movegen::genKnightMoves(const _Position<T, void> &pos, ListT &list, Bitboard _pin_mask, Bitboard _check_mask) {
+HOTFUNC void movegen::genKnightMoves(const _Position<T, void> &pos, ListT &list, Bitboard _pin_mask, Bitboard _check_mask) {
     Bitboard knights = pos.template pieces<KNIGHT, c>() & ~_pin_mask;
     while (knights) {
         Square x = static_cast<Square>(pop_lsb(knights));
@@ -401,10 +399,10 @@ HOTFUNC void movegen::genSlidingMoves(
         if (rook_hit) {
             func = attacks::rook;
         } else if (bishop_hit) {
-            func=attacks::bishop;
+            func = attacks::bishop;
         } else {
             if constexpr (pt == BISHOP) {
-                func=attacks::bishop;
+                func = attacks::bishop;
             } else if constexpr (pt == ROOK) {
                 func = attacks::rook;
             } else {
