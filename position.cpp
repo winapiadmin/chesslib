@@ -963,8 +963,8 @@ template <typename PieceC, typename T> bool _Position<PieceC, T>::is_insufficien
         Bitboard wb = white_bishops;
         Bitboard bb = black_bishops;
 
-        //int wb_cnt = popcount(wb);
-        //int bb_cnt = popcount(bb);
+        // int wb_cnt = popcount(wb);
+        // int bb_cnt = popcount(bb);
 
         Bitboard bishops = wb | bb;
         Bitboard knights = pieces(KNIGHT, WHITE) | pieces(KNIGHT, BLACK);

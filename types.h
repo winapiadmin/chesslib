@@ -574,10 +574,8 @@ template <typename T, std::size_t MaxSize> class ValueList {
     }
 
     /// @brief Indexed access. UB if index >= MaxSize.
-    inline T &operator[](int index) {
-        return values_[index];
-    }
-    
+    inline T &operator[](int index) { return values_[index]; }
+
     inline const T *begin() const { return values_; }
     inline T *data() { return values_; }
     inline const T *end() const { return values_ + size_; }

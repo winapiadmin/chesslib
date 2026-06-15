@@ -137,7 +137,8 @@ const std::array<std::array<Bitboard, 64>, 8> RAYS = []() {
                     cur = (cur & ~MASK_FILE[FILE_A]) >> 9;
                     break;
                 }
-                if (!cur) break;
+                if (!cur)
+                    break;
                 accum |= cur;
             }
             r[dir][sq] = accum;
