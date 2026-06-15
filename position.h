@@ -800,34 +800,163 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
         Bitboard bishop_pin = 0, rook_pin = 0, checkers = 0;
 
-        // Bishop-like: iterate all enemy bishops/queens
-        Bitboard bLike = pieces<BISHOP>(~c) | pieces<QUEEN>(~c);
-        while (bLike) {
-            Square s = static_cast<Square>(pop_lsb(bLike));
-            int fd = (ksq & 7) - (s & 7);
-            int rd = (ksq >> 3) - (s >> 3);
-            if (fd != rd && fd != -rd)
-                continue;
-            Bitboard possible = movegen::between(ksq, s);
-            Bitboard blockers = (possible & ~(1ULL << s)) & occ_all;
-            if (!blockers)
-                checkers |= 1ULL << s;
-            else if ((blockers & (blockers - 1)) == 0 && (blockers & occ_us))
-                bishop_pin |= possible;
+        // Directional scan from the king: check each ray for first/second occupied squares.
+        // This avoids iterating over all enemy sliders and calling movegen::between() per piece.
+        const Bitboard diag_sliders = pieces<BISHOP>(~c) | pieces<QUEEN>(~c);
+        const Bitboard ortho_sliders = pieces<ROOK>(~c) | pieces<QUEEN>(~c);
+
+        // Use precomputed rays and direction-aware nearest-blocker extraction.
+        const Bitboard occ_masked = occ_all;
+        // Diagonals: NE,NW,SE,SW
+        {
+            const auto &ray = attacks::RAYS[attacks::RD_NE][ksq];
+            Bitboard occ_on_ray = ray & occ_masked;
+            if (occ_on_ray) {
+                int first_sq = lsb(occ_on_ray); // NE increases indices
+                Bitboard first_bb = 1ULL << first_sq;
+                if (first_bb & diag_sliders)
+                    checkers |= first_bb;
+                else if (first_bb & occ_us) {
+                    Bitboard after = occ_on_ray & ~((first_bb) | (first_bb - 1));
+                    if (after) {
+                        int attacker_sq = lsb(after);
+                        if ((1ULL << attacker_sq) & diag_sliders)
+                            bishop_pin |= movegen::between(ksq, static_cast<Square>(attacker_sq));
+                    }
+                }
+            }
+        }
+        {
+            const auto &ray = attacks::RAYS[attacks::RD_NW][ksq];
+            Bitboard occ_on_ray = ray & occ_masked;
+            if (occ_on_ray) {
+                int first_sq = lsb(occ_on_ray); // NW increases indices
+                Bitboard first_bb = 1ULL << first_sq;
+                if (first_bb & diag_sliders)
+                    checkers |= first_bb;
+                else if (first_bb & occ_us) {
+                    Bitboard after = occ_on_ray & ~((first_bb) | (first_bb - 1));
+                    if (after) {
+                        int attacker_sq = lsb(after);
+                        if ((1ULL << attacker_sq) & diag_sliders)
+                            bishop_pin |= movegen::between(ksq, static_cast<Square>(attacker_sq));
+                    }
+                }
+            }
+        }
+        {
+            const auto &ray = attacks::RAYS[attacks::RD_SE][ksq];
+            Bitboard occ_on_ray = ray & occ_masked;
+            if (occ_on_ray) {
+                int first_sq = msb(occ_on_ray); // SE decreases indices
+                Bitboard first_bb = 1ULL << first_sq;
+                if (first_bb & diag_sliders)
+                    checkers |= first_bb;
+                else if (first_bb & occ_us) {
+                    // next blocker is at lower indices
+                    Bitboard after = occ_on_ray & (first_bb - 1);
+                    if (after) {
+                        int attacker_sq = msb(after);
+                        if ((1ULL << attacker_sq) & diag_sliders)
+                            bishop_pin |= movegen::between(ksq, static_cast<Square>(attacker_sq));
+                    }
+                }
+            }
+        }
+        {
+            const auto &ray = attacks::RAYS[attacks::RD_SW][ksq];
+            Bitboard occ_on_ray = ray & occ_masked;
+            if (occ_on_ray) {
+                int first_sq = msb(occ_on_ray); // SW decreases indices
+                Bitboard first_bb = 1ULL << first_sq;
+                if (first_bb & diag_sliders)
+                    checkers |= first_bb;
+                else if (first_bb & occ_us) {
+                    // next blocker is at lower indices
+                    Bitboard after = occ_on_ray & (first_bb - 1);
+                    if (after) {
+                        int attacker_sq = msb(after);
+                        if ((1ULL << attacker_sq) & diag_sliders)
+                            bishop_pin |= movegen::between(ksq, static_cast<Square>(attacker_sq));
+                    }
+                }
+            }
         }
 
-        // Rook-like: iterate all enemy rooks/queens
-        Bitboard rLike = pieces<ROOK>(~c) | pieces<QUEEN>(~c);
-        while (rLike) {
-            Square s = static_cast<Square>(pop_lsb(rLike));
-            if ((ksq ^ s) & 7 && (ksq ^ s) & 56)
-                continue;
-            Bitboard possible = movegen::between(ksq, s);
-            Bitboard blockers = (possible & ~(1ULL << s)) & occ_all;
-            if (!blockers)
-                checkers |= 1ULL << s;
-            else if ((blockers & (blockers - 1)) == 0 && (blockers & occ_us))
-                rook_pin |= possible;
+        // Orthogonals: N,S,E,W
+        {
+            const auto &ray = attacks::RAYS[attacks::RD_NORTH][ksq];
+            Bitboard occ_on_ray = ray & occ_masked;
+            if (occ_on_ray) {
+                int first_sq = lsb(occ_on_ray); // NORTH increases
+                Bitboard first_bb = 1ULL << first_sq;
+                if (first_bb & ortho_sliders)
+                    checkers |= first_bb;
+                else if (first_bb & occ_us) {
+                    Bitboard after = occ_on_ray & ~((first_bb) | (first_bb - 1));
+                    if (after) {
+                        int attacker_sq = lsb(after);
+                        if ((1ULL << attacker_sq) & ortho_sliders)
+                            rook_pin |= movegen::between(ksq, static_cast<Square>(attacker_sq));
+                    }
+                }
+            }
+        }
+        {
+            const auto &ray = attacks::RAYS[attacks::RD_SOUTH][ksq];
+            Bitboard occ_on_ray = ray & occ_masked;
+            if (occ_on_ray) {
+                int first_sq = msb(occ_on_ray); // SOUTH decreases
+                Bitboard first_bb = 1ULL << first_sq;
+                if (first_bb & ortho_sliders)
+                    checkers |= first_bb;
+                else if (first_bb & occ_us) {
+                    // next blocker is at lower indices
+                    Bitboard after = occ_on_ray & (first_bb - 1);
+                    if (after) {
+                        int attacker_sq = msb(after);
+                        if ((1ULL << attacker_sq) & ortho_sliders)
+                            rook_pin |= movegen::between(ksq, static_cast<Square>(attacker_sq));
+                    }
+                }
+            }
+        }
+        {
+            const auto &ray = attacks::RAYS[attacks::RD_EAST][ksq];
+            Bitboard occ_on_ray = ray & occ_masked;
+            if (occ_on_ray) {
+                int first_sq = lsb(occ_on_ray); // EAST increases
+                Bitboard first_bb = 1ULL << first_sq;
+                if (first_bb & ortho_sliders)
+                    checkers |= first_bb;
+                else if (first_bb & occ_us) {
+                    Bitboard after = occ_on_ray & ~((first_bb) | (first_bb - 1));
+                    if (after) {
+                        int attacker_sq = lsb(after);
+                        if ((1ULL << attacker_sq) & ortho_sliders)
+                            rook_pin |= movegen::between(ksq, static_cast<Square>(attacker_sq));
+                    }
+                }
+            }
+        }
+        {
+            const auto &ray = attacks::RAYS[attacks::RD_WEST][ksq];
+            Bitboard occ_on_ray = ray & occ_masked;
+            if (occ_on_ray) {
+                int first_sq = msb(occ_on_ray); // WEST decreases
+                Bitboard first_bb = 1ULL << first_sq;
+                if (first_bb & ortho_sliders)
+                    checkers |= first_bb;
+                else if (first_bb & occ_us) {
+                    // next blocker is at lower indices
+                    Bitboard after = occ_on_ray & (first_bb - 1);
+                    if (after) {
+                        int attacker_sq = msb(after);
+                        if ((1ULL << attacker_sq) & ortho_sliders)
+                            rook_pin |= movegen::between(ksq, static_cast<Square>(attacker_sq));
+                    }
+                }
+            }
         }
 
         // Pawn and knight checkers (precomputed tables, no magic lookups)

@@ -157,14 +157,7 @@ template <Direction offset, typename ListT> inline void record_promotions(ListT 
     } else if constexpr (std::is_same_v<ListT, CountOnlyList>) {
         list.size_ += 4 * popcount(dests);
     } else {
-        while (dests) {
-            // fallback: push placeholder promotion moves
-            list.push_back(Move::none());
-            list.push_back(Move::none());
-            list.push_back(Move::none());
-            list.push_back(Move::none());
-            pop_lsb(dests);
-        }
+        UNREACHABLE();
     }
 }
 
@@ -176,11 +169,7 @@ template <Direction offset, typename ListT> inline void record_pawn_moves(ListT 
         // CountOnlyList doesn't store moves; just increase the counter.
         list.size_ += popcount(targets);
     } else {
-        // Generic fallback: call push_back for each move (works for other list-like types).
-        while (targets) {
-            list.push_back(Move::none());
-            pop_lsb(targets);
-        }
+        UNREACHABLE();
     }
 }
 } // namespace chess

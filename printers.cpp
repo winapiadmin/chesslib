@@ -111,10 +111,6 @@ std::ostream &operator<<(std::ostream &os, const CastlingRights cr) {
 
     return os << castlingFlags.at(cr);
 }
-static std::string str_toupper(std::string s) {
-    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::toupper(c); });
-    return s;
-}
 /// @brief Print a Square as algebraic notation (e.g. "e2").
 std::ostream &operator<<(std::ostream &os, const Square sq) { return os << uci::squareToString(sq); }
 

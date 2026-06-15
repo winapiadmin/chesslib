@@ -102,6 +102,96 @@ static constexpr Bitboard _HyperbolaRookAttacks(Square sq, Bitboard occ) {
 }
 } // namespace chess::_chess
 namespace chess::attacks {
+
+// Precompute rays for each square and each of 8 directions.
+const std::array<std::array<Bitboard, 64>, 8> RAYS = []() {
+    std::array<std::array<Bitboard, 64>, 8> r{};
+    for (int dir = 0; dir < 8; ++dir) {
+        for (Square sq = SQ_A1; sq < SQ_NONE; ++sq) {
+            Bitboard cur = 1ULL << sq;
+            Bitboard accum = 0ULL;
+            while (true) {
+                switch (dir) {
+                case RD_NORTH:
+                    cur = cur << 8;
+                    break;
+                case RD_SOUTH:
+                    cur = cur >> 8;
+                    break;
+                case RD_EAST:
+                    cur = (cur & ~MASK_FILE[FILE_H]) << 1;
+                    break;
+                case RD_WEST:
+                    cur = (cur & ~MASK_FILE[FILE_A]) >> 1;
+                    break;
+                case RD_NE:
+                    cur = (cur & ~MASK_FILE[FILE_H]) << 9;
+                    break;
+                case RD_NW:
+                    cur = (cur & ~MASK_FILE[FILE_A]) << 7;
+                    break;
+                case RD_SE:
+                    cur = (cur & ~MASK_FILE[FILE_H]) >> 7;
+                    break;
+                case RD_SW:
+                    cur = (cur & ~MASK_FILE[FILE_A]) >> 9;
+                    break;
+                }
+                if (!cur) break;
+                accum |= cur;
+            }
+            r[dir][sq] = accum;
+        }
+    }
+    return r;
+}();
+
+#ifdef __BMI2__
+/// @brief Software fallback for the PEXT instruction.
+/// @details Used during constant evaluation when BMI2 is unavailable.
+/// @param val The value to compress.
+/// @param mask The bit mask.
+/// @return Compressed bits.
+constexpr uint64_t software_pext_u64(uint64_t val, uint64_t mask) {
+    uint64_t result = 0;
+    uint64_t bit_position = 0;
+
+    for (uint64_t bit = 1; bit != 0; bit <<= 1) {
+        if (mask & bit) {
+            if (val & bit) {
+                result |= 1ULL << bit_position;
+            }
+            ++bit_position;
+        }
+    }
+    return result;
+}
+
+/// @brief Magic structure for PEXT-based magic bitboards (BMI2 path).
+struct Magic {
+    Bitboard mask; ///< Relevant occupancy mask.
+    int index;     ///< Starting index into the attack table.
+    /// @brief Invoke magic to compress occupancy bits (BMI2 path).
+    constexpr Bitboard operator()(Bitboard b) const {
+        if (is_constant_evaluated()) {
+            return software_pext_u64(b, mask);
+        } else {
+            return _pext_u64(b, mask);
+        }
+    }
+};
+#else
+/// @brief Magic structure for classical (multiply-and-shift) magic bitboards.
+struct Magic {
+    Bitboard mask;  ///< Relevant occupancy mask.
+    Bitboard magic; ///< Magic multiplier.
+    size_t index;   ///< Starting index into the attack table.
+    Bitboard shift; ///< Right-shift amount.
+    /// @brief Invoke magic to compute attack table index (multiply-and-shift path).
+    constexpr Bitboard operator()(Bitboard b) const { return (((b & mask)) * magic) >> shift; }
+};
+#endif
+
 #ifndef GENERATE_AT_RUNTIME
 #define _POSSIBLY_CONSTEXPR constexpr
 #else
@@ -165,7 +255,6 @@ _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, TableS
 
         Bitboard mask = AttackFunc(static_cast<Square>(sq), 0) & ~edges;
         int bits = popcount(mask);
-        int shift = 64 - bits;
         Bitboard magic = 0;
         if constexpr (IsBishop)
             magic = BishopMagics[sq];
@@ -176,7 +265,7 @@ _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, TableS
         entry.mask = mask;
 #ifndef __BMI2__
         entry.magic = magic;
-        entry.shift = shift;
+        entry.shift = 64 - bits;
 #endif
         entry.index = offset;
 

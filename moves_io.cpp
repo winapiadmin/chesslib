@@ -328,7 +328,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
         // 9) Build candidate filter and scan legal moves
         Move matched = Move::null();
         bool found = false;
-        Bitboard to_mask = (1ULL << to_square) & ~pos.occ(pos.side_to_move()); // mask excluding own pieces on destination
+        //Bitboard to_mask = (1ULL << to_square) & ~pos.occ(pos.side_to_move()); // mask excluding own pieces on destination
 
         // If pawn and no disambiguation file, restrict pawns to dest file (avoid ambiguous pawn non-file forms)
         // This matches python-chess behavior described earlier.
