@@ -140,6 +140,7 @@ constexpr uint64_t software_pext_u64(uint64_t val, uint64_t mask) {
 struct Magic {
     Bitboard mask; ///< Relevant occupancy mask.
     int index;     ///< Starting index into the attack table.
+    /// @brief Invoke magic to compress occupancy bits (BMI2 path).
     constexpr Bitboard operator()(Bitboard b) const {
         if (is_constant_evaluated()) {
             return software_pext_u64(b, mask);
@@ -155,6 +156,7 @@ struct Magic {
     Bitboard magic; ///< Magic multiplier.
     size_t index;   ///< Starting index into the attack table.
     Bitboard shift; ///< Right-shift amount.
+    /// @brief Invoke magic to compute attack table index (multiply-and-shift path).
     constexpr Bitboard operator()(Bitboard b) const { return (((b & mask)) * magic) >> shift; }
 };
 #endif

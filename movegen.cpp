@@ -33,7 +33,7 @@ namespace chess {
 
 namespace _chess {
 
-#if defined(USE_AVX512ICL)
+#if defined(__AVX512F__) && defined(__AVX512VNNI__) && defined(__AVX512VBMI__)
 
 // clang-format off
 const __m512i AllSquares = _mm512_set_epi8(
@@ -58,7 +58,7 @@ inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
 
     const __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
     const __m512i toSquares = _mm512_cvtepi8_epi16(_mm512_castsi512_si256(_mm512_maskz_compress_epi8(to_bb, AllSquares)));
-    const __m512i moves = _mm512_or_si512(fromVec, _mm512_slli_epi16(toSquares, Move::ToSqShift));
+    const __m512i moves = _mm512_or_si512(fromVec, _mm512_slli_epi16(toSquares, 0));
 
     _mm512_storeu_si512(moveList, moves);
     return moveList + popcount(to_bb);

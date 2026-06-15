@@ -460,7 +460,9 @@ enum MoveType : uint16_t { NORMAL, PROMOTION = 1 << 14, EN_PASSANT = 2 << 14, CA
 class Move {
   public:
     Move() = default;
+    /// @brief Construct from raw 16-bit encoding.
     constexpr Move(std::uint16_t d) : data(d) {}
+    /// @brief Construct from origin and destination squares.
     constexpr Move(Square from, Square to) : data((static_cast<uint16_t>(from) << 6) | static_cast<int>(to)) {}
 
     /// @brief Construct a move with an explicit type and optional promotion piece.
@@ -469,51 +471,69 @@ class Move {
                     (static_cast<int>(from) << 6) | static_cast<int>(to));
     }
 
+    /// @brief Origin square of the move.
     constexpr Square from_sq() const {
         assert(is_ok());
         return Square((data >> 6) & 0x3F);
     }
+    /// @brief Destination square of the move.
     constexpr Square to_sq() const {
         assert(is_ok());
         return Square(data & 0x3F);
     }
+    /// @brief Alias for from_sq().
     constexpr Square from() const { return from_sq(); }
+    /// @brief Alias for to_sq().
     constexpr Square to() const { return to_sq(); }
 
     /// @brief Get the packed from|to field (lower 12 bits).
+    /// @brief Packed from|to field (lower 12 bits).
     constexpr int from_to() const { return data & 0xFFF; }
 
     /// @brief Get the move type.
+    /// @brief Get the move type (normal/promotion/en-passant/castling).
     constexpr MoveType type_of() const { return MoveType(data & (3 << 14)); }
+    /// @brief True if move is neither none() nor null().
     constexpr bool is_ok() const { return none().data != data && null().data != data; }
 
     /// @brief Get the promotion piece type.
     constexpr PieceType promotion_type() const { return PieceType(((data >> 12) & 3) + KNIGHT); }
 
+    /// @brief Null move sentinel (used to pass a move without changing board).
     static constexpr Move null() { return Move(65); }
+    /// @brief No-move sentinel (represents absence of a move).
     static constexpr Move none() { return Move(0); }
 
+    /// @brief Equality comparison of moves.
     constexpr bool operator==(const Move &m) const { return data == m.data; }
+    /// @brief Inequality comparison of moves.
     constexpr bool operator!=(const Move &m) const { return data != m.data; }
+    /// @brief Boolean conversion: true for valid move.
     constexpr explicit operator bool() const { return data != 0; }
 
     /// @brief Get the raw 16-bit encoding.
     constexpr std::uint16_t raw() const { return data; }
 
     /// @brief Hash functor for use in unordered containers.
+    /// @brief Hash functor for Move suitable for unordered containers.
     struct MoveHash {
         std::size_t operator()(const Move &m) const { return m.data; }
     };
 
+    /// @brief Return the UCI string representation of the move (e.g., "e2e4").
     std::string uci() const;
 
     /// @name Convenience constants
     /// @{
-    static constexpr std::uint16_t NO_MOVE = 0;
-    static constexpr std::uint16_t NULL_MOVE = 65;
+    static constexpr std::uint16_t NO_MOVE = 0; ///< Constant for no move.
+    static constexpr std::uint16_t NULL_MOVE = 65; ///< Constant for null move.
+    /// @brief Move type: normal.
     static constexpr MoveType NORMAL = MoveType::NORMAL;
+    /// @brief Move type: promotion.
     static constexpr MoveType PROMOTION = MoveType::PROMOTION;
+    /// @brief Move type: en-passant capture.
     static constexpr MoveType ENPASSANT = MoveType::EN_PASSANT;
+    /// @brief Move type: castling.
     static constexpr MoveType CASTLING = MoveType::CASTLING;
     /// @}
 
@@ -572,8 +592,11 @@ template <typename T, std::size_t MaxSize> class ValueList {
         return values_[index];
     }
 
+    /// @brief Pointer to first element.
     inline const T *begin() const { return values_; }
+    /// @brief Pointer to underlying data array.
     inline T *data() { return values_; }
+    /// @brief Pointer one past the last active element.
     inline const T *end() const { return values_ + size_; }
 
     size_type size_ = 0;
@@ -589,17 +612,28 @@ using Movelist = ValueList<Move, 300>;
 /// @brief Counting-only move list — same interface as Movelist but discards move data.
 class CountOnlyList {
   public:
+    /// @brief Size type for count-only list.
+  public:
+    /// @brief Size type for CountOnlyList.
     using size_type = std::size_t;
+    /// @brief Default constructor.
     CountOnlyList() = default;
+    /// @brief Current size (number of moves counted).
     inline size_type size() const { return size_; }
+    /// @brief Increment the move count (discards move payload).
     inline void push_back(const Move &) { ++size_; }
+    /// @brief Index access — returns a dummy Move for compatibility.
     inline Move &operator[](size_type) {
         thread_local static Move dummy(0);
         return dummy;
     }
+    /// @brief No backing array for CountOnlyList; data() returns nullptr.
     inline Move *data() { return nullptr; }
+    /// @brief Begin iterator (nullptr for CountOnlyList).
     inline const Move *begin() const { return nullptr; }
+    /// @brief End iterator (nullptr for CountOnlyList).
     inline const Move *end() const { return nullptr; }
+    /// @brief Internal size counter.
     size_type size_ = 0;
 };
 

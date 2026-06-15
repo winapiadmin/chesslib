@@ -1,0 +1,30 @@
+name: Doxygen docs
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y doxygen graphviz
+
+      - name: Build docs
+        working-directory: ${{ github.workspace }}
+        run: |
+          if [ ! -f Doxyfile ]; then echo "Doxyfile not found in repo root"; exit 1; fi
+          doxygen Doxyfile
+
+      - name: Upload docs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: doxygen-html
+          path: doc/html
+          retention-days: 7

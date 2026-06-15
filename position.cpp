@@ -254,6 +254,9 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
     history.clear();
     rep_hashes_.clear();
     history.push_back(HistoryEntry<PieceC>());
+    std::fill(std::begin(state().pieces), std::end(state().pieces), 0ULL);
+    state().occ[0] = state().occ[1] = 0;
+    state().kings[0] = state().kings[1] = SQ_NONE;
     _chess960 = chess960;
     std::fill(std::begin(pieces_list), std::end(pieces_list), PieceC::NO_PIECE);
     castling_meta_[WHITE] = {};

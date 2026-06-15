@@ -43,7 +43,9 @@ std::string squareToString(Square sq);
 /// @brief Exception thrown when a SAN string represents an illegal move.
 class IllegalMoveException : public std::exception {
   public:
+    /// @brief Construct with an explanatory message.
     IllegalMoveException(const std::string &message) : message_(message) {}
+    /// @brief Exception message C-string.
     const char *what() const noexcept override { return message_.c_str(); }
 
   private:
@@ -53,7 +55,9 @@ class IllegalMoveException : public std::exception {
 /// @brief Exception thrown when a SAN string is ambiguous.
 class AmbiguousMoveException : public std::exception {
   public:
+    /// @brief Construct ambiguous-move exception with message.
     AmbiguousMoveException(const std::string &message) : message_(message) {}
+    /// @brief Exception message C-string.
     const char *what() const noexcept override { return message_.c_str(); }
 
   private:

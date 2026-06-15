@@ -36,6 +36,7 @@ enum PieceType : std::int8_t;
 /// @brief Trait to detect piece-enum types (PolyglotPiece, EnginePiece, ContiguousMappingPiece).
 template <typename T, typename = void> struct is_piece_enum : std::false_type {};
 
+/// @brief Specialisation: detects types that expose PIECE_NB (piece-enum types).
 template <typename T> struct is_piece_enum<T, std::void_t<decltype(T::PIECE_NB)>> : std::true_type {};
 
 /// @enum CastlingRights
