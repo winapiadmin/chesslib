@@ -131,11 +131,56 @@ inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
 template <typename ListT> inline void record_moves(ListT &list, Square from, Bitboard targets) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
         _chess::splat_moves(list.data() + list.size_, from, targets);
+        list.size_ += popcount(targets);
+    } else if constexpr (std::is_same_v<ListT, CountOnlyList>) {
+        list.size_ += popcount(targets);
+    } else {
+        while (targets) {
+            list.push_back(Move::none());
+            pop_lsb(targets);
+        }
     }
 }
+
+// Promotions need special handling: each destination produces 4 moves.
+template <Direction offset, typename ListT> inline void record_promotions(ListT &list, Bitboard dests) {
+    if constexpr (std::is_same_v<ListT, Movelist>) {
+        while (dests) {
+            Square to = static_cast<Square>(pop_lsb(dests));
+            Square from = static_cast<Square>(to - offset);
+            list[list.size_] = Move::make<PROMOTION>(from, to, KNIGHT);
+            list[list.size_ + 1] = Move::make<PROMOTION>(from, to, BISHOP);
+            list[list.size_ + 2] = Move::make<PROMOTION>(from, to, ROOK);
+            list[list.size_ + 3] = Move::make<PROMOTION>(from, to, QUEEN);
+            list.size_ += 4;
+        }
+    } else if constexpr (std::is_same_v<ListT, CountOnlyList>) {
+        list.size_ += 4 * popcount(dests);
+    } else {
+        while (dests) {
+            // fallback: push placeholder promotion moves
+            list.push_back(Move::none());
+            list.push_back(Move::none());
+            list.push_back(Move::none());
+            list.push_back(Move::none());
+            pop_lsb(dests);
+        }
+    }
+}
+
 template <Direction offset, typename ListT> inline void record_pawn_moves(ListT &list, Bitboard targets) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
         _chess::splat_pawn_moves<offset>(list.data() + list.size_, targets);
+        list.size_ += popcount(targets);
+    } else if constexpr (std::is_same_v<ListT, CountOnlyList>) {
+        // CountOnlyList doesn't store moves; just increase the counter.
+        list.size_ += popcount(targets);
+    } else {
+        // Generic fallback: call push_back for each move (works for other list-like types).
+        while (targets) {
+            list.push_back(Move::none());
+            pop_lsb(targets);
+        }
     }
 }
 } // namespace chess
@@ -198,7 +243,6 @@ movegen::genPawnDoubleMoves(const _Position<T, void> &pos, ListT &moves, Bitboar
     Bitboard destinations = (step2_unpinned | step2_pinned) & check_mask;
 
     record_pawn_moves<2 * UP>(moves, destinations);
-    moves.size_ += popcount(destinations);
 }
 template <typename T, Color c, bool capturesOnly, typename ListT>
 [[gnu::hot]] void movegen::genPawnSingleMoves(
@@ -240,36 +284,11 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
         Bitboard promo_push = single_push & RANK_PROMO;
 
         if constexpr (!capturesOnly) {
-            while (promo_push) {
-                Square to = static_cast<Square>(pop_lsb(promo_push));
-                Square from = static_cast<Square>(to - UP);
-                moves[moves.size_] = Move::make<PROMOTION>(from, to, KNIGHT);
-                moves[moves.size_ + 1] = Move::make<PROMOTION>(from, to, BISHOP);
-                moves[moves.size_ + 2] = Move::make<PROMOTION>(from, to, ROOK);
-                moves[moves.size_ + 3] = Move::make<PROMOTION>(from, to, QUEEN);
-                moves.size_ += 4;
-            }
+            record_promotions<UP>(moves, promo_push);
         }
 
-        while (promo_left) {
-            Square to = static_cast<Square>(pop_lsb(promo_left));
-            Square from = static_cast<Square>(to - UP_LEFT); // correct
-            moves[moves.size_] = Move::make<PROMOTION>(from, to, KNIGHT);
-            moves[moves.size_ + 1] = Move::make<PROMOTION>(from, to, BISHOP);
-            moves[moves.size_ + 2] = Move::make<PROMOTION>(from, to, ROOK);
-            moves[moves.size_ + 3] = Move::make<PROMOTION>(from, to, QUEEN);
-            moves.size_ += 4;
-        }
-
-        while (promo_right) {
-            Square to = static_cast<Square>(pop_lsb(promo_right));
-            Square from = static_cast<Square>(to - UP_RIGHT); // correct
-            moves[moves.size_] = Move::make<PROMOTION>(from, to, KNIGHT);
-            moves[moves.size_ + 1] = Move::make<PROMOTION>(from, to, BISHOP);
-            moves[moves.size_ + 2] = Move::make<PROMOTION>(from, to, ROOK);
-            moves[moves.size_ + 3] = Move::make<PROMOTION>(from, to, QUEEN);
-            moves.size_ += 4;
-        }
+        record_promotions<UP_LEFT>(moves, promo_left);
+        record_promotions<UP_RIGHT>(moves, promo_right);
     }
 
     single_push &= ~RANK_PROMO;
@@ -277,12 +296,9 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
     r_pawns &= ~RANK_PROMO;
     if constexpr (!capturesOnly) {
         record_pawn_moves<UP>(moves, single_push);
-        moves.size_ += popcount(single_push);
     }
     record_pawn_moves<UP_LEFT>(moves, l_pawns);
-    moves.size_ += popcount(l_pawns);
     record_pawn_moves<UP_RIGHT>(moves, r_pawns);
-    moves.size_ += popcount(r_pawns);
 }
 template <typename T, Color c, bool capturesOnly, typename ListT>
 [[gnu::hot]] void
@@ -295,7 +311,6 @@ movegen::genKnightMoves(const _Position<T, void> &pos, ListT &list, Bitboard _pi
         if constexpr (capturesOnly)
             moves &= pos.occ(~c);
         record_moves(list, x, moves);
-        list.size_ += popcount(moves);
     }
 }
 template <typename T, Color c, bool capturesOnly, typename ListT>
@@ -308,7 +323,6 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
     if constexpr (capturesOnly) {
         Bitboard targets = attacks::king(kingSq) & occ_opp;
         if (!targets) {
-            out.size_ += 0;
             return;
         }
     }
@@ -338,7 +352,6 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
     if constexpr (capturesOnly)
         moves &= occ_opp;
     record_moves(out, kingSq, moves);
-    out.size_ += popcount(moves);
     if constexpr (!capturesOnly) {
         if (pos.checkers())
             return;
@@ -387,21 +400,23 @@ template <typename T, Color c, PieceType pt, bool capturesOnly, typename ListT>
 
         Bitboard filtered_pin = pin_mask & filter_list;
         Bitboard targets;
+        // Choose attack function without std::function to avoid indirect call overhead.
         if (rook_hit) {
             targets = attacks::rook(from, occ_all) & filtered_pin;
         } else if (bishop_hit) {
             targets = attacks::bishop(from, occ_all) & filtered_pin;
-        } else if constexpr (pt == BISHOP) {
-            targets = attacks::bishop(from, occ_all) & filtered_pin;
-        } else if constexpr (pt == ROOK) {
-            targets = attacks::rook(from, occ_all) & filtered_pin;
         } else {
-            targets = attacks::queen(from, occ_all) & filtered_pin;
+            if constexpr (pt == BISHOP) {
+                targets = attacks::bishop(from, occ_all) & filtered_pin;
+            } else if constexpr (pt == ROOK) {
+                targets = attacks::rook(from, occ_all) & filtered_pin;
+            } else {
+                targets = attacks::queen(from, occ_all) & filtered_pin;
+            }
         }
         if constexpr (capturesOnly)
             targets &= occ_opp;
         record_moves(moves, from, targets);
-        moves.size_ += popcount(targets);
     }
 }
 #define INSTANTIATE(PieceC, ListT)                                                                                             \

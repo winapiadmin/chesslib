@@ -1,0 +1,18 @@
+# Doxyfile 1.9.1
+PROJECT_NAME           = "chesslib"
+OUTPUT_DIRECTORY       = doc
+INPUT                  = .
+RECURSIVE              = YES
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+GENERATE_XML           = YES
+XML_OUTPUT             = xml
+QUIET                  = YES
+WARNINGS               = NO
+GENERATE_TREEVIEW      = YES
+INLINE_SOURCES         = YES
+STRIP_FROM_PATH        = "$(PWD)"
+FILE_PATTERNS          = *.h *.hpp *.cpp
+EXCLUDE                 = build

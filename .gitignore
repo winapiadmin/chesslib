@@ -11,6 +11,7 @@
 !.gitattributes
 !.github/**
 !.github/
+!Doxyfile
 # Ignore build/editor junk
 build/
 out/

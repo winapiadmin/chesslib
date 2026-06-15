@@ -525,7 +525,7 @@ class Move {
 
     /// @name Convenience constants
     /// @{
-    static constexpr std::uint16_t NO_MOVE = 0; ///< Constant for no move.
+    static constexpr std::uint16_t NO_MOVE = 0;    ///< Constant for no move.
     static constexpr std::uint16_t NULL_MOVE = 65; ///< Constant for null move.
     /// @brief Move type: normal.
     static constexpr MoveType NORMAL = MoveType::NORMAL;
@@ -541,12 +541,6 @@ class Move {
     std::uint16_t data;
 };
 
-/// @brief Trait: check that all types in a pack are the same.
-template <typename T, typename... Ts> struct is_all_same {
-    static constexpr bool value = (std::is_same_v<T, Ts> && ...);
-};
-template <typename... Ts> constexpr auto is_all_same_v = is_all_same<Ts...>::value;
-
 /// @class ValueList
 /// @brief Stack-allocated fixed-capacity vector.
 /// @tparam T Element type.
@@ -558,45 +552,34 @@ template <typename T, std::size_t MaxSize> class ValueList {
     using size_type = std::size_t;
     ValueList() = default;
 
-    /// @brief Number of elements currently stored.
     inline size_type size() const { return size_; }
 
-    /// @brief Append an element.
     inline void push_back(const T &value) {
         assert(size_ < MaxSize);
         values_[size_++] = value;
     }
 
-    /// @brief Remove and return the last element.
     inline T pop() {
         assert(size_ > 0);
         return values_[--size_];
     }
 
-    /// @brief Remove the last element without returning it.
     inline void pop_back() {
         assert(size_ > 0);
         size_--;
     }
-
-    /// @brief Access the first element.
     inline T front() const {
         assert(size_ > 0);
         return values_[0];
     }
 
-    /// @brief Indexed access.
+    /// @brief Indexed access. UB if index >= MaxSize.
     inline T &operator[](int index) {
-        // intentionally placed
-        assert(0 <= index && index < MaxSize);
         return values_[index];
     }
-
-    /// @brief Pointer to first element.
+    
     inline const T *begin() const { return values_; }
-    /// @brief Pointer to underlying data array.
     inline T *data() { return values_; }
-    /// @brief Pointer one past the last active element.
     inline const T *end() const { return values_ + size_; }
 
     size_type size_ = 0;
@@ -612,7 +595,6 @@ using Movelist = ValueList<Move, 300>;
 /// @brief Counting-only move list — same interface as Movelist but discards move data.
 class CountOnlyList {
   public:
-    /// @brief Size type for count-only list.
   public:
     /// @brief Size type for CountOnlyList.
     using size_type = std::size_t;

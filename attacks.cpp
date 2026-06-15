@@ -205,12 +205,14 @@ _POSSIBLY_CONSTEXPR std::array<Bitboard, 0x19000> RookAttacks = rookData.second;
 
 /// @brief Look up bishop attacks from the precomputed magic table.
 [[nodiscard]] Bitboard bishop(Square sq, Bitboard occupied) {
-    return BishopAttacks[BishopTable[(int)sq].index + BishopTable[(int)sq](occupied)];
+    const auto &entry = BishopTable[(int)sq];
+    return BishopAttacks[entry.index + entry(occupied)];
 }
 
 /// @brief Look up rook attacks from the precomputed magic table.
 [[nodiscard]] Bitboard rook(Square sq, Bitboard occupied) {
-    return RookAttacks[RookTable[(int)sq].index + RookTable[(int)sq](occupied)];
+    const auto &entry = RookTable[(int)sq];
+    return RookAttacks[entry.index + entry(occupied)];
 }
 } // namespace chess::attacks
 namespace chess::movegen {
