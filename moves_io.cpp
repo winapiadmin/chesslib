@@ -185,7 +185,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
         pos.legals(moves);
 
         // Make a local mutable copy we can trim safely.
-        std::string san(input_san), _san(raw_san);
+        std::string san(input_san), _san(san);
 
         // 1) Castling shortcuts
         if (san == "O-O" || san == "0-0" || san == "O-O+" || san == "0-0+" || san == "O-O#" || san == "0-0#") {
@@ -404,7 +404,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
     };
 
     if (remove_illegals) {
-        std::string trimmed_san(raw_san);
+        std::string trimmed_san(san);
         while (!trimmed_san.empty()) {
             Move attempt = do_parse(trimmed_san);
             if (attempt.is_ok())
@@ -412,10 +412,10 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
             trimmed_san.pop_back();
         }
         INVALID_ARG_IF(trimmed_san.empty(),
-                       IllegalMoveException("illegal san: '" + std::string(raw_san) + "' in " + pos.fen()));
+                       IllegalMoveException("illegal san: '" + std::string(san) + "' in " + pos.fen()));
         return Move::none();
     } else
-        return do_parse(raw_san);
+        return do_parse(san);
 }
 /// @brief Convert a Move to SAN or LAN (Long Algebraic Notation) string.
 template <typename T, typename P> std::string moveToSan(const _Position<T, P> &pos, Move move, bool long_, bool suffix) {

@@ -20,6 +20,7 @@
 #include "attacks.h"
 #include "movegen.h"
 #include "types.h"
+#include "zobrist.h"
 #include <algorithm>
 #include <stdexcept>
 #include <string>
