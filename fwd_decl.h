@@ -108,8 +108,8 @@ enum class ContiguousMappingPiece : uint8_t;
 /// @brief Default chess position type (uses EnginePiece).
 using Position = _Position<EnginePiece, void>;
 
-/// @typedef Board
 /// @brief Alias for Position.
+/// @deprecated Use Position instead
 using Board [[deprecated("Use Position instead")]] = Position;
 
 } // namespace chess

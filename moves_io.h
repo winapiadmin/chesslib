@@ -25,18 +25,6 @@
 #include <string_view>
 
 /// @file moves_io.h
-/**
- * Parse a SAN string into a Move for the given position.
- * @tparam T Piece enum type.
- * @tparam P Position tag.
- * @param pos The position.
- * @param san SAN string (e.g. "Nf3", "O-O").
- * @param remove_illegals If true, return Move::NO_MOVE instead of throwing.
- * @return The parsed Move.
- * @throws IllegalMoveException if the SAN string represents an illegal move and remove_illegals is false.
- * @throws AmbiguousMoveException if the SAN string is ambiguous.
- */
-
 namespace chess::uci {
 
 /// @brief Convert a Move to UCI coordinate string (e.g. "e2e4", "e7e8q").

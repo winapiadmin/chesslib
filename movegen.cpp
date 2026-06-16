@@ -153,17 +153,17 @@ inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
 }
 #endif
 } // namespace _chess
-
-template <typename ListT> /**
-                           * @brief Appends moves from a source square to destination squares, or counts them.
-                           *
-                           * For Movelist, generates and stores all moves efficiently. For CountOnlyList,
-                           * only increments the count. For other list types, appends placeholder moves.
-                           *
-                           * @param from Source square for all moves.
-                           * @param targets Bitboard of destination squares.
-                           */
-inline void record_moves(ListT &list, Square from, Bitboard targets) {
+/**
+ * @brief Appends moves from a source square to destination squares, or counts them.
+ *
+ * For Movelist, generates and stores all moves efficiently. For CountOnlyList,
+ * only increments the count. For other list types, appends placeholder moves.
+ *
+ * @param list The list of moves
+ * @param from Source square for all moves.
+ * @param targets Bitboard of destination squares.
+ */
+template <typename ListT> inline void record_moves(ListT &list, Square from, Bitboard targets) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
         _chess::splat_moves(list.data() + list.size_, from, targets);
         list.size_ += popcount(targets);
@@ -366,6 +366,8 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
  * Generates all knight moves subject to pin and check constraints.
  * If `capturesOnly` is true, restricts to capture moves only.
  *
+ * @param pos The position.
+ * @param list The move list to record moves into.
  * @param _pin_mask Bitboard of pinned pieces; pinned knights are excluded.
  * @param _check_mask Bitboard indicating squares that resolve checks.
  */
@@ -462,6 +464,8 @@ template <typename T, Color c, PieceType pt, bool capturesOnly, typename ListT>
  * constraints and check restrictions. Pieces pinned along rook lines are confined to those lines;
  * pieces pinned along bishop lines are confined to those diagonals.
  *
+ * @param pos The position.
+ * @param moves The move list to record moves into.
  * @param _rook_pin Bitboard of squares pinned along rook lines (vertical/horizontal).
  * @param _bishop_pin Bitboard of squares pinned along bishop lines (diagonals).
  * @param _check_mask Bitboard of legal destination squares when in check.
