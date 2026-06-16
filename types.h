@@ -59,7 +59,6 @@
 #define HOTFUNC
 #define COLDFUNC
 #define FLATTEN
-#define
 #if defined(_MSC_VER)
 /// @def FORCEINLINE
 /// @brief Make callers inline this function
