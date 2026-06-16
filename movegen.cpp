@@ -45,13 +45,13 @@ const __m512i AllSquares = _mm512_set_epi8(
 /// @brief Convert a pawn destination bitboard into move objects for a given pawn push offset.
 /// @tparam offset Pawn move direction relative to the moving side.
 template <Direction offset> /**
- * @brief Packs pawn destination squares into move objects.
- *
- * @tparam offset Direction offset from destination to origin squares.
- * @param moveList Output buffer where move objects are written.
- * @param to_bb Bitboard of destination squares (at most 8 bits set).
- * @return Pointer advanced by popcount(to_bb).
- */
+                             * @brief Packs pawn destination squares into move objects.
+                             *
+                             * @tparam offset Direction offset from destination to origin squares.
+                             * @param moveList Output buffer where move objects are written.
+                             * @param to_bb Bitboard of destination squares (at most 8 bits set).
+                             * @return Pointer advanced by popcount(to_bb).
+                             */
 inline Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
     assert(popcount(to_bb) <= 8); // <= 8 pawns per side
 
@@ -159,14 +159,14 @@ inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
 // Count-only dispatch helpers — splat_moves/splat_pawn_moves when storing is needed, no-op when counting.
 /// @brief Append moves for a source square to a move list or count them for statistics.
 template <typename ListT> /**
- * @brief Appends moves from a source square to destination squares, or counts them.
- *
- * For Movelist, generates and stores all moves efficiently. For CountOnlyList,
- * only increments the count. For other list types, appends placeholder moves.
- *
- * @param from Source square for all moves.
- * @param targets Bitboard of destination squares.
- */
+                           * @brief Appends moves from a source square to destination squares, or counts them.
+                           *
+                           * For Movelist, generates and stores all moves efficiently. For CountOnlyList,
+                           * only increments the count. For other list types, appends placeholder moves.
+                           *
+                           * @param from Source square for all moves.
+                           * @param targets Bitboard of destination squares.
+                           */
 inline void record_moves(ListT &list, Square from, Bitboard targets) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
         _chess::splat_moves(list.data() + list.size_, from, targets);
@@ -183,15 +183,16 @@ inline void record_moves(ListT &list, Square from, Bitboard targets) {
 
 /// @brief Record promotion moves for each destination square in the given destination mask.
 /// @tparam offset Pawn push offset used to compute the origin square.
-template <Direction offset, typename ListT> /**
- * @brief Records pawn promotion moves for each destination square.
- *
- * For each destination in `dests`, records four promotion moves: knight, bishop, rook, and queen.
- * The source square is computed by subtracting the `offset` template parameter from the destination.
- *
- * @param list Move list to accumulate promotions, or a count-only list.
- * @param dests Bitboard of destination squares where pawns promote.
- */
+template <Direction offset,
+          typename ListT> /**
+                           * @brief Records pawn promotion moves for each destination square.
+                           *
+                           * For each destination in `dests`, records four promotion moves: knight, bishop, rook, and queen.
+                           * The source square is computed by subtracting the `offset` template parameter from the destination.
+                           *
+                           * @param list Move list to accumulate promotions, or a count-only list.
+                           * @param dests Bitboard of destination squares where pawns promote.
+                           */
 inline void record_promotions(ListT &list, Bitboard dests) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
         while (dests) {
@@ -213,12 +214,12 @@ inline void record_promotions(ListT &list, Bitboard dests) {
 /// @brief Record pawn moves from a destination mask, translating them into move objects.
 /// @tparam offset Pawn push offset used to compute origins from destinations.
 template <Direction offset, typename ListT> /**
- * @brief Records or counts pawn moves from destination squares.
- *
- * For `Movelist`, stores pawn moves with origin squares derived from the
- * destinations via the compile-time `offset` parameter. For `CountOnlyList`,
- * increments the move counter without storing moves.
- */
+                                             * @brief Records or counts pawn moves from destination squares.
+                                             *
+                                             * For `Movelist`, stores pawn moves with origin squares derived from the
+                                             * destinations via the compile-time `offset` parameter. For `CountOnlyList`,
+                                             * increments the move counter without storing moves.
+                                             */
 inline void record_pawn_moves(ListT &list, Bitboard targets) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
         _chess::splat_pawn_moves<offset>(list.data() + list.size_, targets);
@@ -233,8 +234,8 @@ inline void record_pawn_moves(ListT &list, Bitboard targets) {
 } // namespace chess
 namespace chess {
 template <typename T, Color c, typename ListT> /**
- * @brief Generates all legal en passant captures for the moving side.
- */
+                                                * @brief Generates all legal en passant captures for the moving side.
+                                                */
 HOTFUNC void movegen::genEP(const _Position<T, void> &pos, ListT &mv) {
 
     const Square king_sq = pos.king_sq(c);
@@ -312,8 +313,7 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
  * @param _bishop_pin Bitmask of pawns pinned along bishop lines (diagonal).
  * @param _check_mask Bitmask of squares that moves must target to be legal (check evasion).
  */
-</function_to_document>
-HOTFUNC void movegen::genPawnSingleMoves(
+</ function_to_document> HOTFUNC void movegen::genPawnSingleMoves(
     const _Position<T, void> &pos, ListT &moves, Bitboard _rook_pin, Bitboard _bishop_pin, Bitboard _check_mask) {
     constexpr auto UP = relative_direction(c, NORTH);
     constexpr auto UP_LEFT = relative_direction(c, NORTH_WEST);
@@ -393,9 +393,9 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
 /**
  * @brief Generates legal king moves and castling.
  *
- * Computes all legal king destination squares by excluding occupied friendly squares and squares attacked by enemy pieces. 
- * When `capturesOnly` is true, only captures are generated. Otherwise, also generates castling moves if the king is not in check, 
- * the castling path is unobstructed, and all squares the king passes through are not under attack.
+ * Computes all legal king destination squares by excluding occupied friendly squares and squares attacked by enemy pieces.
+ * When `capturesOnly` is true, only captures are generated. Otherwise, also generates castling moves if the king is not in
+ * check, the castling path is unobstructed, and all squares the king passes through are not under attack.
  *
  * @param pos The position.
  * @param out The move list to record moves into.

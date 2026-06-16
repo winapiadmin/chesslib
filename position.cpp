@@ -972,10 +972,10 @@ template <typename PieceC, typename T> Square _Position<PieceC, T>::_valid_ep_sq
 }
 /// @brief Check if a given color has insufficient mating material.
 template <typename PieceC, typename T> /**
- * @brief Determines whether the position has insufficient material to achieve checkmate.
- *
- * @return `true` if the position has insufficient mating material, `false` otherwise.
- */
+                                        * @brief Determines whether the position has insufficient material to achieve checkmate.
+                                        *
+                                        * @return `true` if the position has insufficient mating material, `false` otherwise.
+                                        */
 bool _Position<PieceC, T>::is_insufficient_material() const {
     const auto count = popcount(occ());
 

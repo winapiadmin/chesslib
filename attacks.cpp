@@ -209,10 +209,10 @@ struct Magic {
     size_t index;   ///< Starting index into the attack table.
     Bitboard shift; ///< Right-shift amount.
     /**
- * @brief Converts an occupancy pattern to an attack table index.
- *
- * @return Index for accessing the precomputed attack bitboard.
- */
+     * @brief Converts an occupancy pattern to an attack table index.
+     *
+     * @return Index for accessing the precomputed attack bitboard.
+     */
     constexpr Bitboard operator()(Bitboard b) const { return (((b & mask)) * magic) >> shift; }
 };
 #endif
@@ -271,7 +271,8 @@ template <auto AttackFunc, size_t TableSize, bool IsBishop>
 /**
  * @brief Generates magic bitboard tables for fast attack computation.
  *
- * @return A pair containing the Magic entry table (64 entries, one per square) and the corresponding precomputed attack bitboards table.
+ * @return A pair containing the Magic entry table (64 entries, one per square) and the corresponding precomputed attack
+ * bitboards table.
  */
 _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, TableSize>> generate_magic_table() {
     std::array<Magic, 64> table{};
