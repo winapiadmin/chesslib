@@ -45,7 +45,8 @@ constexpr int popcount_constexpr(Bitboard x) noexcept {
 /// @param x Input bitboard.
 /// @return Index of the lowest set bit (0-based).
 constexpr int lsb_constexpr(Bitboard x) noexcept {
-    if (x == 0) return 0;
+    if (x == 0)
+        return 0;
     int pos = 0;
     while ((x & 1) == 0) {
         x >>= 1;
@@ -58,7 +59,8 @@ constexpr int lsb_constexpr(Bitboard x) noexcept {
 /// @param x Input bitboard.
 /// @return Index of the highest set bit (0-based).
 constexpr int msb_constexpr(Bitboard x) noexcept {
-    if (x == 0) return 0;
+    if (x == 0)
+        return 0;
     int pos = 63;
     Bitboard mask = 1ULL << 63;
     while ((x & mask) == 0) {
@@ -87,7 +89,8 @@ NO_SIDE_EFFECTS FORCEINLINE FLATTEN constexpr int popcount(Bitboard x) noexcept 
 /// @return Index of the lowest set bit.
 NO_SIDE_EFFECTS FORCEINLINE FLATTEN constexpr int lsb(Bitboard x) noexcept {
     ASSUME(x != 0);
-    if (x == 0) return 0;
+    if (x == 0)
+        return 0;
 #if defined(__GNUG__) || defined(__clang__)
     if (!is_constant_evaluated())
         return __builtin_ctzll(x);
@@ -106,7 +109,8 @@ NO_SIDE_EFFECTS FORCEINLINE FLATTEN constexpr int lsb(Bitboard x) noexcept {
 /// @return Index of the highest set bit.
 NO_SIDE_EFFECTS FORCEINLINE FLATTEN constexpr int msb(Bitboard x) noexcept {
     ASSUME(x != 0);
-    if (x == 0) return 0;
+    if (x == 0)
+        return 0;
 #if defined(__GNUG__) || defined(__clang__)
     if (!is_constant_evaluated())
         return 63 - __builtin_clzll(x);
