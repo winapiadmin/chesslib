@@ -280,7 +280,7 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
         INVALID_ARG_IF(true, std::runtime_error("Invalid FEN format (lack of required fields)"));
         return false;
     }
-    // Optional fields: halfmove clock and fullmove number
+    // Halfmove clock and fullmove number (required per FEN spec)
     {
         int temp_halfmove = 0;
         int temp_fullmove = 0;
@@ -294,9 +294,8 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
                 return false;
             }
         } else {
-            ss.clear();
-            halfmove = 0;
-            fullmove = 1;
+            INVALID_ARG_IF(true, std::runtime_error("Invalid FEN format (expected halfmove clock)"));
+            return false;
         }
     }
 
