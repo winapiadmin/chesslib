@@ -411,8 +411,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
                 return attempt;
             trimmed_san.pop_back();
         }
-        INVALID_ARG_IF(trimmed_san.empty(),
-                       IllegalMoveException("illegal san: '" + std::string(san) + "' in " + pos.fen()));
+        INVALID_ARG_IF(trimmed_san.empty(), IllegalMoveException("illegal san: '" + std::string(san) + "' in " + pos.fen()));
         return Move::none();
     } else
         return do_parse(san);
