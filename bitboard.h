@@ -88,9 +88,6 @@ NO_SIDE_EFFECTS FORCEINLINE FLATTEN constexpr int popcount(Bitboard x) noexcept 
 /// @param x Input bitboard (must be non-zero).
 /// @return Index of the lowest set bit.
 NO_SIDE_EFFECTS FORCEINLINE FLATTEN constexpr int lsb(Bitboard x) noexcept {
-    ASSUME(x != 0);
-    if (x == 0)
-        return 0;
 #if defined(__GNUG__) || defined(__clang__)
     if (!is_constant_evaluated())
         return __builtin_ctzll(x);
@@ -127,20 +124,23 @@ NO_SIDE_EFFECTS FORCEINLINE FLATTEN constexpr int msb(Bitboard x) noexcept {
 /// @brief Extract and pop the least-significant bit (destructive).
 /// @param b Bitboard reference; modified in place.
 /// @return Index of the lowest set bit before removal.
-FORCEINLINE FLATTEN int pop_lsb(Bitboard &b) noexcept {
+FORCEINLINE FLATTEN constexpr int pop_lsb(Bitboard &b) noexcept {
     int c = lsb(b);
+    if (!is_constant_evaluated()) {
 #ifndef __BMI2__
-    b &= b - 1;
+        b &= b - 1;
 #else
-    b = _blsr_u64(b);
+        b = _blsr_u64(b);
 #endif
+    } else
+        b &= b - 1;
     return c;
 }
 
 /// @brief Extract and pop the most-significant bit (destructive).
 /// @param b Bitboard reference; modified in place.
 /// @return Index of the highest set bit before removal.
-FORCEINLINE FLATTEN int pop_msb(Bitboard &b) noexcept {
+FORCEINLINE FLATTEN constexpr int pop_msb(Bitboard &b) noexcept {
     int c = msb(b);
     b &= ~(1ULL << c);
     return c;

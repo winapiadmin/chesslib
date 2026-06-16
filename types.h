@@ -42,19 +42,19 @@
 #if defined(__GNUC__) || defined(__clang__)
 /// @def HOT
 /// @brief Marks a function as hot (frequently called).
-#define HOTFUNC [[gnu::hot]]
+#define HOTFUNC __attribute__((hot))
 /// @def COLD
 /// @brief Marks a function as cold (rarely called).
-#define COLDFUNC [[gnu::cold]]
+#define COLDFUNC __attribute__((cold))
 /// @def FLATTEN
 /// @brief Make subcalls forceinlined
-#define FLATTEN [[gnu::flatten]]
+#define FLATTEN __attribute__((flatten))
 /// @def FORCEINLINE
 /// @brief Make callers inline this function
-#define FORCEINLINE inline __attribute__((always_inline))
+#define FORCEINLINE __attribute__((always_inline))
 /// @def NO_SIDE_EFFECTS
 /// @brief Marks a function has no side effects
-#define NO_SIDE_EFFECTS [[gnu::const]]
+#define NO_SIDE_EFFECTS __attribute__((const))
 #else
 #define HOTFUNC
 #define COLDFUNC
@@ -63,7 +63,7 @@
 #if defined(_MSC_VER)
 /// @def FORCEINLINE
 /// @brief Make callers inline this function
-#define FORCEINLINE inline __forceinline
+#define FORCEINLINE __forceinline
 /// @def NO_SIDE_EFFECTS
 /// @brief Make a function has no side effects
 #define NO_SIDE_EFFECTS __declspec(noalias)
