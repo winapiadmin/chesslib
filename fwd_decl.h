@@ -21,7 +21,13 @@
 #include <type_traits>
 
 /// @file fwd_decl.h
-/// @brief Forward declarations for all major chess types.
+/**
+ * @brief Default trait for type detection.
+ */
+
+/**
+ * @brief Specialization that detects piece-enum types by matching types that expose PIECE_NB.
+ */
 
 namespace chess {
 

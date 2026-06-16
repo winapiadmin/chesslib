@@ -88,7 +88,13 @@ std::ostream &operator<<(std::ostream &os, const PieceType c) {
     };
     return os << pieces.at(c);
 }
-/// @brief Print CastlingRights as "KkQq" style string.
+/**
+ * @brief Prints the castling rights as a human-readable string.
+ *
+ * @param os The output stream.
+ * @param cr The castling rights value.
+ * @return std::ostream& The output stream.
+ */
 std::ostream &operator<<(std::ostream &os, const CastlingRights cr) {
     DescriptiveNameNotation<CastlingRights> castlingFlags = {
         {                      NO_CASTLING,                      "NO_CASTLING" },

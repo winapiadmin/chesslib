@@ -114,7 +114,12 @@ constexpr Bitboard MASK_FILE[8] = {
     0x101010101010101,  0x202020202020202,  0x404040404040404,  0x808080808080808,
     0x1010101010101010, 0x2020202020202020, 0x4040404040404040, 0x8080808080808080,
 };
-} // namespace chess::attacks
+} /**
+ * @brief Look up queen attacks.
+ * @param sq Queen square.
+ * @param occupied Occupancy bitboard.
+ * @return Bitboard of squares attacked.
+ */
 namespace chess::attacks {
 
 /// @brief Shift a bitboard in the given direction.
@@ -257,7 +262,13 @@ template <Color c> [[nodiscard]] constexpr Bitboard pawn(const Bitboard pawns) {
 /// @param sq Square.
 /// @param occupied Occupancy bitboard.
 /// @return Bitboard of squares attacked.
-template <PieceType pt> [[nodiscard]] inline Bitboard slider(Square sq, Bitboard occupied) {
+template <PieceType pt> /**
+ * Computes attack squares for a slider piece.
+ * @param sq Square the piece occupies.
+ * @param occupied Squares currently occupied on the board.
+ * @return Bitboard of squares attacked by the piece.
+ */
+[[nodiscard]] inline Bitboard slider(Square sq, Bitboard occupied) {
     static_assert(pt == PieceType::BISHOP || pt == PieceType::ROOK || pt == PieceType::QUEEN, "PieceType must be a slider!");
 
     if constexpr (pt == PieceType::BISHOP)

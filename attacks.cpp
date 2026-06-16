@@ -93,7 +93,13 @@ static constexpr Bitboard rank_mask(Square sq) { return attacks::MASK_RANK[rank_
 /// @brief File mask for a square.
 static constexpr Bitboard file_mask(Square sq) { return attacks::MASK_FILE[file_of(sq)]; }
 
-/// @brief Rook attacks via hyperbola quintessence.
+/**
+ * @brief Computes all squares a rook can attack from a given position.
+ *
+ * @param sq The rook's square.
+ * @param occ Board occupancy.
+ * @return Bitboard of attacked squares.
+ */
 static constexpr Bitboard _HyperbolaRookAttacks(Square sq, Bitboard occ) {
     Bitboard slider = 1ULL << sq;
     Bitboard r_mask = rank_mask(sq);
@@ -152,7 +158,16 @@ const std::array<std::array<Bitboard, 64>, 8> RAYS = []() {
 /// @details Used during constant evaluation when BMI2 is unavailable.
 /// @param val The value to compress.
 /// @param mask The bit mask.
-/// @return Compressed bits.
+/**
+ * @brief Extracts bits from a value according to a mask and compacts them.
+ *
+ * For each set bit position in `mask`, extracts the corresponding bit from `val`
+ * and places it into the result at consecutive positions, starting from bit 0.
+ *
+ * @param val The value to extract bits from.
+ * @param mask A mask indicating which bit positions in `val` to extract.
+ * @return A compacted bitboard containing only the extracted bits.
+ */
 constexpr uint64_t software_pext_u64(uint64_t val, uint64_t mask) {
     uint64_t result = 0;
     uint64_t bit_position = 0;
@@ -172,7 +187,12 @@ constexpr uint64_t software_pext_u64(uint64_t val, uint64_t mask) {
 struct Magic {
     Bitboard mask; ///< Relevant occupancy mask.
     int index;     ///< Starting index into the attack table.
-    /// @brief Invoke magic to compress occupancy bits (BMI2 path).
+    /**
+     * @brief Extracts relevant occupancy bits for magic bitboard indexing.
+     *
+     * @param b Occupancy bitboard.
+     * @return Compressed index into the magic attack table.
+     */
     constexpr Bitboard operator()(Bitboard b) const {
         if (is_constant_evaluated()) {
             return software_pext_u64(b, mask);
@@ -188,7 +208,11 @@ struct Magic {
     Bitboard magic; ///< Magic multiplier.
     size_t index;   ///< Starting index into the attack table.
     Bitboard shift; ///< Right-shift amount.
-    /// @brief Invoke magic to compute attack table index (multiply-and-shift path).
+    /**
+ * @brief Converts an occupancy pattern to an attack table index.
+ *
+ * @return Index for accessing the precomputed attack bitboard.
+ */
     constexpr Bitboard operator()(Bitboard b) const { return (((b & mask)) * magic) >> shift; }
 };
 #endif
@@ -244,6 +268,11 @@ _POSSIBLY_CONSTEXPR std::array<uint64_t, 64> BishopMagics = {
 /// @tparam IsBishop true for bishop, false for rook.
 /// @return Pair of (magic table, attack table).
 template <auto AttackFunc, size_t TableSize, bool IsBishop>
+/**
+ * @brief Generates magic bitboard tables for fast attack computation.
+ *
+ * @return A pair containing the Magic entry table (64 entries, one per square) and the corresponding precomputed attack bitboards table.
+ */
 _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, TableSize>> generate_magic_table() {
     std::array<Magic, 64> table{};
     std::array<Bitboard, TableSize> attacks{};
@@ -293,13 +322,24 @@ _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, 0x1900
 _POSSIBLY_CONSTEXPR std::array<Magic, 64> RookTable = rookData.first;
 _POSSIBLY_CONSTEXPR std::array<Bitboard, 0x19000> RookAttacks = rookData.second;
 
-/// @brief Look up bishop attacks from the precomputed magic table.
+/**
+ * @brief Returns the attack bitboard for a bishop on the given square.
+ *
+ * @param sq The square where the bishop is located.
+ * @param occupied The occupied squares that block the bishop's attack paths.
+ * @return Bitboard with bits set for each square the bishop attacks.
+ */
 [[nodiscard]] Bitboard bishop(Square sq, Bitboard occupied) {
     const auto &entry = BishopTable[(int)sq];
     return BishopAttacks[entry.index + entry(occupied)];
 }
 
-/// @brief Look up rook attacks from the precomputed magic table.
+/**
+ * @brief Look up rook attacks from the precomputed magic table.
+ * @param sq The square where the rook is located.
+ * @param occupied A bitboard representing occupied squares.
+ * @return A bitboard of squares the rook can attack.
+ */
 [[nodiscard]] Bitboard rook(Square sq, Bitboard occupied) {
     const auto &entry = RookTable[(int)sq];
     return RookAttacks[entry.index + entry(occupied)];

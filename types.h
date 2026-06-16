@@ -505,7 +505,17 @@ class Move {
                     (static_cast<int>(from) << 6) | static_cast<int>(to));
     }
 
-    /// @brief Origin square of the move.
+    /**
+     * @brief Origin square of the move.
+     */
+    
+    /**
+     * @brief Destination square of the move.
+     */
+    
+    /**
+     * @brief Origin square of the move.
+     */
     constexpr Square from_sq() const {
         assert(is_ok());
         return Square((data >> 6) & 0x3F);
@@ -530,7 +540,17 @@ class Move {
     /// @brief True if move is neither none() nor null().
     constexpr bool is_ok() const { return none().data != data && null().data != data; }
 
-    /// @brief Get the promotion piece type.
+    /**
+     * Determines the piece type this move promotes to.
+     * @returns The promotion piece type encoded in this move, in the range [KNIGHT, QUEEN].
+     */
+    ```
+    
+    /**
+     * Creates a null move sentinel used to pass without changing the board state.
+     * @returns A sentinel move with encoding 65.
+     */
+    ```
     constexpr PieceType promotion_type() const { return PieceType(((data >> 12) & 3) + KNIGHT); }
 
     /// @brief Null move sentinel (used to pass a move without changing board).
@@ -538,7 +558,10 @@ class Move {
     /// @brief No-move sentinel (represents absence of a move).
     static constexpr Move none() { return Move(0); }
 
-    /// @brief Equality comparison of moves.
+    /**
+ * Checks if two moves are equal.
+ * @returns `true` if the moves are equal, `false` otherwise.
+ */
     constexpr bool operator==(const Move &m) const { return data == m.data; }
     /// @brief Inequality comparison of moves.
     constexpr bool operator!=(const Move &m) const { return data != m.data; }
@@ -579,7 +602,13 @@ class Move {
 /// @brief Stack-allocated fixed-capacity vector.
 /// @tparam T Element type.
 /// @tparam MaxSize Maximum number of elements.
-template <typename T, std::size_t MaxSize> class ValueList {
+template <typename T, std::/// @param value The element to append.
+/// @returns The removed element.
+/// @brief Removes the last element without returning it.
+/// @returns The first element.
+/// @returns A pointer to the underlying array.
+/// @returns A pointer past the last element.
+size_t MaxSize> class ValueList {
     static_assert(MaxSize, "what are you doing with 0 items");
 
   public:
@@ -643,9 +672,14 @@ class CountOnlyList {
     }
     /// @brief No backing array for CountOnlyList; data() returns nullptr.
     inline Move *data() { return nullptr; }
-    /// @brief Begin iterator (nullptr for CountOnlyList).
+    /**
+ * @brief Provides no iteration support for count-only move lists.
+ * @returns `nullptr`.
+ */
     inline const Move *begin() const { return nullptr; }
-    /// @brief End iterator (nullptr for CountOnlyList).
+    /**
+ * Returns nullptr; CountOnlyList does not support iteration.
+ */
     inline const Move *end() const { return nullptr; }
     /// @brief Internal size counter.
     size_type size_ = 0;

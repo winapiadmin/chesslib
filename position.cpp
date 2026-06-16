@@ -250,6 +250,18 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
 /// @param chess960 Whether to interpret castling notation as Chess960.
 /// @param mode FEN parsing strictness mode.
 template <typename PieceC, typename T>
+/**
+ * @brief Loads a position from a FEN string.
+ *
+ * Parses and applies a FEN string to reset the position. The FEN must contain
+ * piece placement, side to move, castling rights, and en-passant target fields;
+ * halfmove and fullmove counters are optional and default to 0 and 1 respectively.
+ *
+ * @param str The FEN string to parse.
+ * @param chess960 Whether to parse Chess960 castling notation.
+ * @param mode The FEN parsing mode, controlling which castling notations are accepted.
+ * @return `true` if parsing succeeds, `false` otherwise.
+ */
 bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENParsingMode mode) {
     history.clear();
     rep_hashes_.clear();
@@ -959,7 +971,12 @@ template <typename PieceC, typename T> Square _Position<PieceC, T>::_valid_ep_sq
     return ep_square();
 }
 /// @brief Check if a given color has insufficient mating material.
-template <typename PieceC, typename T> bool _Position<PieceC, T>::is_insufficient_material() const {
+template <typename PieceC, typename T> /**
+ * @brief Determines whether the position has insufficient material to achieve checkmate.
+ *
+ * @return `true` if the position has insufficient mating material, `false` otherwise.
+ */
+bool _Position<PieceC, T>::is_insufficient_material() const {
     const auto count = popcount(occ());
 
     if (count <= 2)
