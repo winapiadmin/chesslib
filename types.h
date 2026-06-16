@@ -42,26 +42,34 @@
 #if defined(__GNUC__) || defined(__clang__)
 /// @def HOT
 /// @brief Marks a function as hot (frequently called).
-#define HOTFUNC __attribute__((hot))
+#define HOTFUNC [[gnu::hot]]
 /// @def COLD
 /// @brief Marks a function as cold (rarely called).
-#define COLDFUNC __attribute__((cold))
+#define COLDFUNC [[gnu::cold]]
 /// @def FLATTEN
 /// @brief Make subcalls forceinlined
-#define FLATTEN __attribute__((flatten))
+#define FLATTEN [[gnu::flatten]]
 /// @def FORCEINLINE
 /// @brief Make callers inline this function
-#define FORCEINLINE __attribute__((forceinline))
+#define FORCEINLINE inline __attribute__((always_inline))
+/// @def NO_SIDE_EFFECTS
+/// @brief Marks a function has no side effects
+#define NO_SIDE_EFFECTS [[gnu::const]]
 #else
 #define HOTFUNC
 #define COLDFUNC
 #define FLATTEN
+#define 
 #if defined(_MSC_VER)
 /// @def FORCEINLINE
 /// @brief Make callers inline this function
-#define FORCEINLINE __forceinline
+#define FORCEINLINE inline __forceinline
+/// @def NO_SIDE_EFFECTS
+/// @brief Make a function has no side effects
+#define NO_SIDE_EFFECTS __declspec(noalias)
 #else
 #define FORCEINLINE
+#define NO_SIDE_EFFECTS
 #endif
 #endif
 /// @def UNREACHABLE()
@@ -627,7 +635,7 @@ class ValueList {
     }
 
     /// @brief Indexed access. UB if index >= MaxSize.
-    inline T &operator[](int index) { return values_[index]; }
+    inline T &operator[](size_type index) { return values_[index]; }
 
     inline const T *begin() const { return values_; }
     inline T *data() { return values_; }
@@ -685,7 +693,7 @@ constexpr int square_distance(Square a, Square b) {
 /// @param sv e.g. "e4", "a1".
 /// @return Square, or SQ_NONE on parse failure.
 constexpr Square parse_square(std::string_view sv) {
-    if (sv.size() < 2)
+    if (sv.size() != 2)
         return SQ_NONE;
     char f = sv[0];
     char r = sv[1];
@@ -700,9 +708,10 @@ constexpr Square parse_square(std::string_view sv) {
 constexpr PieceType parse_pt(unsigned char c) {
     const char a[] = "pnbrqk";
     int p = -1;
+    // tolower
     if (c >= 'A' && c <= 'Z')
         c += 32;
-    for (size_t i = 0; i < sizeof(a); i++) {
+    for (int i = 0; i < static_cast<int>(sizeof(a)); i++) {
         if (c == a[i])
             p = i;
     }

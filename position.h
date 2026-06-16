@@ -551,7 +551,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     [[nodiscard]] inline Bitboard occ() const { return state().occ[0] | state().occ[1]; }
 
     /// @brief Piece on a square.
-    inline PieceC piece_on(Square s) const {
+    NO_SIDE_EFFECTS FORCEINLINE FLATTEN PieceC piece_on(Square s) const {
 #if defined(_CHESSLIB_ERROR_MODE_ASSERT)
         assert(chess::is_valid(s) && "sq is out-of-bounds");
 #elif defined(_CHESSLIB_ERROR_MODE_THROW)
