@@ -194,7 +194,7 @@ template <typename T,
  * @return The parsed `Move`, or `Move::none()` if parsing fails
                          or no legal move matches.
  */
-                      Move parseSan(const _Position<T, P> &pos, std::string_view raw_san, bool remove_illegals) {
+Move parseSan(const _Position<T, P> &pos, std::string_view raw_san, bool remove_illegals) {
     auto do_parse = [&](std::string_view input_san) -> Move {
         if (input_san.empty())
             return Move::none();

@@ -508,19 +508,13 @@ class Move {
     /**
      * @brief Origin square of the move.
      */
-
-    /**
-     * @brief Destination square of the move.
-     */
-
-    /**
-     * @brief Origin square of the move.
-     */
     constexpr Square from_sq() const {
         assert(is_ok());
         return Square((data >> 6) & 0x3F);
     }
-    /// @brief Destination square of the move.
+    /**
+     * @brief Destination square of the move.
+     */
     constexpr Square to_sq() const {
         assert(is_ok());
         return Square(data & 0x3F);
@@ -531,10 +525,8 @@ class Move {
     constexpr Square to() const { return to_sq(); }
 
     /// @brief Get the packed from|to field (lower 12 bits).
-    /// @brief Packed from|to field (lower 12 bits).
     constexpr int from_to() const { return data & 0xFFF; }
 
-    /// @brief Get the move type.
     /// @brief Get the move type (normal/promotion/en-passant/castling).
     constexpr MoveType type_of() const { return MoveType(data & (3 << 14)); }
     /// @brief True if move is neither none() nor null().
@@ -544,18 +536,12 @@ class Move {
      * Determines the piece type this move promotes to.
      * @returns The promotion piece type encoded in this move, in the range [KNIGHT, QUEEN].
      */
-    ```
+    PieceType promotion_type() const { return PieceType(((data >> 12) & 3) + KNIGHT); }
 
-        /**
-         * Creates a null move sentinel used to pass without changing the board state.
-         * @returns A sentinel move with encoding 65.
-         */
-    ``` constexpr PieceType
-    promotion_type() const {
-        return PieceType(((data >> 12) & 3) + KNIGHT);
-    }
-
-    /// @brief Null move sentinel (used to pass a move without changing board).
+    /**
+     * Creates a null move sentinel used to pass without changing the board state.
+     * @returns A sentinel move with encoding 65.
+     */
     static constexpr Move null() { return Move(65); }
     /// @brief No-move sentinel (represents absence of a move).
     static constexpr Move none() { return Move(0); }

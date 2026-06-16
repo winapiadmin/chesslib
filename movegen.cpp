@@ -42,8 +42,6 @@ const __m512i AllSquares = _mm512_set_epi8(
   17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
 // clang-format on
 
-/// @brief Convert a pawn destination bitboard into move objects for a given pawn push offset.
-/// @tparam offset Pawn move direction relative to the moving side.
 template <Direction offset> /**
                              * @brief Packs pawn destination squares into move objects.
                              *
@@ -156,8 +154,6 @@ inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
 #endif
 } // namespace _chess
 
-// Count-only dispatch helpers — splat_moves/splat_pawn_moves when storing is needed, no-op when counting.
-/// @brief Append moves for a source square to a move list or count them for statistics.
 template <typename ListT> /**
                            * @brief Appends moves from a source square to destination squares, or counts them.
                            *
@@ -181,8 +177,6 @@ inline void record_moves(ListT &list, Square from, Bitboard targets) {
     }
 }
 
-/// @brief Record promotion moves for each destination square in the given destination mask.
-/// @tparam offset Pawn push offset used to compute the origin square.
 template <Direction offset,
           typename ListT> /**
                            * @brief Records pawn promotion moves for each destination square.
@@ -210,9 +204,6 @@ inline void record_promotions(ListT &list, Bitboard dests) {
         UNREACHABLE();
     }
 }
-
-/// @brief Record pawn moves from a destination mask, translating them into move objects.
-/// @tparam offset Pawn push offset used to compute origins from destinations.
 template <Direction offset, typename ListT> /**
                                              * @brief Records or counts pawn moves from destination squares.
                                              *
@@ -313,7 +304,7 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
  * @param _bishop_pin Bitmask of pawns pinned along bishop lines (diagonal).
  * @param _check_mask Bitmask of squares that moves must target to be legal (check evasion).
  */
-</ function_to_document> HOTFUNC void movegen::genPawnSingleMoves(
+HOTFUNC void movegen::genPawnSingleMoves(
     const _Position<T, void> &pos, ListT &moves, Bitboard _rook_pin, Bitboard _bishop_pin, Bitboard _check_mask) {
     constexpr auto UP = relative_direction(c, NORTH);
     constexpr auto UP_LEFT = relative_direction(c, NORTH_WEST);

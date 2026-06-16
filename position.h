@@ -28,35 +28,7 @@
 #include <vector>
 
 /// @file position.h
-/**
- * Identify checkers and pins along a ray from the king.
- * @tparam RayDir The ray direction index.
- * @tparam FirstIncreases True if the ray direction increases square indices (north/east), false otherwise (south/west).
- * @param ksq The king's square.
- * @param occ_masked Occupancy bitboard containing only pieces on the ray.
- * @param slider_mask Bitboard of potential enemy sliders on this ray.
- * @param occ_us Occupancy bitboard of friendly pieces.
- * @param checkers Bitboard to accumulate checking pieces.
- * @param pin_bb Bitboard to accumulate pinned piece squares.
- */
-
 namespace chess {
-/**
- * @brief Identify checkers and pinned pieces along a ray from the king.
- * @tparam RayDir Direction index of the ray to scan.
- * @tparam FirstIncreases Whether the ray direction corresponds to increasing square indices (e.g. north/east) or decreasing
- * (south/west).
- * @param ksq King square.
- * @param occ_masked Occupancy bitboard masked to the ray.
- * @param slider_mask Bitboard of potential slider attackers (rooks for orthogonal rays, bishops for diagonal rays).
- * @param occ_us Occupancy bitboard of the defending side (used to detect pinned pieces).
- * @param checkers Output bitboard to accumulate discovered checkers.
- * @param pin_bb Output bitboard to accumulate discovered pinned pieces.
- * @details Scans along the ray to find the first occupied square. If it contains an enemy slider, marks it as a checker. If it
- * contains a friendly piece and a second enemy slider exists further along the ray, marks the intermediate squares as
- * containing a pinned piece.
- * @note Assumes occupancy bitboards have been masked to only include pieces on the relevant ray.
- */
 namespace attacks {
 
 /// @brief Scan for attacks along a ray and identify checkers and pins.
@@ -100,19 +72,15 @@ scan_attacks_ray(Square ksq, Bitboard occ_masked, Bitboard slider_mask, Bitboard
     }
 }
 } // namespace attacks
-/// @struct HistoryEntry
-/// @brief Saved position state for undo operations.
-/// @tparam Piece Piece-enum type.
-template <typename Piece>
-struct /**
-        * Stores complete and incremental position state for supporting undo operations.
-        *
-        * Captures all necessary board state including piece placement, per-color occupancy,
-        * game rules (castling, en-passant, move counters), and incremental undo information
-        * (changed squares and pieces). Cached attack masks are saved to avoid recomputation
-        * on undo.
-        */
-    alignas(64) HistoryEntry {
+/**
+ * Stores complete and incremental position state for supporting undo operations.
+ *
+ * Captures all necessary board state including piece placement, per-color occupancy,
+ * game rules (castling, en-passant, move counters), and incremental undo information
+ * (changed squares and pieces). Cached attack masks are saved to avoid recomputation
+ * on undo.
+ */
+template <typename Piece> struct alignas(64) HistoryEntry {
     Bitboard pieces[7]{};        ///< Bitboards per piece type.
     Bitboard occ[COLOR_NB]{};    ///< Occupancy per colour.
     Color turn = COLOR_NB;       ///< Side to move.
@@ -146,19 +114,6 @@ struct /**
 };
 
 /// @enum CheckType
-/**
- * Bitwise AND operation for MoveGenType flags.
- * @param a First operand.
- * @param b Second operand.
- * @return Result of bitwise AND.
- */
-
-/**
- * Bitwise OR operation for MoveGenType flags.
- * @param a First operand.
- * @param b Second operand.
- * @return Result of bitwise OR.
- */
 enum class CheckType { NO_CHECK, DIRECT_CHECK, DISCOVERY_CHECK };
 
 /// @enum FENParsingMode
@@ -198,7 +153,10 @@ enum class MoveGenType : uint16_t {
  * @param b Second operand.
  * @return Result of bitwise AND.
  */
-template <typename MoveGenType> constexpr MoveGenType operator&(MoveGenType a, MoveGenType b);
+template <typename MoveGenType> constexpr MoveGenType operator&(MoveGenType a, MoveGenType b) {
+    using U = std::underlying_type_t<MoveGenType>;
+    return static_cast<MoveGenType>(static_cast<U>(a) & static_cast<U>(b));
+}
 
 /**
  * @brief Bitwise OR operation for MoveGenType flags.
@@ -206,7 +164,10 @@ template <typename MoveGenType> constexpr MoveGenType operator&(MoveGenType a, M
  * @param b Second operand.
  * @return Result of bitwise OR.
  */
-template <typename MoveGenType> constexpr MoveGenType operator|(MoveGenType a, MoveGenType b);
+template <typename MoveGenType> constexpr MoveGenType operator|(MoveGenType a, MoveGenType b) {
+    using U = std::underlying_type_t<MoveGenType>;
+    return static_cast<MoveGenType>(static_cast<U>(a) | static_cast<U>(b));
+}
 
 /**
  * @class _Position
@@ -218,82 +179,6 @@ template <typename MoveGenType> constexpr MoveGenType operator|(MoveGenType a, M
  * standard chess and Chess960 variants.
  */
 
-/**
- * @brief Generates legal moves filtered by piece type and move category.
- * @tparam type Bitmask of MoveGenType flags for filtering.
- * @tparam c Color to move (WHITE or BLACK).
- * @tparam ListT Move-list container type (Movelist or CountOnlyList).
- * @param out Output move list to be populated.
- */
-template <MoveGenType type = MoveGenType::ALL, Color c, typename ListT = Movelist> void legals(ListT &out) const;
-
-/**
- * @brief Counts legal moves without storing them.
- * @tparam c Color to move.
- * @return Number of legal moves available.
- */
-template <Color c> inline uint64_t count_legals() const noexcept;
-
-/**
- * @brief Generates legal moves with runtime color dispatch.
- * @tparam type Bitmask of MoveGenType flags for filtering.
- * @tparam ListT Move-list container type.
- * @param out Output move list to be populated.
- */
-template <MoveGenType type = MoveGenType::ALL, typename ListT = Movelist> inline void legals(ListT &out) const;
-
-/**
- * @brief Executes a move and updates board state.
- * @tparam Strict If true, validates that the move is legal before execution.
- * @param move Move to execute.
- */
-template <bool Strict = true> void doMove(const Move &move);
-
-/**
- * @brief Snake-case wrapper for doMove().
- * @tparam Strict If true, validates move legality.
- * @param move Move to execute.
- */
-template <bool Strict = true> void do_move(const Move &move);
-
-/**
- * @brief Undoes the last move, restoring previous board state and cached attack data.
- * @tparam RetAll If true, returns the saved history entry; otherwise returns void.
- * @return Saved HistoryEntry if RetAll is true, otherwise void.
- */
-template <bool RetAll = false> inline auto undoMove() -> std::conditional_t<RetAll, HistoryEntry<PieceC>, void>;
-enum class MoveGenType : uint16_t {
-    NONE = 0,
-
-    PAWN = 1 << 1,
-    KNIGHT = 1 << 2,
-    BISHOP = 1 << 3,
-    ROOK = 1 << 4,
-    QUEEN = 1 << 5,
-    KING = 1 << 6,
-
-    PIECE_MASK = PAWN | KNIGHT | BISHOP | ROOK | QUEEN | KING,
-
-    CAPTURE = 1 << 7,
-    QUIET = 1 << 8,
-
-    ALL = PIECE_MASK | CAPTURE | QUIET
-};
-
-template <typename MoveGenType> constexpr MoveGenType operator&(MoveGenType a, MoveGenType b) {
-    using U = std::underlying_type_t<MoveGenType>;
-    return static_cast<MoveGenType>(static_cast<U>(a) & static_cast<U>(b));
-}
-
-template <typename MoveGenType> constexpr MoveGenType operator|(MoveGenType a, MoveGenType b) {
-    using U = std::underlying_type_t<MoveGenType>;
-    return static_cast<MoveGenType>(static_cast<U>(a) | static_cast<U>(b));
-}
-
-/// @class _Position
-/// @brief Templated chess position.
-/// @tparam PieceC Piece-enum type (EnginePiece, PolyglotPiece, or ContiguousMappingPiece).
-/// @tparam (unused) Position tag parameter.
 template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_enum<PieceC>::value>> class _Position {
   private:
     std::vector<HistoryEntry<PieceC>> history;
@@ -333,9 +218,6 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     /// @brief Default FEN stub used for Chess960 tests (special castling format HA/ha).
     static inline constexpr auto START_CHESS960_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w HAha - 0 1";
 
-    /// @brief Generate legal moves filtered by type.
-    /// @tparam type Bitmask of MoveGenType flags.
-    /// @tparam c Colour to move.
     /// @brief Generate legal moves filtered by type.
     /// @tparam type Bitmask of MoveGenType flags.
     /// @tparam c Colour to move.
@@ -715,14 +597,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     [[nodiscard]] inline Color side_to_move() const { return state().turn; }
     /// @brief Current en-passant target square, or SQ_NONE.
     [[nodiscard]] inline Square ep_square() const { return state().enPassant; }
-
-    /// @brief Get the square of a king.
-    template <PieceType pt> /**
-                             * Finds the lowest-indexed piece of the specified type for a given color.
-                             * @param c The color to query.
-                             * @returns The square of the lowest-indexed piece.
-                             */
-    [[nodiscard]] inline Square square(Color c) const {
+    /**
+     * Finds the lowest-indexed piece of the specified type for a given color.
+     * @param c The color to query.
+     * @returns The square of the lowest-indexed piece.
+     */
+    template <PieceType pt> [[nodiscard]] inline Square square(Color c) const {
         return static_cast<Square>(lsb(pieces<pt>(c)));
     }
     /**
@@ -736,19 +616,6 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      */
     [[nodiscard]] inline Square king_sq(Color c) const { return kingSq(c); }
 
-    /**
-     * @brief Bitboard of pieces giving check to the king of the side to move.
-     * @return Bitboard where each set bit represents a square containing an attacking piece.
-     */
-
-    /**
-     * @brief Combined bitboard of all pinned pieces and pin lines.
-     * @return Bitboard representing squares containing pinned pieces and the lines they are pinned along.
-     */
-
-    KEEP_EXISTING
-
-    KEEP_EXISTING
     [[nodiscard]] inline Bitboard checkers() const { return _checkers; }
 
     /// @brief Combined pin mask.
@@ -807,14 +674,13 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     /**
      * Castling rights bitmask for both colors.
      */
+    [[nodiscard]] inline CastlingRights castlingRights() const { return state().castlingRights; }
 
-    /**
-     * Whether a move is a castling move.
-     */
+    /// @brief Whether a move is a castling move.
+    [[nodiscard]] inline bool is_castling(Move mv) const { return mv.type_of() == CASTLING; }
 
-    /**
-     * Raw Zobrist hash.
-     */
+    /// @brief Raw Zobrist hash.
+    uint64_t zobrist() const;
 
     /**
      * Extract a property from a square.
@@ -827,15 +693,6 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      * @param sq The square to query.
      * @return The requested property at the square.
      */
-    [[nodiscard]] inline CastlingRights castlingRights() const { return state().castlingRights; }
-
-    /// @brief Whether a move is a castling move.
-    [[nodiscard]] inline bool is_castling(Move mv) const { return mv.type_of() == CASTLING; }
-
-    /// @brief Raw Zobrist hash.
-    uint64_t zobrist() const;
-
-    /// @brief Extract a property from a square.
     template <typename T = PieceC> inline T at(Square sq) const {
         if constexpr (std::is_same_v<T, PieceType>)
             return piece_of(piece_on(sq));

@@ -187,10 +187,10 @@ static_assert(make_sq(RANK_8, FILE_A) == SQ_A8, "incorrect indexing");
 static_assert(make_sq(RANK_1, FILE_H) == SQ_H1, "incorrect indexing");
 static_assert(file_of(SQ_H7) == FILE_H, "incorrect indexing");
 static_assert(rank_of(SQ_C3) == RANK_3, "incorrect indexing");
-#ifndef NDEBUG
-#define IS_RELEASE 0
-#else
+#if defined(NDEBUG)
 #define IS_RELEASE 1
+#else
+#define IS_RELEASE 0
 #endif
 struct perft_t {
     int depth;
@@ -542,8 +542,8 @@ TEST_CASE("Perfts" * doctest::timeout(36000)) {
     std::vector<TestEntry<std::string, perft_t>> tests = {
         {               "Q1Q2QQQ/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q1Q/pp1Q3Q/kBQQ1KQ1 w - - 0 1",  1,        240 },
         {               "Q1Q2QQQ/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q1Q/pp1Q3Q/kBQQ1KQ1 w - - 0 1",  2,          0 },
-        {               "Q1Q2QQQ/3Q4/1Q4Q1/4Q3/2Q4Q/Q4Q1Q/pp1Q3Q/kBQQ1KQ1 w - - 0 1",  2,          0 },
         {                     "QQQQQQQK/Q6Q/Q6Q/Q6Q/Q6Q/Q6Q/BR5Q/kBQQQQQQ w - - 0 1",  1,        271 },
+        {                     "QQQQQQQK/Q6Q/Q6Q/Q6Q/Q6Q/Q6Q/BR5Q/kBQQQQQQ w - - 0 1",  2,          0 },
         {                                            "5k2/8/8/8/3K4/8/8/8 w - - 0 1",  1,          8 },
         {                                            "5k2/8/8/8/3K4/8/8/8 w - - 0 1",  3,        310 },
         {                                            "5k2/8/8/8/3K4/8/8/8 w - - 0 1",  6,      95366 },
