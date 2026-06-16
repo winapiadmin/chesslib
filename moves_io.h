@@ -25,7 +25,17 @@
 #include <string_view>
 
 /// @file moves_io.h
-/// @brief UCI and SAN move conversion functions.
+/**
+ * Parse a SAN string into a Move for the given position.
+ * @tparam T Piece enum type.
+ * @tparam P Position tag.
+ * @param pos The position.
+ * @param san SAN string (e.g. "Nf3", "O-O").
+ * @param remove_illegals If true, return Move::NO_MOVE instead of throwing.
+ * @return The parsed Move.
+ * @throws IllegalMoveException if the SAN string represents an illegal move and remove_illegals is false.
+ * @throws AmbiguousMoveException if the SAN string is ambiguous.
+ */
 
 namespace chess::uci {
 
@@ -43,17 +53,30 @@ std::string squareToString(Square sq);
 /// @brief Exception thrown when a SAN string represents an illegal move.
 class IllegalMoveException : public std::exception {
   public:
+    /// @brief Construct with an explanatory message.
     IllegalMoveException(const std::string &message) : message_(message) {}
+    /**
+     * Provides the exception's message.
+     * @returns A C-string containing the exception message.
+     */
     const char *what() const noexcept override { return message_.c_str(); }
 
   private:
     std::string message_;
 };
 
-/// @brief Exception thrown when a SAN string is ambiguous.
+/**
+ * @brief Create an exception for an ambiguous SAN move.
+ * @param message The exception message.
+ */
 class AmbiguousMoveException : public std::exception {
   public:
+    /// @brief Construct ambiguous-move exception with message.
     AmbiguousMoveException(const std::string &message) : message_(message) {}
+    /**
+     * Provides the exception's message.
+     * @returns A C-string containing the exception message.
+     */
     const char *what() const noexcept override { return message_.c_str(); }
 
   private:

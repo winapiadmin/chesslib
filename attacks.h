@@ -114,51 +114,6 @@ constexpr Bitboard MASK_FILE[8] = {
     0x101010101010101,  0x202020202020202,  0x404040404040404,  0x808080808080808,
     0x1010101010101010, 0x2020202020202020, 0x4040404040404040, 0x8080808080808080,
 };
-
-#ifdef __BMI2__
-/// @brief Software fallback for the PEXT instruction.
-/// @details Used during constant evaluation when BMI2 is unavailable.
-/// @param val The value to compress.
-/// @param mask The bit mask.
-/// @return Compressed bits.
-constexpr uint64_t software_pext_u64(uint64_t val, uint64_t mask) {
-    uint64_t result = 0;
-    uint64_t bit_position = 0;
-
-    for (uint64_t bit = 1; bit != 0; bit <<= 1) {
-        if (mask & bit) {
-            if (val & bit) {
-                result |= 1ULL << bit_position;
-            }
-            ++bit_position;
-        }
-    }
-    return result;
-}
-
-/// @brief Magic structure for PEXT-based magic bitboards (BMI2 path).
-struct Magic {
-    Bitboard mask; ///< Relevant occupancy mask.
-    int index;     ///< Starting index into the attack table.
-    constexpr Bitboard operator()(Bitboard b) const {
-        if (is_constant_evaluated()) {
-            return software_pext_u64(b, mask);
-        } else {
-            return _pext_u64(b, mask);
-        }
-    }
-};
-#else
-/// @brief Magic structure for classical (multiply-and-shift) magic bitboards.
-struct Magic {
-    Bitboard mask;  ///< Relevant occupancy mask.
-    Bitboard magic; ///< Magic multiplier.
-    size_t index;   ///< Starting index into the attack table.
-    Bitboard shift; ///< Right-shift amount.
-    constexpr Bitboard operator()(Bitboard b) const { return (((b & mask)) * magic) >> shift; }
-};
-#endif
-
 } // namespace chess::attacks
 namespace chess::attacks {
 
@@ -302,7 +257,13 @@ template <Color c> [[nodiscard]] constexpr Bitboard pawn(const Bitboard pawns) {
 /// @param sq Square.
 /// @param occupied Occupancy bitboard.
 /// @return Bitboard of squares attacked.
-template <PieceType pt> [[nodiscard]] inline Bitboard slider(Square sq, Bitboard occupied) {
+template <PieceType pt> /**
+                         * Computes attack squares for a slider piece.
+                         * @param sq Square the piece occupies.
+                         * @param occupied Squares currently occupied on the board.
+                         * @return Bitboard of squares attacked by the piece.
+                         */
+[[nodiscard]] inline Bitboard slider(Square sq, Bitboard occupied) {
     static_assert(pt == PieceType::BISHOP || pt == PieceType::ROOK || pt == PieceType::QUEEN, "PieceType must be a slider!");
 
     if constexpr (pt == PieceType::BISHOP)
@@ -312,5 +273,11 @@ template <PieceType pt> [[nodiscard]] inline Bitboard slider(Square sq, Bitboard
     if constexpr (pt == PieceType::QUEEN)
         return queen(sq, occupied);
 }
+
+// Ray direction indices for precomputed ray bitboards
+enum RayDir : int { RD_NORTH = 0, RD_SOUTH = 1, RD_EAST = 2, RD_WEST = 3, RD_NE = 4, RD_NW = 5, RD_SE = 6, RD_SW = 7 };
+
+/// @brief Precomputed rays from each square in 8 directions.
+extern const std::array<std::array<Bitboard, 64>, 8> RAYS;
 
 } // namespace chess::attacks

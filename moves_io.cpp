@@ -171,7 +171,30 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
     return move;
 }
 /// @brief Parse a SAN (Standard Algebraic Notation) move string.
-template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std::string_view raw_san, bool remove_illegals) {
+template <typename T,
+          typename P> /**
+ * @brief Parses a SAN move string into a Move, validating against legal moves.
+ *
+ * Handles castling
+                         notations (`O-O`, `0-0`, `O-O-O`, `0-0-0`), check/checkmate suffixes,
+ * promotions (`c8=Q` or `c8Q`),
+                         and disambiguates moves using piece letters, file/rank hints,
+ * or full source squares (LAN
+                         notation).
+ *
+ * @param pos The position context for validating legality and resolving ambiguity.
+ *
+                         @param raw_san The SAN move string to parse (e.g., "e4", "Nf3", "exd5", "e8=Q+").
+ * @param
+                         remove_illegals If `true`, progressively removes trailing characters from the input
+ * until a legal
+                         move is found or the string is empty; if `false`,
+ *                        parses the full string and
+                         returns `Move::none()` on any error.
+ * @return The parsed `Move`, or `Move::none()` if parsing fails
+                         or no legal move matches.
+ */
+Move parseSan(const _Position<T, P> &pos, std::string_view raw_san, bool remove_illegals) {
     auto do_parse = [&](std::string_view input_san) -> Move {
         if (input_san.empty())
             return Move::none();
@@ -328,7 +351,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
         // 9) Build candidate filter and scan legal moves
         Move matched = Move::null();
         bool found = false;
-        Bitboard to_mask = (1ULL << to_square) & ~pos.occ(pos.side_to_move()); // mask excluding own pieces on destination
+        // Bitboard to_mask = (1ULL << to_square) & ~pos.occ(pos.side_to_move()); // mask excluding own pieces on destination
 
         // If pawn and no disambiguation file, restrict pawns to dest file (avoid ambiguous pawn non-file forms)
         // This matches python-chess behavior described earlier.

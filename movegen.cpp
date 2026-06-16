@@ -33,7 +33,7 @@ namespace chess {
 
 namespace _chess {
 
-#if defined(USE_AVX512ICL)
+#if defined(__AVX512F__) && defined(__AVX512VNNI__) && defined(__AVX512VBMI2__)
 
 // clang-format off
 const __m512i AllSquares = _mm512_set_epi8(
@@ -42,7 +42,15 @@ const __m512i AllSquares = _mm512_set_epi8(
   17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
 // clang-format on
 
-template <Direction offset> inline Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
+template <Direction offset> /**
+                             * @brief Packs pawn destination squares into move objects.
+                             *
+                             * @tparam offset Direction offset from destination to origin squares.
+                             * @param moveList Output buffer where move objects are written.
+                             * @param to_bb Bitboard of destination squares (at most 8 bits set).
+                             * @return Pointer advanced by popcount(to_bb).
+                             */
+inline Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
     assert(popcount(to_bb) <= 8); // <= 8 pawns per side
 
     const __m128i toSquares = _mm_cvtepi8_epi16(_mm512_castsi512_si128(_mm512_maskz_compress_epi8(to_bb, AllSquares)));
@@ -53,12 +61,20 @@ template <Direction offset> inline Move *splat_pawn_moves(Move *moveList, Bitboa
     return moveList + popcount(to_bb);
 }
 
+/**
+ * @brief Convert a destination bitboard into move objects from a fixed source square.
+ *
+ * @param moveList Output array where moves are stored.
+ * @param from Source square for all moves.
+ * @param to_bb Bitboard of destination squares (popcount must not exceed 32).
+ * @return Pointer advanced by the number of moves written.
+ */
 inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
     assert(popcount(to_bb) <= 32); // Q can attack up to 27 squares
 
     const __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
     const __m512i toSquares = _mm512_cvtepi8_epi16(_mm512_castsi512_si256(_mm512_maskz_compress_epi8(to_bb, AllSquares)));
-    const __m512i moves = _mm512_or_si512(fromVec, _mm512_slli_epi16(toSquares, Move::ToSqShift));
+    const __m512i moves = _mm512_or_si512(fromVec, _mm512_slli_epi16(toSquares, 0));
 
     _mm512_storeu_si512(moveList, moves);
     return moveList + popcount(to_bb);
@@ -80,6 +96,17 @@ template <int Offset = 0> struct alignas(64) SplatTable {
 constexpr SplatTable<> SPLAT_TABLE{};
 template <int Offset> constexpr SplatTable<Offset> SPLAT_PAWN_TABLE{};
 // AVX-512 (32 lanes of uint16_t)
+/**
+ * @brief Compresses and stores selected moves from a vectorized batch.
+ *
+ * Stores only the moves from the vector at positions indicated by the mask,
+ * compressing them into the output buffer and advancing the output pointer.
+ *
+ * @param moveList Output buffer for move storage.
+ * @param mask Bitmask indicating which vector lanes contain valid moves.
+ * @param vector 512-bit vector of move data in 16-bit lanes.
+ * @return Pointer to the next available position in the output buffer.
+ */
 static inline Move *write_moves(Move *moveList, uint32_t mask, __m512i vector) {
     // Avoid _mm512_mask_compressstoreu_epi16() as it's 256 uOps on Zen4
     _mm512_storeu_si512(reinterpret_cast<__m512i *>(moveList), _mm512_maskz_compress_epi16(mask, vector));
@@ -127,20 +154,80 @@ inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
 #endif
 } // namespace _chess
 
-// Count-only dispatch helpers — splat_moves/splat_pawn_moves when storing is needed, no-op when counting.
-template <typename ListT> inline void record_moves(ListT &list, Square from, Bitboard targets) {
+template <typename ListT> /**
+                           * @brief Appends moves from a source square to destination squares, or counts them.
+                           *
+                           * For Movelist, generates and stores all moves efficiently. For CountOnlyList,
+                           * only increments the count. For other list types, appends placeholder moves.
+                           *
+                           * @param from Source square for all moves.
+                           * @param targets Bitboard of destination squares.
+                           */
+inline void record_moves(ListT &list, Square from, Bitboard targets) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
         _chess::splat_moves(list.data() + list.size_, from, targets);
+        list.size_ += popcount(targets);
+    } else if constexpr (std::is_same_v<ListT, CountOnlyList>) {
+        list.size_ += popcount(targets);
+    } else {
+        while (targets) {
+            list.push_back(Move::none());
+            pop_lsb(targets);
+        }
     }
 }
-template <Direction offset, typename ListT> inline void record_pawn_moves(ListT &list, Bitboard targets) {
+
+template <Direction offset,
+          typename ListT> /**
+                           * @brief Records pawn promotion moves for each destination square.
+                           *
+                           * For each destination in `dests`, records four promotion moves: knight, bishop, rook, and queen.
+                           * The source square is computed by subtracting the `offset` template parameter from the destination.
+                           *
+                           * @param list Move list to accumulate promotions, or a count-only list.
+                           * @param dests Bitboard of destination squares where pawns promote.
+                           */
+inline void record_promotions(ListT &list, Bitboard dests) {
+    if constexpr (std::is_same_v<ListT, Movelist>) {
+        while (dests) {
+            Square to = static_cast<Square>(pop_lsb(dests));
+            Square from = static_cast<Square>(to - offset);
+            list[list.size_] = Move::make<PROMOTION>(from, to, KNIGHT);
+            list[list.size_ + 1] = Move::make<PROMOTION>(from, to, BISHOP);
+            list[list.size_ + 2] = Move::make<PROMOTION>(from, to, ROOK);
+            list[list.size_ + 3] = Move::make<PROMOTION>(from, to, QUEEN);
+            list.size_ += 4;
+        }
+    } else if constexpr (std::is_same_v<ListT, CountOnlyList>) {
+        list.size_ += 4 * popcount(dests);
+    } else {
+        UNREACHABLE();
+    }
+}
+template <Direction offset, typename ListT> /**
+                                             * @brief Records or counts pawn moves from destination squares.
+                                             *
+                                             * For `Movelist`, stores pawn moves with origin squares derived from the
+                                             * destinations via the compile-time `offset` parameter. For `CountOnlyList`,
+                                             * increments the move counter without storing moves.
+                                             */
+inline void record_pawn_moves(ListT &list, Bitboard targets) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
         _chess::splat_pawn_moves<offset>(list.data() + list.size_, targets);
+        list.size_ += popcount(targets);
+    } else if constexpr (std::is_same_v<ListT, CountOnlyList>) {
+        // CountOnlyList doesn't store moves; just increase the counter.
+        list.size_ += popcount(targets);
+    } else {
+        UNREACHABLE();
     }
 }
 } // namespace chess
 namespace chess {
-template <typename T, Color c, typename ListT> [[gnu::hot]] void movegen::genEP(const _Position<T, void> &pos, ListT &mv) {
+template <typename T, Color c, typename ListT> /**
+                                                * @brief Generates all legal en passant captures for the moving side.
+                                                */
+HOTFUNC void movegen::genEP(const _Position<T, void> &pos, ListT &mv) {
 
     const Square king_sq = pos.king_sq(c);
     const Square ep_sq = pos.ep_square();
@@ -153,7 +240,6 @@ template <typename T, Color c, typename ListT> [[gnu::hot]] void movegen::genEP(
 
     const Square ep_pawn_sq = ep_sq - pawn_push(c);
     const Bitboard ep_mask = (1ULL << ep_pawn_sq) | (1ULL << ep_sq);
-    // ASSUME(popcount(candidates) <= 32);
 
     Bitboard occ_all = pos.occ();
     while (candidates) {
@@ -173,8 +259,12 @@ template <typename T, Color c, typename ListT> [[gnu::hot]] void movegen::genEP(
     }
 }
 template <typename T, Color c, typename ListT>
-[[gnu::hot]] void
-movegen::genPawnDoubleMoves(const _Position<T, void> &pos, ListT &moves, Bitboard pin_mask, Bitboard check_mask) {
+/**
+ * @brief Generates pawn double-step pushes from the starting rank.
+ *
+ * Respects pin constraints and check evasion requirements.
+ */
+HOTFUNC void movegen::genPawnDoubleMoves(const _Position<T, void> &pos, ListT &moves, Bitboard pin_mask, Bitboard check_mask) {
     constexpr Bitboard RANK_2 = (c == WHITE) ? attacks::MASK_RANK[1] : attacks::MASK_RANK[6];
     constexpr Direction UP = pawn_push(c);
 
@@ -198,10 +288,23 @@ movegen::genPawnDoubleMoves(const _Position<T, void> &pos, ListT &moves, Bitboar
     Bitboard destinations = (step2_unpinned | step2_pinned) & check_mask;
 
     record_pawn_moves<2 * UP>(moves, destinations);
-    moves.size_ += popcount(destinations);
 }
 template <typename T, Color c, bool capturesOnly, typename ListT>
-[[gnu::hot]] void movegen::genPawnSingleMoves(
+/**
+ * @brief Generates pawn single-step pushes and captures, including promotions, while respecting pin and check constraints.
+ *
+ * Generates all legal single-square pawn moves in the forward direction and diagonal captures.
+ * Handles promotions when pawns reach the promotion rank. Respects piece pinning constraints
+ * (rook and bishop pins) and check evasion mask filtering. For `capturesOnly` mode, omits
+ * non-capturing forward moves.
+ *
+ * @param pos The position to generate moves from.
+ * @param moves The move list to append generated moves to.
+ * @param _rook_pin Bitmask of pawns pinned along rook lines (vertical/horizontal).
+ * @param _bishop_pin Bitmask of pawns pinned along bishop lines (diagonal).
+ * @param _check_mask Bitmask of squares that moves must target to be legal (check evasion).
+ */
+HOTFUNC void movegen::genPawnSingleMoves(
     const _Position<T, void> &pos, ListT &moves, Bitboard _rook_pin, Bitboard _bishop_pin, Bitboard _check_mask) {
     constexpr auto UP = relative_direction(c, NORTH);
     constexpr auto UP_LEFT = relative_direction(c, NORTH_WEST);
@@ -240,36 +343,11 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
         Bitboard promo_push = single_push & RANK_PROMO;
 
         if constexpr (!capturesOnly) {
-            while (promo_push) {
-                Square to = static_cast<Square>(pop_lsb(promo_push));
-                Square from = static_cast<Square>(to - UP);
-                moves[moves.size_] = Move::make<PROMOTION>(from, to, KNIGHT);
-                moves[moves.size_ + 1] = Move::make<PROMOTION>(from, to, BISHOP);
-                moves[moves.size_ + 2] = Move::make<PROMOTION>(from, to, ROOK);
-                moves[moves.size_ + 3] = Move::make<PROMOTION>(from, to, QUEEN);
-                moves.size_ += 4;
-            }
+            record_promotions<UP>(moves, promo_push);
         }
 
-        while (promo_left) {
-            Square to = static_cast<Square>(pop_lsb(promo_left));
-            Square from = static_cast<Square>(to - UP_LEFT); // correct
-            moves[moves.size_] = Move::make<PROMOTION>(from, to, KNIGHT);
-            moves[moves.size_ + 1] = Move::make<PROMOTION>(from, to, BISHOP);
-            moves[moves.size_ + 2] = Move::make<PROMOTION>(from, to, ROOK);
-            moves[moves.size_ + 3] = Move::make<PROMOTION>(from, to, QUEEN);
-            moves.size_ += 4;
-        }
-
-        while (promo_right) {
-            Square to = static_cast<Square>(pop_lsb(promo_right));
-            Square from = static_cast<Square>(to - UP_RIGHT); // correct
-            moves[moves.size_] = Move::make<PROMOTION>(from, to, KNIGHT);
-            moves[moves.size_ + 1] = Move::make<PROMOTION>(from, to, BISHOP);
-            moves[moves.size_ + 2] = Move::make<PROMOTION>(from, to, ROOK);
-            moves[moves.size_ + 3] = Move::make<PROMOTION>(from, to, QUEEN);
-            moves.size_ += 4;
-        }
+        record_promotions<UP_LEFT>(moves, promo_left);
+        record_promotions<UP_RIGHT>(moves, promo_right);
     }
 
     single_push &= ~RANK_PROMO;
@@ -277,16 +355,21 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
     r_pawns &= ~RANK_PROMO;
     if constexpr (!capturesOnly) {
         record_pawn_moves<UP>(moves, single_push);
-        moves.size_ += popcount(single_push);
     }
     record_pawn_moves<UP_LEFT>(moves, l_pawns);
-    moves.size_ += popcount(l_pawns);
     record_pawn_moves<UP_RIGHT>(moves, r_pawns);
-    moves.size_ += popcount(r_pawns);
 }
 template <typename T, Color c, bool capturesOnly, typename ListT>
-[[gnu::hot]] void
-movegen::genKnightMoves(const _Position<T, void> &pos, ListT &list, Bitboard _pin_mask, Bitboard _check_mask) {
+/**
+ * @brief Generates legal knight moves for the given color.
+ *
+ * Generates all knight moves subject to pin and check constraints.
+ * If `capturesOnly` is true, restricts to capture moves only.
+ *
+ * @param _pin_mask Bitboard of pinned pieces; pinned knights are excluded.
+ * @param _check_mask Bitboard indicating squares that resolve checks.
+ */
+HOTFUNC void movegen::genKnightMoves(const _Position<T, void> &pos, ListT &list, Bitboard _pin_mask, Bitboard _check_mask) {
     Bitboard knights = pos.template pieces<KNIGHT, c>() & ~_pin_mask;
     while (knights) {
         Square x = static_cast<Square>(pop_lsb(knights));
@@ -295,11 +378,21 @@ movegen::genKnightMoves(const _Position<T, void> &pos, ListT &list, Bitboard _pi
         if constexpr (capturesOnly)
             moves &= pos.occ(~c);
         record_moves(list, x, moves);
-        list.size_ += popcount(moves);
     }
 }
 template <typename T, Color c, bool capturesOnly, typename ListT>
-[[gnu::hot]] void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bitboard _pin_mask) {
+/**
+ * @brief Generates legal king moves and castling.
+ *
+ * Computes all legal king destination squares by excluding occupied friendly squares and squares attacked by enemy pieces.
+ * When `capturesOnly` is true, only captures are generated. Otherwise, also generates castling moves if the king is not in
+ * check, the castling path is unobstructed, and all squares the king passes through are not under attack.
+ *
+ * @param pos The position.
+ * @param out The move list to record moves into.
+ * @param _pin_mask Bitboard of pinned pieces; used to filter illegal castling moves.
+ */
+HOTFUNC void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bitboard _pin_mask) {
     constexpr Color them = ~c;
     const Square kingSq = pos.king_sq(c);
     const Bitboard myOcc = pos.occ(c);
@@ -307,8 +400,7 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
 
     if constexpr (capturesOnly) {
         Bitboard targets = attacks::king(kingSq) & occ_opp;
-        if (!targets) {
-            out.size_ += 0;
+        if (UNLIKELY(!targets)) {
             return;
         }
     }
@@ -338,9 +430,8 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
     if constexpr (capturesOnly)
         moves &= occ_opp;
     record_moves(out, kingSq, moves);
-    out.size_ += popcount(moves);
     if constexpr (!capturesOnly) {
-        if (pos.checkers())
+        if (UNLIKELY(pos.checkers()))
             return;
 
         Bitboard occupancy = pos.occ();
@@ -364,7 +455,18 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
     }
 }
 template <typename T, Color c, PieceType pt, bool capturesOnly, typename ListT>
-[[gnu::hot]] void movegen::genSlidingMoves(
+/**
+ * @brief Generates legal moves for sliding pieces (bishop, rook, or queen).
+ *
+ * Computes all valid destination squares for each sliding piece on the board, applying pin
+ * constraints and check restrictions. Pieces pinned along rook lines are confined to those lines;
+ * pieces pinned along bishop lines are confined to those diagonals.
+ *
+ * @param _rook_pin Bitboard of squares pinned along rook lines (vertical/horizontal).
+ * @param _bishop_pin Bitboard of squares pinned along bishop lines (diagonals).
+ * @param _check_mask Bitboard of legal destination squares when in check.
+ */
+HOTFUNC void movegen::genSlidingMoves(
     const _Position<T, void> &pos, ListT &moves, Bitboard _rook_pin, Bitboard _bishop_pin, Bitboard _check_mask) {
     static_assert(pt == BISHOP || pt == ROOK || pt == QUEEN, "Sliding pieces only.");
     Bitboard sliders = pos.template pieces<pt, c>();
@@ -387,21 +489,25 @@ template <typename T, Color c, PieceType pt, bool capturesOnly, typename ListT>
 
         Bitboard filtered_pin = pin_mask & filter_list;
         Bitboard targets;
+        // Choose attack function without std::function to avoid indirect call overhead.
+        decltype(&attacks::rook) func;
         if (rook_hit) {
-            targets = attacks::rook(from, occ_all) & filtered_pin;
+            func = attacks::rook;
         } else if (bishop_hit) {
-            targets = attacks::bishop(from, occ_all) & filtered_pin;
-        } else if constexpr (pt == BISHOP) {
-            targets = attacks::bishop(from, occ_all) & filtered_pin;
-        } else if constexpr (pt == ROOK) {
-            targets = attacks::rook(from, occ_all) & filtered_pin;
+            func = attacks::bishop;
         } else {
-            targets = attacks::queen(from, occ_all) & filtered_pin;
+            if constexpr (pt == BISHOP) {
+                func = attacks::bishop;
+            } else if constexpr (pt == ROOK) {
+                func = attacks::rook;
+            } else {
+                func = attacks::queen;
+            }
         }
+        targets = func(from, occ_all) & filtered_pin;
         if constexpr (capturesOnly)
             targets &= occ_opp;
         record_moves(moves, from, targets);
-        moves.size_ += popcount(targets);
     }
 }
 #define INSTANTIATE(PieceC, ListT)                                                                                             \

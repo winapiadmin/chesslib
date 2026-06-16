@@ -88,7 +88,13 @@ std::ostream &operator<<(std::ostream &os, const PieceType c) {
     };
     return os << pieces.at(c);
 }
-/// @brief Print CastlingRights as "KkQq" style string.
+/**
+ * @brief Prints the castling rights as a human-readable string.
+ *
+ * @param os The output stream.
+ * @param cr The castling rights value.
+ * @return std::ostream& The output stream.
+ */
 std::ostream &operator<<(std::ostream &os, const CastlingRights cr) {
     DescriptiveNameNotation<CastlingRights> castlingFlags = {
         {                      NO_CASTLING,                      "NO_CASTLING" },
@@ -110,10 +116,6 @@ std::ostream &operator<<(std::ostream &os, const CastlingRights cr) {
     };
 
     return os << castlingFlags.at(cr);
-}
-static std::string str_toupper(std::string s) {
-    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::toupper(c); });
-    return s;
 }
 /// @brief Print a Square as algebraic notation (e.g. "e2").
 std::ostream &operator<<(std::ostream &os, const Square sq) { return os << uci::squareToString(sq); }

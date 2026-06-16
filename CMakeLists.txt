@@ -58,6 +58,11 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 target_compile_definitions(chesslib PUBLIC _CHESSLIB_ERROR_MODE_${CHESSLIB_ERROR_MODE})
+target_compile_definitions(chesslib INTERFACE
+    "$<$<CONFIG:Release>:NDEBUG>"
+    "$<$<CONFIG:RelWithDebInfo>:NDEBUG>"
+    "$<$<CONFIG:MinSizeRel>:NDEBUG>"
+)
 # --- Enable CTest integration ---
 include(CTest)
 
