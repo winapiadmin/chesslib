@@ -2,7 +2,7 @@
 PROJECT_NAME           = "chesslib"
 OUTPUT_DIRECTORY       = doc
 INPUT                  = .
-RECURSIVE              = YES
+RECURSIVE              = NO
 EXTRACT_ALL            = YES
 EXTRACT_PRIVATE        = YES
 GENERATE_HTML          = YES

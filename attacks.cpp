@@ -326,9 +326,9 @@ _POSSIBLY_CONSTEXPR std::array<Bitboard, 0x19000> RookAttacks = rookData.second;
 /**
  * @brief Returns the attack bitboard for a bishop on the given square.
  *
- * @param sq The square where the bishop is located.
- * @param occupied The occupied squares that block the bishop's attack paths.
- * @return Bitboard with bits set for each square the bishop attacks.
+ * @param sq Bishop square.
+ * @param occupied Occupancy bitboard.
+ * @return Bitboard of squares attacked.
  */
 [[nodiscard]] Bitboard bishop(Square sq, Bitboard occupied) {
     const auto &entry = BishopTable[(int)sq];
@@ -337,9 +337,9 @@ _POSSIBLY_CONSTEXPR std::array<Bitboard, 0x19000> RookAttacks = rookData.second;
 
 /**
  * @brief Look up rook attacks from the precomputed magic table.
- * @param sq The square where the rook is located.
- * @param occupied A bitboard representing occupied squares.
- * @return A bitboard of squares the rook can attack.
+ * @param sq Rook square.
+ * @param occupied Occupancy bitboard.
+ * @return Bitboard of squares attacked.
  */
 [[nodiscard]] Bitboard rook(Square sq, Bitboard occupied) {
     const auto &entry = RookTable[(int)sq];

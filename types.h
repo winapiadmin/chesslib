@@ -597,15 +597,7 @@ class Move {
 /// @brief Stack-allocated fixed-capacity vector.
 /// @tparam T Element type.
 /// @tparam MaxSize Maximum number of elements.
-template <typename T,
-          std:: /// @param value The element to append.
-          /// @returns The removed element.
-          /// @brief Removes the last element without returning it.
-          /// @returns The first element.
-          /// @returns A pointer to the underlying array.
-          /// @returns A pointer past the last element.
-          size_t MaxSize>
-class ValueList {
+template <typename T, std::size_t MaxSize> class ValueList {
     static_assert(MaxSize, "what are you doing with 0 items");
 
   public:
@@ -652,7 +644,6 @@ using Movelist = ValueList<Move, 300>;
 
 /// @brief Counting-only move list — same interface as Movelist but discards move data.
 class CountOnlyList {
-  public:
   public:
     /// @brief Size type for CountOnlyList.
     using size_type = std::size_t;

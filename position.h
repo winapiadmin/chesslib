@@ -18,7 +18,6 @@
 */
 #pragma once
 #include "attacks.h"
-#include "bitboard.h"
 #include "movegen.h"
 #include "types.h"
 #include "zobrist.h"
@@ -49,7 +48,6 @@ namespace attacks {
 /// @note This function assumes that the occupancy bitboards have already been masked to only include pieces on the relevant
 /// ray, which allows it to use simple bit operations to find the first blocker and potential attackers without needing to
 /// iterate over squares.
-/// @return nothing (modified via refs)
 template <int RayDir, bool FirstIncreases>
 inline void
 scan_attacks_ray(Square ksq, Bitboard occ_masked, Bitboard slider_mask, Bitboard occ_us, Bitboard &checkers, Bitboard &pin_bb) {
@@ -466,6 +464,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /**
      * Determines if a square is attacked by a specified color.
+     * @param sq Square to check
+     * @param by Color attacking the square.
      * @param occupied The occupancy bitboard defining blocking positions for sliding pieces.
      * @returns true if the square is attacked by the specified color, false otherwise.
      */

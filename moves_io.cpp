@@ -170,31 +170,14 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
     }
     return move;
 }
-/// @brief Parse a SAN (Standard Algebraic Notation) move string.
-template <typename T,
-          typename P> /**
- * @brief Parses a SAN move string into a Move, validating against legal moves.
- *
- * Handles castling
-                         notations (`O-O`, `0-0`, `O-O-O`, `0-0-0`), check/checkmate suffixes,
- * promotions (`c8=Q` or `c8Q`),
-                         and disambiguates moves using piece letters, file/rank hints,
- * or full source squares (LAN
-                         notation).
- *
- * @param pos The position context for validating legality and resolving ambiguity.
- *
-                         @param raw_san The SAN move string to parse (e.g., "e4", "Nf3", "exd5", "e8=Q+").
- * @param
-                         remove_illegals If `true`, progressively removes trailing characters from the input
- * until a legal
-                         move is found or the string is empty; if `false`,
- *                        parses the full string and
-                         returns `Move::none()` on any error.
- * @return The parsed `Move`, or `Move::none()` if parsing fails
-                         or no legal move matches.
- */
-Move parseSan(const _Position<T, P> &pos, std::string_view raw_san, bool remove_illegals) {
+/// @brief Parse a SAN string into a Move for the given position.
+/// @tparam T Piece enum type.
+/// @tparam P Position tag.
+/// @param pos The position.
+/// @param san SAN string (e.g. "Nf3", "O-O").
+/// @param remove_illegals If true, return Move::NO_MOVE instead of throwing.
+/// @return The parsed Move.
+template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std::string_view san, bool remove_illegals) {
     auto do_parse = [&](std::string_view input_san) -> Move {
         if (input_san.empty())
             return Move::none();
@@ -202,7 +185,7 @@ Move parseSan(const _Position<T, P> &pos, std::string_view raw_san, bool remove_
         pos.legals(moves);
 
         // Make a local mutable copy we can trim safely.
-        std::string san(input_san), _san(raw_san);
+        std::string san(input_san), _san(san);
 
         // 1) Castling shortcuts
         if (san == "O-O" || san == "0-0" || san == "O-O+" || san == "0-0+" || san == "O-O#" || san == "0-0#") {
@@ -421,18 +404,17 @@ Move parseSan(const _Position<T, P> &pos, std::string_view raw_san, bool remove_
     };
 
     if (remove_illegals) {
-        std::string trimmed_san(raw_san);
+        std::string trimmed_san(san);
         while (!trimmed_san.empty()) {
             Move attempt = do_parse(trimmed_san);
             if (attempt.is_ok())
                 return attempt;
             trimmed_san.pop_back();
         }
-        INVALID_ARG_IF(trimmed_san.empty(),
-                       IllegalMoveException("illegal san: '" + std::string(raw_san) + "' in " + pos.fen()));
+        INVALID_ARG_IF(trimmed_san.empty(), IllegalMoveException("illegal san: '" + std::string(san) + "' in " + pos.fen()));
         return Move::none();
     } else
-        return do_parse(raw_san);
+        return do_parse(san);
 }
 /// @brief Convert a Move to SAN or LAN (Long Algebraic Notation) string.
 template <typename T, typename P> std::string moveToSan(const _Position<T, P> &pos, Move move, bool long_, bool suffix) {

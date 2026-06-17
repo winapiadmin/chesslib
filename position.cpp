@@ -245,10 +245,6 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     }
 }
 
-/// @brief Set the position from a FEN string.
-/// @param str FEN string.
-/// @param chess960 Whether to interpret castling notation as Chess960.
-/// @param mode FEN parsing strictness mode.
 template <typename PieceC, typename T>
 /**
  * @brief Loads a position from a FEN string.
