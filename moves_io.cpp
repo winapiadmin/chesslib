@@ -27,6 +27,7 @@
 #include "position.h"
 #include "types.h"
 #include <algorithm>
+#include <cctype>
 #include <string_view>
 #if defined(_CHESSLIB_ERROR_MODE_THROW)
 #define INVALID_ARG_IF(c, exception)                                                                                           \
@@ -174,10 +175,10 @@ template <typename T, typename V> Move uciToMove(const _Position<T, V> &pos, std
 /// @tparam T Piece enum type.
 /// @tparam P Position tag.
 /// @param pos The position.
-/// @param san SAN string (e.g. "Nf3", "O-O").
+/// @param raw_san SAN string (e.g. "Nf3", "O-O").
 /// @param remove_illegals If true, return Move::NO_MOVE instead of throwing.
 /// @return The parsed Move.
-template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std::string_view san, bool remove_illegals) {
+template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std::string_view raw_san, bool remove_illegals) {
     auto do_parse = [&](std::string_view input_san) -> Move {
         if (input_san.empty())
             return Move::none();
@@ -404,7 +405,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
     };
 
     if (remove_illegals) {
-        std::string trimmed_san(san);
+        std::string trimmed_san(raw_san);
         while (!trimmed_san.empty()) {
             Move attempt = do_parse(trimmed_san);
             if (attempt.is_ok())
@@ -414,7 +415,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
         INVALID_ARG_IF(trimmed_san.empty(), IllegalMoveException("illegal san: '" + std::string(san) + "' in " + pos.fen()));
         return Move::none();
     } else
-        return do_parse(san);
+        return do_parse(raw_san);
 }
 /// @brief Convert a Move to SAN or LAN (Long Algebraic Notation) string.
 template <typename T, typename P> std::string moveToSan(const _Position<T, P> &pos, Move move, bool long_, bool suffix) {

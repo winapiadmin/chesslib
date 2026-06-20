@@ -83,11 +83,11 @@ template <typename T, typename P = void> Move uciToMove(const _Position<T, P> &p
 /// @tparam T Piece enum type.
 /// @tparam P Position tag.
 /// @param pos The position.
-/// @param san SAN string (e.g. "Nf3", "O-O").
+/// @param raw_san SAN string (e.g. "Nf3", "O-O").
 /// @param remove_illegals If true, return Move::NO_MOVE instead of throwing.
 /// @return The parsed Move.
 template <typename T, typename P = void>
-Move parseSan(const _Position<T, P> &pos, std::string_view san, bool remove_illegals = false);
+Move parseSan(const _Position<T, P> &pos, std::string_view raw_san, bool remove_illegals = false);
 
 /// @brief Alias for parseSan.
 template <typename T, typename P = void>
