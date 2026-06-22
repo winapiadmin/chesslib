@@ -314,8 +314,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         }
     }
     /// @brief Undo the last move (snake_case). Returns saved HistoryEntry when RetAll=true.
-    template <bool RetAll = false> 
-    inline auto undo_move() -> std::conditional_t<RetAll, HistoryEntry<PieceC>, void> {
+    template <bool RetAll = false> inline auto undo_move() -> std::conditional_t<RetAll, HistoryEntry<PieceC>, void> {
         return undoMove<RetAll>();
     }
 
@@ -995,7 +994,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         _check_mask = other._check_mask;
         _pin_mask = other._pin_mask;
     }
-    // @brief Get the amount of moves played since position construction
+    // @brief get size of history
     // @return size of history
     inline size_t history_count() const { return history.size(); }
 };

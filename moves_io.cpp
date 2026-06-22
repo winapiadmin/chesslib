@@ -305,7 +305,9 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
         PieceType piece_type = NO_PIECE_TYPE;
         if (!prefix.empty()) {
             char front = prefix.front();
-            PieceType pt = parse_pt(front);
+            // Only uppercase letters are piece type indicators in SAN.
+            // Lowercase 'b' is a file, not a bishop (parse_pt is case-insensitive).
+            PieceType pt = (front >= 'A' && front <= 'Z') ? parse_pt(front) : NO_PIECE_TYPE;
             if (pt != NO_PIECE_TYPE) {
                 piece_type = pt;
                 // remove leading piece letter
@@ -412,7 +414,8 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
                 return attempt;
             trimmed_san.pop_back();
         }
-        INVALID_ARG_IF(trimmed_san.empty(), IllegalMoveException("illegal san: '" + std::string(raw_san) + "' in " + pos.fen()));
+        INVALID_ARG_IF(trimmed_san.empty(),
+                       IllegalMoveException("illegal san: '" + std::string(raw_san) + "' in " + pos.fen()));
         return Move::none();
     } else
         return do_parse(raw_san);
