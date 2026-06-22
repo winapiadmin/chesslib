@@ -83,16 +83,16 @@ template <typename T, typename P = void> Move uciToMove(const _Position<T, P> &p
 /// @tparam T Piece enum type.
 /// @tparam P Position tag.
 /// @param pos The position.
-/// @param san SAN string (e.g. "Nf3", "O-O").
+/// @param raw_san SAN string (e.g. "Nf3", "O-O").
 /// @param remove_illegals If true, return Move::NO_MOVE instead of throwing.
 /// @return The parsed Move.
 template <typename T, typename P = void>
-Move parseSan(const _Position<T, P> &pos, std::string_view san, bool remove_illegals = false);
+Move parseSan(const _Position<T, P> &pos, std::string_view raw_san, bool remove_illegals = false);
 
-/// @brief Alias for parseSan.
+/// @copydoc parseSan
 template <typename T, typename P = void>
-Move parse_san(const _Position<T, P> &pos, std::string_view san, bool remove_illegals = false) {
-    return parseSan(pos, san, remove_illegals);
+inline Move parse_san(const _Position<T, P> &pos, std::string_view raw_san, bool remove_illegals = false) {
+    return parseSan(pos, raw_san, remove_illegals);
 }
 
 /// @brief Convert a Move to SAN string for the given position.
@@ -106,9 +106,9 @@ Move parse_san(const _Position<T, P> &pos, std::string_view san, bool remove_ill
 template <typename T, typename P = void>
 std::string moveToSan(const _Position<T, P> &pos, Move move, bool long_ = false, bool suffix = true);
 
-/// @brief Alias for moveToSan.
+/// @copydoc moveToSan
 template <typename T, typename P = void>
-std::string move_to_san(const _Position<T, P> &pos, Move move, bool long_ = false, bool suffix = true) {
+inline std::string move_to_san(const _Position<T, P> &pos, Move move, bool long_ = false, bool suffix = true) {
     return moveToSan(pos, move, long_, suffix);
 }
 } // namespace chess::uci

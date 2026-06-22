@@ -23,10 +23,10 @@
 #pragma once
 
 #include "fwd_decl.h"
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <string>
-
 /// @file types.h
 /// @brief Core chess type definitions: squares, pieces, colours, move encoding, and ValueList.
 #if defined(__clang__) || defined(__GNUC__)
