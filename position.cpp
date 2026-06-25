@@ -272,34 +272,19 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
     std::istringstream ss(str);
     std::string board_fen, active_color, castling, enpassant;
     int halfmove = 0, fullmove = 1;
-    if (!(ss >> board_fen >> active_color >> castling >> enpassant)) {
-        INVALID_ARG_IF(true, std::runtime_error("Invalid FEN format (lack of required fields)"));
+    // tolerate some fields because of handprepared positions
+    if (!(ss >> board_fen)) {
+        INVALID_ARG_IF(false, std::runtime_error("Require a board"));
         return false;
     }
-    // Halfmove clock and fullmove number (required per FEN spec)
-    {
-        int temp_halfmove = 0;
-        int temp_fullmove = 0;
 
-        if (ss >> temp_halfmove) {
-            if (ss >> temp_fullmove) {
-                halfmove = temp_halfmove;
-                fullmove = temp_fullmove;
-            } else {
-                INVALID_ARG_IF(true, std::runtime_error("Invalid FEN format (has halfmove but lacks fullmove)"));
-                return false;
-            }
-        } else {
-            INVALID_ARG_IF(true, std::runtime_error("Invalid FEN format (expected halfmove clock)"));
-            return false;
-        }
-    }
+    active_color = "w";
+    castling = "-";
+    enpassant = "-";
+    halfmove = 0;
+    fullmove = 1;
 
-    std::string extra;
-    if (ss >> extra) {
-        INVALID_ARG_IF(true, std::runtime_error("Trailing FEN data"));
-        return false;
-    }
+    ss >> active_color >> castling >> enpassant >> halfmove >> fullmove;
     // 1. Parse board
     {
         File f = FILE_A;

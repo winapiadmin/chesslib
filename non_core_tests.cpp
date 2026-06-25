@@ -1012,11 +1012,11 @@ TEST_CASE("Fuzzer (excludes illegal, unreachable, etc. positions)") {
 
         // ---------------- INVALID FIELD COUNT ----------------
 
-        {                                          "8/8/8/8/8/8/8/8", false },
+        {                                          "8/8/8/8/8/8/8/8",  true },
 
-        {                                    "8/8/8/8/8/8/8/8 w - -", false },
+        {                                    "8/8/8/8/8/8/8/8 w - -",  true },
 
-        {                          "8/8/8/8/8/8/8/8 w - - 0 1 extra", false },
+        {                          "8/8/8/8/8/8/8/8 w - - 0 1 extra",  true },
 
         // ---------------- INVALID BOARD ----------------
 
@@ -1069,7 +1069,7 @@ TEST_CASE("Fuzzer (excludes illegal, unreachable, etc. positions)") {
         try {
             Position p;
             ok = p.setFEN(test.fen);
-        } catch (...) {
+        } catch (std::exception &e) {
             ok = false;
         }
 
@@ -1698,4 +1698,8 @@ TEST_CASE("Square and bitboard utilities") {
     Bitboard bAttacks = bishop(SQ_E4, empty);
     Bitboard rAttacks = rook(SQ_E4, empty);
     CHECK(qAttacks == (bAttacks | rAttacks));
+}
+TEST_CASE("Partial FENs") {
+    Position p("7r/1p3k2/p1bPR3/5p2/2B2P1p/8/PP4P1/3K4 b - -");
+    REQUIRE(p.fen() == "7r/1p3k2/p1bPR3/5p2/2B2P1p/8/PP4P1/3K4 b - - 0 1");
 }
