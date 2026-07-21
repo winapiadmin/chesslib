@@ -317,7 +317,6 @@ uint64_t RandomEP[9] = {
     0xCF3145DE0ADD4289, 0xD0E4427A5514FB72, 0x77C621CC9FB3A483, 0x67A34DAC4356550B,
     0x0000000000000000
 };
-uint64_t RandomTurn = 0xF8D626AAAF278509;
 std::array<uint64_t, 64> *RandomPiece[3] = { _RandomPiece, RandomPiece_EnginePiece, RandomPiece_ContiguousMappingPiece };
 // clang-format on
 } // namespace chess::zobrist

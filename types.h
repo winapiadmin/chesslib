@@ -31,10 +31,7 @@
 /// @brief Core chess type definitions: squares, pieces, colours, move encoding, and ValueList.
 #if defined(__clang__) || defined(__GNUC__)
 #define LIKELY(k) __builtin_expect(!!(k), 1)
-#define UNLIKELY(k) __builtin_expect(!!(k), 1)
-#elif __has_cpp_attribute(likely)
-#define LIKELY(k) [[likely(k)]]
-#define UNLIKELY(k) [[unlikely(k)]]
+#define UNLIKELY(k) __builtin_expect(!!(k), 0)
 #else
 #define LIKELY(k) k
 #define UNLIKELY(k) k
@@ -175,7 +172,7 @@ constexpr Square flip_sq(const Square sq) { return square_mirror(sq); }
 /// @brief Check if a rank/file pair describes a valid board square.
 constexpr bool is_valid(const Rank r, const File f) { return 0 <= r && r <= 7 && 0 <= f && f <= 7; }
 /// @brief Check if a square index is valid (0..63).
-constexpr bool is_valid(const Square s) { return 0 <= s && s < 64; }
+constexpr NO_SIDE_EFFECTS bool is_valid(const Square s) { return 0 <= s && s < 64; }
 
 /// @brief Extract the file from a square.
 constexpr File file_of(const Square s) {

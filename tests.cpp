@@ -379,7 +379,7 @@ TEST_CASE("Castling move making FEN rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK
     std::string fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
     Position position(fen);
     REQUIRE(position.hash() == 0x4f874e21f78d3590);
-    position.doMove<false>(Move::make<CASTLING>(SQ_E1, SQ_H1));
+    position.doMove(Move::make<CASTLING>(SQ_E1, SQ_H1));
     REQUIRE(position.hash() == position.zobrist());
     REQUIRE(position.hash() == 0x31F235158B7EEE80);
     REQUIRE(position.fen() == "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQ1RK1 b - - 2 8");
@@ -388,7 +388,7 @@ TEST_CASE("EP move making FEN 8/5k1K/8/8/4Pp2/8/8/8 b - e3 0 1") {
     std::string fen = "8/5k1K/8/8/4Pp2/8/8/8 b - e3 0 1";
     Position position(fen);
     REQUIRE(position.hash() == 0x775d0e2acc42db8c);
-    position.doMove<false>(Move::make<EN_PASSANT>(SQ_F4, SQ_E3));
+    position.doMove(Move::make<EN_PASSANT>(SQ_F4, SQ_E3));
     REQUIRE(position.hash() == position.zobrist());
     REQUIRE(position.hash() == 0x3ec71faae73cfbed);
     REQUIRE(position.fen() == "8/5k1K/8/8/8/4p3/8/8 w - - 0 2");

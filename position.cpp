@@ -84,7 +84,6 @@ constexpr std::array<Bitboard, 64> make_ep_pawn_masks() {
 constexpr auto ep_pawn_masks = make_ep_pawn_masks();
 
 } // namespace
-
 /// @brief Apply a move to the board, updating all internal state.
 /// @tparam Strict If true, asserts/checks for invalid moves.
 /// @param move The move to execute.
@@ -104,6 +103,7 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     state().saved_bishop_pin = _bishop_pin;
     state().saved_checkers = _checkers;
     state().saved_check_mask = _check_mask;
+    state().saved_enemy_attacks = _enemy_attacks;
     state().incr_sqs[0] = state().incr_sqs[1] = state().incr_sqs[2] = state().incr_sqs[3] = SQ_NONE;
     state().incr_pc[0] = state().incr_pc[1] = state().incr_pc[2] = state().incr_pc[3] = PieceC::NO_PIECE;
     state().mv = move; // Update the move in the current state
@@ -123,7 +123,7 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     INVALID_ARG_IF(moving_piecetype == NO_PIECE_TYPE, uci::IllegalMoveException("Expected a piece to move."));
     {
         switch (move_type) {
-        case NORMAL:
+        case NORMAL: {
             removePiece(target_piecetype, to_sq, target_color);
             removePiece(moving_piecetype, from_sq, us);
             placePiece(moving_piecetype, to_sq, us);
@@ -132,7 +132,8 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
             state().incr_sqs[1] = to_sq;
             state().incr_pc[1] = target_piece;
             break;
-        case PROMOTION:
+        }
+        case PROMOTION: {
             removePiece(target_piecetype, to_sq, target_color);
             removePiece(moving_piecetype, from_sq, us);
             placePiece(move.promotion_type(), to_sq, us);
@@ -141,6 +142,7 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
             state().incr_sqs[1] = to_sq;
             state().incr_pc[1] = target_piece;
             break;
+        }
         case EN_PASSANT: {
             Square ep_capture_sq = to_sq + pawn_push(them);
             removePiece(moving_piecetype, from_sq, us);
@@ -225,15 +227,15 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     }
     state().turn = ~state().turn;
     // Update halfmoves, fullmoves and stm
-    state().fullMoveNumber += (state().turn == WHITE);
-    state().halfMoveClock = (is_capt || moving_piecetype == PAWN) ? 0 : (state().halfMoveClock + 1);
-    state().pliesFromNull++;
     state().hash ^= zobrist::RandomTurn;
-    rep_hashes_.push_back(state().hash);
     refresh_attacks();
     // DO NOT MIX REPETITIONS
     if constexpr (Strict) {
-        state().repetition = 0;
+    	state().fullMoveNumber += (state().turn == WHITE);
+    	state().halfMoveClock = (is_capt || moving_piecetype == PAWN) ? 0 : (state().halfMoveClock + 1);
+    	rep_hashes_.push_back(state().hash);
+    	state().pliesFromNull++;
+    	state().repetition = 0;
         int end = std::min(rule50_count(), state().pliesFromNull);
         if (end >= 4) {
             Key cur_hash = hash();

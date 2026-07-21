@@ -31,6 +31,14 @@
 
 namespace chess {
 
+#if defined(_MSC_VER)
+#define RESTRICT __restrict
+#elif defined(__GNUC__) || defined(__clang__)
+#define RESTRICT __restrict__
+#else
+#define RESTRICT
+#endif
+
 namespace _chess {
 
 #if defined(__AVX512F__) && defined(__AVX512VNNI__) && defined(__AVX512VBMI2__)
@@ -43,14 +51,14 @@ const __m512i AllSquares = _mm512_set_epi8(
 // clang-format on
 
 template <Direction offset> /**
-                             * @brief Packs pawn destination squares into move objects.
-                             *
-                             * @tparam offset Direction offset from destination to origin squares.
-                             * @param moveList Output buffer where move objects are written.
-                             * @param to_bb Bitboard of destination squares (at most 8 bits set).
-                             * @return Pointer advanced by popcount(to_bb).
-                             */
-inline Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
+                              * @brief Packs pawn destination squares into move objects.
+                              *
+                              * @tparam offset Direction offset from destination to origin squares.
+                              * @param moveList Output buffer where move objects are written.
+                              * @param to_bb Bitboard of destination squares (at most 8 bits set).
+                              * @return Pointer advanced by popcount(to_bb).
+                              */
+inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb) {
     assert(popcount(to_bb) <= 8); // <= 8 pawns per side
 
     const __m128i toSquares = _mm_cvtepi8_epi16(_mm512_castsi512_si128(_mm512_maskz_compress_epi8(to_bb, AllSquares)));
@@ -107,13 +115,13 @@ template <int Offset> constexpr SplatTable<Offset> SPLAT_PAWN_TABLE{};
  * @param vector 512-bit vector of move data in 16-bit lanes.
  * @return Pointer to the next available position in the output buffer.
  */
-static inline Move *write_moves(Move *moveList, uint32_t mask, __m512i vector) {
+static inline Move *write_moves(Move *RESTRICT moveList, uint32_t mask, __m512i vector) {
     // Avoid _mm512_mask_compressstoreu_epi16() as it's 256 uOps on Zen4
     _mm512_storeu_si512(reinterpret_cast<__m512i *>(moveList), _mm512_maskz_compress_epi16(mask, vector));
     return moveList + popcount(mask);
 }
 
-inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
+inline Move *splat_moves(Move *RESTRICT moveList, Square from, Bitboard to_bb) {
     const auto *table = reinterpret_cast<const __m512i *>(SPLAT_TABLE.data.data());
     __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
     // two 32-lane blocks (0..31, 32..63)
@@ -124,7 +132,7 @@ inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
     return moveList;
 }
 
-template <Direction offset> inline Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
+template <Direction offset> inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb) {
     const auto *table = reinterpret_cast<const __m512i *>(SPLAT_PAWN_TABLE<offset>.data.data());
     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0), _mm512_load_si512(table + 0));
     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), _mm512_load_si512(table + 1));
@@ -132,7 +140,7 @@ template <Direction offset> inline Move *splat_pawn_moves(Move *moveList, Bitboa
     return moveList;
 }
 #else
-template <Direction offset> inline Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
+template <Direction offset> inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb) {
     while (to_bb) {
         auto to = static_cast<Square>(pop_lsb(to_bb));
 #if defined(_DEBUG) || !defined(NDEBUG)
@@ -146,7 +154,7 @@ template <Direction offset> inline Move *splat_pawn_moves(Move *moveList, Bitboa
     return moveList;
 }
 
-inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
+inline Move *splat_moves(Move *RESTRICT moveList, Square from, Bitboard to_bb) {
     while (to_bb)
         *moveList++ = Move(from, static_cast<Square>(pop_lsb(to_bb)));
     return moveList;
@@ -252,7 +260,6 @@ HOTFUNC void movegen::genEP(const _Position<T, void> &pos, ListT &mv) {
         Bitboard atks = 0;
         atks |= attacks::bishop(king_sq, occ_temp) & (pos.template pieces<BISHOP, ~c>() | pos.template pieces<QUEEN, ~c>());
         atks |= attacks::rook(king_sq, occ_temp) & (pos.template pieces<ROOK, ~c>() | pos.template pieces<QUEEN, ~c>());
-        atks &= pos.occ(~c);
         if (!atks) {
             mv.push_back(Move::make<EN_PASSANT>(from, ep_sq));
         }
@@ -312,7 +319,8 @@ HOTFUNC void movegen::genPawnSingleMoves(
     constexpr auto RANK_PROMO = attacks::MASK_RANK[relative_rank(c, RANK_8)];
 
     const auto pawns = pos.template pieces<PAWN, c>();
-    const auto occ_opp = pos.occ(~c);
+    const Bitboard enemy_king = 1ULL << pos.kingSq(~c);
+    const auto occ_opp = pos.occ(~c) & ~enemy_king;
     const auto occ_all = pos.occ();
     // These pawns can maybe take Left or Right
     const Bitboard pawns_lr = pawns & ~_rook_pin;
@@ -373,9 +381,10 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
  */
 HOTFUNC void movegen::genKnightMoves(const _Position<T, void> &pos, ListT &list, Bitboard _pin_mask, Bitboard _check_mask) {
     Bitboard knights = pos.template pieces<KNIGHT, c>() & ~_pin_mask;
+    Bitboard enemy_king = 1ULL << pos.kingSq(~c);
     while (knights) {
         Square x = static_cast<Square>(pop_lsb(knights));
-        Bitboard moves = attacks::knight(x) & ~pos.occ(c);
+        Bitboard moves = attacks::knight(x) & ~(pos.occ(c) | enemy_king);
         moves &= _check_mask;
         if constexpr (capturesOnly)
             moves &= pos.occ(~c);
@@ -397,8 +406,10 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
 HOTFUNC void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bitboard _pin_mask) {
     constexpr Color them = ~c;
     const Square kingSq = pos.king_sq(c);
+    ASSUME(kingSq >= SQ_A1 && kingSq <= SQ_H8);
     const Bitboard myOcc = pos.occ(c);
-    const Bitboard occ_opp = pos.occ(~c);
+    const Bitboard enemy_king_bb = 1ULL << pos.king_sq(them);
+    const Bitboard occ_opp = pos.occ(~c) & ~enemy_king_bb;
 
     if constexpr (capturesOnly) {
         Bitboard targets = attacks::king(kingSq) & occ_opp;
@@ -407,26 +418,7 @@ HOTFUNC void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bi
         }
     }
 
-    const Bitboard occAll = pos.occ();
-    const Bitboard occWithoutKing = occAll ^ 1ULL << kingSq;
-    Bitboard enemyAttacks = 0ULL;
-
-    // Sliding pieces
-    {
-        Bitboard bLike = pos.template pieces<BISHOP, them>() | pos.template pieces<QUEEN, them>();
-        while (bLike)
-            enemyAttacks |= attacks::bishop(static_cast<Square>(pop_lsb(bLike)), occWithoutKing);
-    }
-    {
-        Bitboard rLike = pos.template pieces<ROOK, them>() | pos.template pieces<QUEEN, them>();
-        while (rLike)
-            enemyAttacks |= attacks::rook(static_cast<Square>(pop_lsb(rLike)), occWithoutKing);
-    }
-
-    // Knights, pawns, enemy king (precomputed tables)
-    enemyAttacks |= attacks::knight(pos.template pieces<KNIGHT, them>());
-    enemyAttacks |= attacks::pawn<them>(pos.template pieces<PAWN, them>());
-    enemyAttacks |= attacks::king(pos.king_sq(them));
+    Bitboard enemyAttacks = pos.enemy_attacks();
 
     Bitboard moves = attacks::king(kingSq) & ~myOcc & ~enemyAttacks;
     if constexpr (capturesOnly)
@@ -482,7 +474,8 @@ HOTFUNC void movegen::genSlidingMoves(
     if constexpr (pt == ROOK)
         sliders &= ~bishop_pinners;
     Bitboard occ_opp = pos.occ(~c);
-    Bitboard filter_list = ~pos.occ(c) & _check_mask;
+    Bitboard enemy_king = 1ULL << pos.kingSq(~c);
+    Bitboard filter_list = ~(pos.occ(c) | enemy_king) & _check_mask;
     while (sliders) {
         Square from = static_cast<Square>(pop_lsb(sliders));
         Bitboard from_bb = 1ULL << from;
@@ -493,22 +486,17 @@ HOTFUNC void movegen::genSlidingMoves(
 
         Bitboard filtered_pin = pin_mask & filter_list;
         Bitboard targets;
-        // Choose attack function without std::function to avoid indirect call overhead.
-        decltype(&attacks::rook) func;
         if (rook_hit) {
-            func = attacks::rook;
+            targets = attacks::rook(from, occ_all) & filtered_pin;
         } else if (bishop_hit) {
-            func = attacks::bishop;
+            targets = attacks::bishop(from, occ_all) & filtered_pin;
+        } else if constexpr (pt == BISHOP) {
+            targets = attacks::bishop(from, occ_all) & filtered_pin;
+        } else if constexpr (pt == ROOK) {
+            targets = attacks::rook(from, occ_all) & filtered_pin;
         } else {
-            if constexpr (pt == BISHOP) {
-                func = attacks::bishop;
-            } else if constexpr (pt == ROOK) {
-                func = attacks::rook;
-            } else {
-                func = attacks::queen;
-            }
+            targets = attacks::queen(from, occ_all) & filtered_pin;
         }
-        targets = func(from, occ_all) & filtered_pin;
         if constexpr (capturesOnly)
             targets &= occ_opp;
         record_moves(moves, from, targets);

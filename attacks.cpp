@@ -153,69 +153,7 @@ const std::array<std::array<Bitboard, 64>, 8> RAYS = []() {
     return r;
 }();
 
-#ifdef __BMI2__
-/// @brief Software fallback for the PEXT instruction.
-/// @details Used during constant evaluation when BMI2 is unavailable.
-/// @param val The value to compress.
-/// @param mask The bit mask.
-/**
- * @brief Extracts bits from a value according to a mask and compacts them.
- *
- * For each set bit position in `mask`, extracts the corresponding bit from `val`
- * and places it into the result at consecutive positions, starting from bit 0.
- *
- * @param val The value to extract bits from.
- * @param mask A mask indicating which bit positions in `val` to extract.
- * @return A compacted bitboard containing only the extracted bits.
- */
-constexpr uint64_t software_pext_u64(uint64_t val, uint64_t mask) {
-    uint64_t result = 0;
-    uint64_t bit_position = 0;
 
-    for (uint64_t bit = 1; bit != 0; bit <<= 1) {
-        if (mask & bit) {
-            if (val & bit) {
-                result |= 1ULL << bit_position;
-            }
-            ++bit_position;
-        }
-    }
-    return result;
-}
-
-/// @brief Magic structure for PEXT-based magic bitboards (BMI2 path).
-struct Magic {
-    Bitboard mask; ///< Relevant occupancy mask.
-    int index;     ///< Starting index into the attack table.
-    /**
-     * @brief Extracts relevant occupancy bits for magic bitboard indexing.
-     *
-     * @param b Occupancy bitboard.
-     * @return Compressed index into the magic attack table.
-     */
-    constexpr Bitboard operator()(Bitboard b) const {
-        if (is_constant_evaluated()) {
-            return software_pext_u64(b, mask);
-        } else {
-            return _pext_u64(b, mask);
-        }
-    }
-};
-#else
-/// @brief Magic structure for classical (multiply-and-shift) magic bitboards.
-struct Magic {
-    Bitboard mask;  ///< Relevant occupancy mask.
-    Bitboard magic; ///< Magic multiplier.
-    size_t index;   ///< Starting index into the attack table.
-    Bitboard shift; ///< Right-shift amount.
-    /**
-     * @brief Converts an occupancy pattern to an attack table index.
-     *
-     * @return Index for accessing the precomputed attack bitboard.
-     */
-    constexpr Bitboard operator()(Bitboard b) const { return (((b & mask)) * magic) >> shift; }
-};
-#endif
 
 #ifndef GENERATE_AT_RUNTIME
 #define _POSSIBLY_CONSTEXPR constexpr
@@ -323,28 +261,7 @@ _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, 0x1900
 _POSSIBLY_CONSTEXPR std::array<Magic, 64> RookTable = rookData.first;
 _POSSIBLY_CONSTEXPR std::array<Bitboard, 0x19000> RookAttacks = rookData.second;
 
-/**
- * @brief Returns the attack bitboard for a bishop on the given square.
- *
- * @param sq Bishop square.
- * @param occupied Occupancy bitboard.
- * @return Bitboard of squares attacked.
- */
-[[nodiscard]] Bitboard bishop(Square sq, Bitboard occupied) {
-    const auto &entry = BishopTable[(int)sq];
-    return BishopAttacks[entry.index + entry(occupied)];
-}
 
-/**
- * @brief Look up rook attacks from the precomputed magic table.
- * @param sq Rook square.
- * @param occupied Occupancy bitboard.
- * @return Bitboard of squares attacked.
- */
-[[nodiscard]] Bitboard rook(Square sq, Bitboard occupied) {
-    const auto &entry = RookTable[(int)sq];
-    return RookAttacks[entry.index + entry(occupied)];
-}
 } // namespace chess::attacks
 namespace chess::movegen {
 

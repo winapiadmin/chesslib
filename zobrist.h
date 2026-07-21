@@ -36,5 +36,5 @@ extern uint64_t RandomCastle[16];
 extern uint64_t RandomEP[9];
 
 /// @brief Random value XORed when it is black's turn to move.
-extern uint64_t RandomTurn;
+constexpr uint64_t RandomTurn = 0xF8D626AAAF278509;
 } // namespace chess::zobrist

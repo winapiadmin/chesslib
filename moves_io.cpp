@@ -513,16 +513,13 @@ template <typename T, typename P> std::string moveToSan(const _Position<T, P> &p
 appendCheck:
     if (!suffix)
         return san;
-    _Position<T> p = pos;
-    p.do_move(move);
-    const bool _check = p.is_check();
-    Movelist moves;
-    p.legals(moves);
-    // Checkmate: no legal moves and in check; Stalemate: no legal moves and not in check
-    if (moves.size() == 0 && _check)
-        san += "#";
-    else if (_check)
-        san += "+";
+    if (pos.gives_check(move) != CheckType::NO_CHECK) {
+        _Position<T> p = pos;
+        p.do_move(move);
+        CountOnlyList moves;
+        p.legals(moves);
+        san += (moves.size_ == 0) ? "#" : "+";
+    }
     return san;
 }
 #define INSTANTITATE(PieceC)                                                                                                   \

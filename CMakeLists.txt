@@ -21,6 +21,12 @@ project(chesslib LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# --- Link-Time Optimization ---
+option(ENABLE_LTO "Enable Link-Time Optimization" ON)
+if(ENABLE_LTO)
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
+
 # --- Core Library ---
 set(SOURCES
     position.cpp
@@ -38,20 +44,12 @@ endif()
 # --- Compiler tuning ---
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
-    # clang-cl: forward GCC/Clang style constexpr flags via /clang:
-    target_compile_options(chesslib PRIVATE
-      /clang:-march=native
-      /clang:-mtune=native
-    )
+    target_compile_options(chesslib PRIVATE /clang:-march=native /clang:-mtune=native)
   else()
-    # native clang++ on *nix or Windows
-    target_compile_options(chesslib PRIVATE
-      -march=native -mtune=native
-    )
+    target_compile_options(chesslib PUBLIC -march=native -mtune=native)
   endif()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-	target_compile_options(chesslib PRIVATE -march=native -mtune=native)
-
+  target_compile_options(chesslib PUBLIC -march=native -mtune=native)
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   set(ARCH_FLAG "/arch:AVX2" CACHE STRING "MSVC architecture flag (/arch:SSE2, /arch:AVX, /arch:AVX2, /arch:AVX512)")
   target_compile_options(chesslib PRIVATE ${ARCH_FLAG})
