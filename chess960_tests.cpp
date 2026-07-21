@@ -101,8 +101,6 @@ template <typename T, MoveGenType mt, Color c, bool EnableDiv = false> uint64_t 
 auto split_testcases(std::vector<TestEntry<std::string, perft_t>> &entries) {
     std::vector<TestEntry<std::string, perft_t>> optimized;
 
-    std::sort(entries.begin(), entries.end(), [](const auto &a, const auto &b) { return a.info.nodes < b.info.nodes; });
-
     std::vector<TestEntry<std::string, perft_t>> bucket1, bucket2, bucket3;
     for (const auto &e : entries) {
         if (e.info.nodes <= 1'000'000)
@@ -167,6 +165,8 @@ template <MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false>
 void check_perfts(std::vector<TestEntry<std::string, perft_t>> &entries) {
     uint64_t nodes = 0;
     double elapsed = 0;
+
+    std::stable_sort(entries.begin(), entries.end(), [](const auto &a, const auto &b) { return a.info.nodes < b.info.nodes; });
 #if !IS_RELEASE
     entries = split_testcases(entries);
 #endif

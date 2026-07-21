@@ -1491,9 +1491,9 @@ TEST_CASE("Material and position queries") {
     {
         Position p;
         CHECK(p.ply() == 0);
-        p.doMove<false>(Move(SQ_E2, SQ_E4));
+        p.doMove(Move(SQ_E2, SQ_E4));
         CHECK(p.ply() == 1);
-        p.doMove<false>(Move(SQ_E7, SQ_E5));
+        p.doMove(Move(SQ_E7, SQ_E5));
         CHECK(p.ply() == 2);
         p.undoMove();
         CHECK(p.ply() == 1);
