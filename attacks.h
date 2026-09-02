@@ -236,7 +236,8 @@ constexpr uint64_t software_pext_u64(uint64_t val, uint64_t mask) {
     uint64_t bit_position = 0;
     for (uint64_t bit = 1; bit != 0; bit <<= 1) {
         if (mask & bit) {
-            if (val & bit) result |= 1ULL << bit_position;
+            if (val & bit)
+                result |= 1ULL << bit_position;
             ++bit_position;
         }
     }
@@ -247,7 +248,8 @@ struct Magic {
     Bitboard mask;
     int index;
     constexpr Bitboard operator()(Bitboard b) const {
-        if (is_constant_evaluated()) return software_pext_u64(b, mask);
+        if (is_constant_evaluated())
+            return software_pext_u64(b, mask);
         return _pext_u64(b, mask);
     }
 };
@@ -268,25 +270,36 @@ extern std::array<Bitboard, 0x1480> BishopAttacks;
 extern std::array<Magic, 64> RookTable;
 extern std::array<Bitboard, 0x19000> RookAttacks;
 
+/// @brief Split arrays for magic lookups (avoids struct load, helps MSVC codegen).
+extern const std::array<Bitboard, 64> BishopMasks;
+extern const std::array<int, 64> BishopIndexBase;
+extern const std::array<Bitboard, 64> RookMasks;
+extern const std::array<int, 64> RookIndexBase;
+#ifndef __BMI2__
+extern std::array<Bitboard, 64> BishopMagicFactors;
+extern std::array<Bitboard, 64> BishopShifts;
+extern std::array<Bitboard, 64> RookMagicFactors;
+extern std::array<Bitboard, 64> RookShifts;
+#endif
+
 /// @brief Look up bishop attacks via magic bitboard.
 [[nodiscard]] inline Bitboard bishop(Square sq, Bitboard occupied) {
     const int i = (int)sq;
-    const auto &entry = BishopTable[i];
 #if defined(__BMI2__)
-    return BishopAttacks[entry.index + static_cast<int>(_pext_u64(occupied, entry.mask))];
+    return BishopAttacks[BishopIndexBase[i] + static_cast<int>(_pext_u64(occupied, BishopMasks[i]))];
 #else
-    return BishopAttacks[entry.index + static_cast<int>(((occupied & entry.mask) * entry.magic) >> entry.shift)];
+    return BishopAttacks[BishopIndexBase[i] +
+                         static_cast<int>(((occupied & BishopMasks[i]) * BishopMagicFactors[i]) >> BishopShifts[i])];
 #endif
 }
 
 /// @brief Look up rook attacks via magic bitboard.
 [[nodiscard]] inline Bitboard rook(Square sq, Bitboard occupied) {
     const int i = (int)sq;
-    const auto &entry = RookTable[i];
 #if defined(__BMI2__)
-    return RookAttacks[entry.index + static_cast<int>(_pext_u64(occupied, entry.mask))];
+    return RookAttacks[RookIndexBase[i] + static_cast<int>(_pext_u64(occupied, RookMasks[i]))];
 #else
-    return RookAttacks[entry.index + static_cast<int>(((occupied & entry.mask) * entry.magic) >> entry.shift)];
+    return RookAttacks[RookIndexBase[i] + static_cast<int>(((occupied & RookMasks[i]) * RookMagicFactors[i]) >> RookShifts[i])];
 #endif
 }
 

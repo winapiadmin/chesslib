@@ -51,13 +51,13 @@ const __m512i AllSquares = _mm512_set_epi8(
 // clang-format on
 
 template <Direction offset> /**
-                              * @brief Packs pawn destination squares into move objects.
-                              *
-                              * @tparam offset Direction offset from destination to origin squares.
-                              * @param moveList Output buffer where move objects are written.
-                              * @param to_bb Bitboard of destination squares (at most 8 bits set).
-                              * @return Pointer advanced by popcount(to_bb).
-                              */
+                             * @brief Packs pawn destination squares into move objects.
+                             *
+                             * @tparam offset Direction offset from destination to origin squares.
+                             * @param moveList Output buffer where move objects are written.
+                             * @param to_bb Bitboard of destination squares (at most 8 bits set).
+                             * @return Pointer advanced by popcount(to_bb).
+                             */
 inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb) {
     assert(popcount(to_bb) <= 8); // <= 8 pawns per side
 
@@ -235,7 +235,7 @@ namespace chess {
 template <typename T, Color c, typename ListT> /**
                                                 * @brief Generates all legal en passant captures for the moving side.
                                                 */
-HOTFUNC void movegen::genEP(const _Position<T, void> &pos, ListT &mv) {
+void movegen::genEP(const _Position<T, void> &pos, ListT &mv) {
 
     const Square king_sq = pos.king_sq(c);
     const Square ep_sq = pos.ep_square();
@@ -250,6 +250,12 @@ HOTFUNC void movegen::genEP(const _Position<T, void> &pos, ListT &mv) {
     const Bitboard ep_mask = (1ULL << ep_pawn_sq) | (1ULL << ep_sq);
 
     Bitboard occ_all = pos.occ();
+    const Bitboard enemy_bq =
+    	pos.template pieces<BISHOP, ~c>() | pos.template pieces<QUEEN, ~c>();
+	
+	const Bitboard enemy_rq =
+    	pos.template pieces<ROOK, ~c>() | pos.template pieces<QUEEN, ~c>();
+    ASSUME(popcount(candidates)<=2);
     while (candidates) {
         Square from = static_cast<Square>(pop_lsb(candidates));
 
@@ -258,11 +264,13 @@ HOTFUNC void movegen::genEP(const _Position<T, void> &pos, ListT &mv) {
 
         // attackers check
         Bitboard atks = 0;
-        atks |= attacks::bishop(king_sq, occ_temp) & (pos.template pieces<BISHOP, ~c>() | pos.template pieces<QUEEN, ~c>());
-        atks |= attacks::rook(king_sq, occ_temp) & (pos.template pieces<ROOK, ~c>() | pos.template pieces<QUEEN, ~c>());
-        if (!atks) {
-            mv.push_back(Move::make<EN_PASSANT>(from, ep_sq));
-        }
+		if (attacks::bishop(king_sq, occ_temp) & enemy_bq)
+    		continue;
+		
+		if (attacks::rook(king_sq, occ_temp) & enemy_rq)
+    		continue;
+		
+        mv.push_back(Move::make<EN_PASSANT>(from, ep_sq));
     }
 }
 template <typename T, Color c, typename ListT>
@@ -271,7 +279,7 @@ template <typename T, Color c, typename ListT>
  *
  * Respects pin constraints and check evasion requirements.
  */
-HOTFUNC void movegen::genPawnDoubleMoves(const _Position<T, void> &pos, ListT &moves, Bitboard pin_mask, Bitboard check_mask) {
+void movegen::genPawnDoubleMoves(const _Position<T, void> &pos, ListT &moves, Bitboard pin_mask, Bitboard check_mask) {
     constexpr Bitboard RANK_2 = (c == WHITE) ? attacks::MASK_RANK[1] : attacks::MASK_RANK[6];
     constexpr Direction UP = pawn_push(c);
 
@@ -311,7 +319,7 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
  * @param _bishop_pin Bitmask of pawns pinned along bishop lines (diagonal).
  * @param _check_mask Bitmask of squares that moves must target to be legal (check evasion).
  */
-HOTFUNC void movegen::genPawnSingleMoves(
+void movegen::genPawnSingleMoves(
     const _Position<T, void> &pos, ListT &moves, Bitboard _rook_pin, Bitboard _bishop_pin, Bitboard _check_mask) {
     constexpr auto UP = relative_direction(c, NORTH);
     constexpr auto UP_LEFT = relative_direction(c, NORTH_WEST);
@@ -379,7 +387,7 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
  * @param _pin_mask Bitboard of pinned pieces; pinned knights are excluded.
  * @param _check_mask Bitboard indicating squares that resolve checks.
  */
-HOTFUNC void movegen::genKnightMoves(const _Position<T, void> &pos, ListT &list, Bitboard _pin_mask, Bitboard _check_mask) {
+void movegen::genKnightMoves(const _Position<T, void> &pos, ListT &list, Bitboard _pin_mask, Bitboard _check_mask) {
     Bitboard knights = pos.template pieces<KNIGHT, c>() & ~_pin_mask;
     Bitboard enemy_king = 1ULL << pos.kingSq(~c);
     while (knights) {
@@ -403,7 +411,7 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
  * @param out The move list to record moves into.
  * @param _pin_mask Bitboard of pinned pieces; used to filter illegal castling moves.
  */
-HOTFUNC void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bitboard _pin_mask) {
+void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bitboard _pin_mask) {
     constexpr Color them = ~c;
     const Square kingSq = pos.king_sq(c);
     ASSUME(kingSq >= SQ_A1 && kingSq <= SQ_H8);
@@ -462,7 +470,7 @@ template <typename T, Color c, PieceType pt, bool capturesOnly, typename ListT>
  * @param _bishop_pin Bitboard of squares pinned along bishop lines (diagonals).
  * @param _check_mask Bitboard of legal destination squares when in check.
  */
-HOTFUNC void movegen::genSlidingMoves(
+void movegen::genSlidingMoves(
     const _Position<T, void> &pos, ListT &moves, Bitboard _rook_pin, Bitboard _bishop_pin, Bitboard _check_mask) {
     static_assert(pt == BISHOP || pt == ROOK || pt == QUEEN, "Sliding pieces only.");
     Bitboard sliders = pos.template pieces<pt, c>();

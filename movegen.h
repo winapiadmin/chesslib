@@ -27,27 +27,27 @@
 namespace chess::movegen {
 
 /// @brief Generate en-passant captures for the given colour.
-template <typename T, Color c, typename ListT> HOTFUNC void genEP(const _Position<T, void> &, ListT &);
+template <typename T, Color c, typename ListT> void genEP(const _Position<T, void> &, ListT &);
 
 /// @brief Generate double-pawn pushes (from the starting rank).
 template <typename T, Color c, typename ListT>
-HOTFUNC void genPawnDoubleMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard);
+void genPawnDoubleMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard);
 
 /// @brief Generate single-pawn moves (pushes and captures).
 template <typename T, Color c, bool capturesOnly, typename ListT>
-HOTFUNC void genPawnSingleMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard, Bitboard);
+void genPawnSingleMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard, Bitboard);
 
 /// @brief Generate knight moves.
 template <typename T, Color c, bool capturesOnly, typename ListT>
-HOTFUNC void genKnightMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard);
+void genKnightMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard);
 
 /// @brief Generate king moves.
 template <typename T, Color c, bool capturesOnly, typename ListT>
-HOTFUNC void genKingMoves(const _Position<T, void> &, ListT &, Bitboard);
+void genKingMoves(const _Position<T, void> &, ListT &, Bitboard);
 
 /// @brief Generate sliding-piece moves (bishop, rook, queen).
 template <typename T, Color c, PieceType pt, bool capturesOnly, typename ListT>
-HOTFUNC void genSlidingMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard, Bitboard);
+void genSlidingMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard, Bitboard);
 
 /// @brief Precomputed between-square bitboards.
 /// @details squares_between_bb[sq1][sq2] contains a bitboard of all squares

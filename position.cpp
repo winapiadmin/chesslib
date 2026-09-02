@@ -1,3 +1,4 @@
+#include "position.h"
 /*
   a chess library (bonus: you can integrate more piece types!) which
   supports Chess960 and is decently fast enough
@@ -229,13 +230,13 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     // Update halfmoves, fullmoves and stm
     state().hash ^= zobrist::RandomTurn;
     refresh_attacks();
+    rep_hashes_.push_back(state().hash);
     // DO NOT MIX REPETITIONS
     if constexpr (Strict) {
-    	state().fullMoveNumber += (state().turn == WHITE);
-    	state().halfMoveClock = (is_capt || moving_piecetype == PAWN) ? 0 : (state().halfMoveClock + 1);
-    	rep_hashes_.push_back(state().hash);
-    	state().pliesFromNull++;
-    	state().repetition = 0;
+        state().fullMoveNumber += (state().turn == WHITE);
+        state().halfMoveClock = (is_capt || moving_piecetype == PAWN) ? 0 : (state().halfMoveClock + 1);
+        state().pliesFromNull++;
+        state().repetition = 0;
         int end = std::min(rule50_count(), state().pliesFromNull);
         if (end >= 4) {
             Key cur_hash = hash();
@@ -892,6 +893,82 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
     return CheckType::NO_CHECK; // Prevent a compiler warning
 }
 
+template <typename PieceC, typename T> void _Position<PieceC, T>::refresh_attacks() {
+    const Color c = side_to_move();
+    const Square ksq = kingSq(c);
+    ASSUME(ksq >= SQ_A1 && ksq <= SQ_H8);
+    const Bitboard occ_all = occ();
+    const Bitboard occ_us = occ(c);
+    const Bitboard occ_without_king = occ_all ^ (1ULL << ksq);
+
+    Bitboard bishop_pin = 0, rook_pin = 0, checkers = 0;
+
+    // Pawn and knight checkers – unchanged
+    checkers |= (attacks::pawn(c, ksq) & pieces<PAWN>(~c));
+    checkers |= (attacks::knight(ksq) & pieces<KNIGHT>(~c));
+
+    // Precompute empty‑board attacks for the king – only safe optimisation
+    const Bitboard king_diags = attacks::bishop(ksq, Bitboard(0));
+    const Bitboard king_ranks = attacks::rook(ksq, Bitboard(0));
+
+    const Color them = ~c;
+    Bitboard ea = 0;
+
+    // Fused bishop/queen loop – original logic, unchanged
+    Bitboard b_sliders = pieces<BISHOP>(them) | pieces<QUEEN>(them);
+    while (b_sliders) {
+        Square s = static_cast<Square>(pop_lsb(b_sliders));
+        ea |= attacks::bishop(s, occ_without_king);
+        if (king_diags & (1ULL << s)) {
+            Bitboard between = movegen::between(ksq, s);
+            Bitboard blockers = between & occ_all & ~(1ULL << s); // original mask – safe
+            if (!blockers) {
+                checkers |= 1ULL << s;
+            } else if (!(blockers & (blockers - 1)) && (blockers & occ_us)) {
+                bishop_pin |= between;
+            }
+        }
+    }
+
+    // Fused rook/queen loop – original logic, unchanged
+    Bitboard r_sliders = pieces<ROOK>(them) | pieces<QUEEN>(them);
+    while (r_sliders) {
+        Square s = static_cast<Square>(pop_lsb(r_sliders));
+        ea |= attacks::rook(s, occ_without_king);
+        if (king_ranks & (1ULL << s)) {
+            Bitboard between = movegen::between(ksq, s);
+            Bitboard blockers = between & occ_all & ~(1ULL << s); // original mask – safe
+            if (!blockers) {
+                checkers |= 1ULL << s;
+            } else if (!(blockers & (blockers - 1)) && (blockers & occ_us)) {
+                rook_pin |= between;
+            }
+        }
+    }
+
+    // Pawn, knight, king attacks – unchanged
+    ea |= attacks::knight(pieces<KNIGHT>(them));
+    Bitboard p = pieces<PAWN>(them);
+    ea |= (them == WHITE) ? ((p & ~attacks::MASK_FILE[FILE_A]) << 7) | ((p & ~attacks::MASK_FILE[FILE_H]) << 9)
+                          : ((p & ~attacks::MASK_FILE[FILE_H]) >> 7) | ((p & ~attacks::MASK_FILE[FILE_A]) >> 9);
+    ea |= attacks::king(kingSq(them));
+
+    _enemy_attacks = ea;
+    _bishop_pin = bishop_pin;
+    _rook_pin = rook_pin;
+    _pin_mask = rook_pin | bishop_pin;
+    _checkers = checkers;
+
+    if (!_checkers) {
+        _check_mask = ~0ULL;
+    } else if ((_checkers & (_checkers - 1)) == 0) {
+        Square sq = static_cast<Square>(lsb(_checkers));
+        _check_mask = (1ULL << sq) | movegen::between(ksq, sq);
+    } else {
+        _check_mask = 0ULL;
+    }
+}
+
 /// @brief Compute Zobrist hash for the current position.
 template <typename PieceC, typename T> uint64_t _Position<PieceC, T>::zobrist() const {
     uint64_t hash = 0;
@@ -1069,7 +1146,8 @@ template Move _Position<PieceC, void>::push_uci(std::string); \
 template bool _Position<PieceC, void>::is_valid<false>() const; \
 template bool _Position<PieceC, void>::is_valid<true>() const; \
 template CheckType _Position<PieceC, void>::givesCheck(Move) const; \
-template bool _Position<PieceC, void>::is_insufficient_material() const;
+template bool _Position<PieceC, void>::is_insufficient_material() const; \
+template void _Position<PieceC, void>::refresh_attacks();
 // clang-format off
 INSTANTIATE(PolyglotPiece)
 INSTANTIATE(EnginePiece)

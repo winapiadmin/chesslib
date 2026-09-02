@@ -146,11 +146,11 @@ void check_perft_type(TestEntry<std::string, perft_t> &entry, uint64_t &nodes, d
     auto end_time = high_resolution_clock::now();
     elapsed += duration<double>(end_time - start_time).count();
     nodes += entry.info.nodes;
-    #if IS_RELEASE
-    #define lim 1e8
-    #else
-    #define lim 5e6
-    #endif
+#if IS_RELEASE
+#define lim 1e8
+#else
+#define lim 5e6
+#endif
     if (entry.info.nodes < lim) {
         _Position<T> pos2 = pos;
         REQUIRE(pos.fen() == pos2.fen());

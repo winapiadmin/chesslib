@@ -48,7 +48,11 @@
 #define FLATTEN __attribute__((flatten))
 /// @def FORCEINLINE
 /// @brief Make callers inline this function
+#ifdef PROFILING
+#define FORCEINLINE inline
+#else
 #define FORCEINLINE __attribute__((always_inline))
+#endif
 /// @def NO_SIDE_EFFECTS
 /// @brief Marks a function has no side effects
 #define NO_SIDE_EFFECTS __attribute__((const))
@@ -59,7 +63,11 @@
 #if defined(_MSC_VER)
 /// @def FORCEINLINE
 /// @brief Make callers inline this function
+#ifdef PROFILING
+#define FORCEINLINE inline
+#else
 #define FORCEINLINE __forceinline
+#endif
 /// @def NO_SIDE_EFFECTS
 /// @brief Make a function has no side effects
 #define NO_SIDE_EFFECTS __declspec(noalias)
@@ -604,21 +612,21 @@ template <typename T, std::size_t MaxSize> class ValueList {
     inline size_type size() const { return size_; }
 
     inline void push_back(const T &value) {
-        assert(size_ < MaxSize);
+        ASSUME(size_ < MaxSize);
         values_[size_++] = value;
     }
 
     inline T pop() {
-        assert(size_ > 0);
+        ASSUME(size_ > 0);
         return values_[--size_];
     }
 
     inline void pop_back() {
-        assert(size_ > 0);
+        ASSUME(size_ > 0);
         size_--;
     }
     inline T front() const {
-        assert(size_ > 0);
+        ASSUME(size_ > 0);
         return values_[0];
     }
 

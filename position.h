@@ -36,25 +36,25 @@ namespace chess {
  * (changed squares and pieces). Cached attack masks are saved to avoid recomputation
  * on undo.
  */
-#pragma pack(push,16)
+#pragma pack(push, 16)
 template <typename Piece> struct HistoryEntry {
-    Bitboard pieces[7]{};        ///< Bitboards per piece type.
-    Bitboard occ[COLOR_NB]{};    ///< Occupancy per colour.
+    Bitboard pieces[7]{};     ///< Bitboards per piece type.
+    Bitboard occ[COLOR_NB]{}; ///< Occupancy per colour.
     /// @name Cached attack data (saved to avoid recomputation on undo)
     /// @{
-    Bitboard saved_rook_pin{};       ///< Saved rook pin mask.
-    Bitboard saved_bishop_pin{};     ///< Saved bishop pin mask.
-    Bitboard saved_checkers{};       ///< Saved checkers bitboard.
-    Bitboard saved_check_mask{};     ///< Saved check mask.
-    Bitboard saved_enemy_attacks{};  ///< Saved enemy attack bitboard.
+    Bitboard saved_rook_pin{};      ///< Saved rook pin mask.
+    Bitboard saved_bishop_pin{};    ///< Saved bishop pin mask.
+    Bitboard saved_checkers{};      ///< Saved checkers bitboard.
+    Bitboard saved_check_mask{};    ///< Saved check mask.
+    Bitboard saved_enemy_attacks{}; ///< Saved enemy attack bitboard.
     /// @}
     /// @brief Incremental squares changed by the move (for undo).
     Square incr_sqs[4] = { SQ_NONE, SQ_NONE, SQ_NONE, SQ_NONE };
     /// @brief Incremental piece values for undo (parallel to incr_sqs).
     Piece incr_pc[4] = { Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE };
-    Key hash = 0;                ///< Zobrist hash.
-    Color turn = COLOR_NB;       ///< Side to move.
-    Move mv{};                   ///< The move that led to this position.
+    Key hash = 0;          ///< Zobrist hash.
+    Color turn = COLOR_NB; ///< Side to move.
+    Move mv{};             ///< The move that led to this position.
     /// @brief En-passant target square.
     Square enPassant = SQ_NONE; ///< En-passant target square.
     /// @brief King's square for each colour in this saved state.
@@ -202,7 +202,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::KING)) {
             movegen::genKingMoves<PieceC, c, captureOnly, ListT>(*this, out, _pin_mask);
         }
-	if (_check_mask==0) return;
+        if (_check_mask == 0)
+            return;
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::PAWN)) {
             movegen::genPawnSingleMoves<PieceC, c, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask);
             if constexpr (includeQuiet)
@@ -261,7 +262,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         pieces_list[st.incr_sqs[1]] = st.incr_pc[1];
         pieces_list[st.incr_sqs[2]] = st.incr_pc[2];
         pieces_list[st.incr_sqs[3]] = st.incr_pc[3];
-        if (rep_hashes_.size()) rep_hashes_.pop_back();
+        rep_hashes_.pop_back();
         _rook_pin = st.saved_rook_pin;
         _bishop_pin = st.saved_bishop_pin;
         _checkers = st.saved_checkers;
@@ -802,7 +803,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Whether the current side is checkmated.
     inline bool is_checkmate() const {
-        if (!is_check()) return false;
+        if (!is_check())
+            return false;
         CountOnlyList moves;
         legals(moves);
         return moves.size_ == 0;
@@ -810,7 +812,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Whether the current side is stalemated.
     inline bool is_stalemate() const {
-        if (is_check()) return false;
+        if (is_check())
+            return false;
         CountOnlyList moves;
         legals(moves);
         return moves.size_ == 0;
@@ -885,7 +888,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 #if defined(_MSC_VER)
         __pragma(loop(ivdep))
 #endif
-        while (bishop_atks) {
+            while (bishop_atks) {
             auto possible = movegen::between(sq, Square(pop_lsb(bishop_atks)));
             Bitboard tmp = possible & occ_us;
             if (tmp && (tmp & (tmp - 1)) == 0)
@@ -894,7 +897,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 #if defined(_MSC_VER)
         __pragma(loop(ivdep))
 #endif
-        while (rook_atks) {
+            while (rook_atks) {
             auto possible = movegen::between(sq, Square(pop_lsb(rook_atks)));
             Bitboard tmp = possible & occ_us;
             if (tmp && (tmp & (tmp - 1)) == 0)
@@ -907,90 +910,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      *
      * Detects pinned pieces and checking pieces, then updates the check mask accordingly.
      */
-    inline void refresh_attacks() {
-        const Color c = side_to_move();
-        const Square ksq = kingSq(c);
-        ASSUME(ksq >= SQ_A1 && ksq <= SQ_H8);
-        const Bitboard occ_all = occ();
-        const Bitboard occ_us = occ(c);
-
-        Bitboard bishop_pin = 0, rook_pin = 0, checkers = 0, qBB = pieces<QUEEN>(~c);
-        
-        // Diagonals: enemy bishops/queens on same diagonals as the king
-        Bitboard b_sliders = pieces<BISHOP>(~c) | qBB;
-        Bitboard r_sliders = pieces<ROOK>(~c) | qBB;
-        Bitboard diag_snipers = attacks::bishop(ksq, Bitboard(0)) & b_sliders;
-        while (diag_snipers) {
-    		Bitboard sniper_bb = diag_snipers & -diag_snipers;
-    		diag_snipers ^= sniper_bb;
-		
-    		Square sniper = static_cast<Square>(lsb(sniper_bb));
-            Bitboard between = movegen::between(ksq, sniper);
-            Bitboard blockers = between & occ_all & ~sniper_bb;
-            if (!blockers) {
-                checkers |= sniper_bb;
-            } else if (!(blockers & (blockers - 1)) && (blockers & occ_us)) {
-                bishop_pin |= between;
-            }
-        }
-
-        // Orthogonals: enemy rooks/queens on same ranks/files as the king
-        Bitboard ortho_snipers = attacks::rook(ksq, Bitboard(0)) & r_sliders;
-        while (ortho_snipers) {
-    		Bitboard sniper_bb = ortho_snipers & -ortho_snipers;
-    		ortho_snipers ^= sniper_bb;
-		
-    		Square sniper = static_cast<Square>(lsb(sniper_bb));
-            Bitboard between = movegen::between(ksq, sniper);
-            Bitboard blockers = between & occ_all & ~sniper_bb;
-            if (!blockers) {
-                checkers |= sniper_bb;
-            } else if (!(blockers & (blockers - 1)) && (blockers & occ_us)) {
-                rook_pin |= between;
-            }
-        }
-
-        // Pawn and knight checkers (precomputed tables, no magic lookups)
-        checkers |= (attacks::pawn(c, ksq) & pieces<PAWN>(~c));
-        checkers |= (attacks::knight(ksq) & pieces<KNIGHT>(~c));
-
-        {
-            const Color them = ~c;
-            const Bitboard occ_without_king = occ_all ^ (1ULL << ksq);
-            Bitboard ea = 0;
-
-            while (b_sliders) {
-                Square s = static_cast<Square>(pop_lsb(b_sliders));
-                ea |= attacks::bishop(s, occ_without_king);
-            }
-
-            while (r_sliders) {
-                Square s = static_cast<Square>(pop_lsb(r_sliders));
-                ea |= attacks::rook(s, occ_without_king);
-            }
-
-            ea |= attacks::knight(pieces<KNIGHT>(them));
-            Bitboard p = pieces<PAWN>(them);
-            ea |= (them == WHITE) ? ((p & ~attacks::MASK_FILE[FILE_A]) << 7) | ((p & ~attacks::MASK_FILE[FILE_H]) << 9)
-                                  : ((p & ~attacks::MASK_FILE[FILE_H]) >> 7) | ((p & ~attacks::MASK_FILE[FILE_A]) >> 9);
-            ea |= attacks::king(kingSq(them));
-
-            _enemy_attacks = ea;
-        }
-
-        _bishop_pin = bishop_pin;
-        _rook_pin = rook_pin;
-        _pin_mask = rook_pin | bishop_pin;
-        _checkers = checkers;
-        if (!_checkers) {
-            _check_mask = ~0ULL;
-        } else if ((_checkers & (_checkers - 1)) == 0) {
-            auto sq = static_cast<Square>(lsb(_checkers));
-            _check_mask = 1ULL << sq | movegen::between(ksq, sq);
-        } else {
-            _check_mask = 0ULL;
-        }
-    }
+    void refresh_attacks();
 
     inline const auto &state() const { return history.back(); }
     inline auto &state() { return history.back(); }

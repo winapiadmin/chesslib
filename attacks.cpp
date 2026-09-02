@@ -153,8 +153,6 @@ const std::array<std::array<Bitboard, 64>, 8> RAYS = []() {
     return r;
 }();
 
-
-
 #ifndef GENERATE_AT_RUNTIME
 #define _POSSIBLY_CONSTEXPR constexpr
 #else
@@ -261,6 +259,41 @@ _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, 0x1900
 _POSSIBLY_CONSTEXPR std::array<Magic, 64> RookTable = rookData.first;
 _POSSIBLY_CONSTEXPR std::array<Bitboard, 0x19000> RookAttacks = rookData.second;
 
+// Split magic arrays (parallel scalars to avoid struct-load codegen issues)
+static inline std::array<Bitboard, 64> makeMasks(const std::array<Magic, 64> &tbl) {
+    std::array<Bitboard, 64> arr{};
+    for (int i = 0; i < 64; i++)
+        arr[i] = tbl[i].mask;
+    return arr;
+}
+static inline std::array<int, 64> makeIndices(const std::array<Magic, 64> &tbl) {
+    std::array<int, 64> arr{};
+    for (int i = 0; i < 64; i++)
+        arr[i] = tbl[i].index;
+    return arr;
+}
+const std::array<Bitboard, 64> BishopMasks = makeMasks(BishopTable);
+const std::array<int, 64> BishopIndexBase = makeIndices(BishopTable);
+const std::array<Bitboard, 64> RookMasks = makeMasks(RookTable);
+const std::array<int, 64> RookIndexBase = makeIndices(RookTable);
+#ifndef __BMI2__
+static inline std::array<Bitboard, 64> makeFactors(const std::array<Magic, 64> &tbl) {
+    std::array<Bitboard, 64> arr{};
+    for (int i = 0; i < 64; i++)
+        arr[i] = tbl[i].magic;
+    return arr;
+}
+static inline std::array<Bitboard, 64> makeShifts(const std::array<Magic, 64> &tbl) {
+    std::array<Bitboard, 64> arr{};
+    for (int i = 0; i < 64; i++)
+        arr[i] = tbl[i].shift;
+    return arr;
+}
+std::array<Bitboard, 64> BishopMagicFactors = makeFactors(BishopTable);
+std::array<Bitboard, 64> BishopShifts = makeShifts(BishopTable);
+std::array<Bitboard, 64> RookMagicFactors = makeFactors(RookTable);
+std::array<Bitboard, 64> RookShifts = makeShifts(RookTable);
+#endif
 
 } // namespace chess::attacks
 namespace chess::movegen {
