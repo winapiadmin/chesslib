@@ -631,6 +631,11 @@ template <typename T, std::size_t MaxSize> class ValueList {
         return values_[0];
     }
 
+    /// @brief Whether @p count more elements can be appended.
+    /// @param count Number of elements about to be written.
+    /// @return true if `size() + count <= MaxSize`.
+    inline bool has_room(size_type count) const noexcept { return size_ + count <= MaxSize; }
+
     /// @brief Indexed access. UB if index >= MaxSize.
     inline T &operator[](size_type index) { return values_[index]; }
 

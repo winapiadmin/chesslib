@@ -327,10 +327,4 @@ template <PieceType pt> [[nodiscard]] inline Bitboard slider(Square sq, Bitboard
         return queen(sq, occupied);
 }
 
-// Ray direction indices for precomputed ray bitboards
-enum RayDir : int { RD_NORTH = 0, RD_SOUTH = 1, RD_EAST = 2, RD_WEST = 3, RD_NE = 4, RD_NW = 5, RD_SE = 6, RD_SW = 7 };
-
-/// @brief Precomputed rays from each square in 8 directions.
-extern const std::array<std::array<Bitboard, 64>, 8> RAYS;
-
 } // namespace chess::attacks

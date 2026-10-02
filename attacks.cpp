@@ -109,50 +109,6 @@ static constexpr Bitboard _HyperbolaRookAttacks(Square sq, Bitboard occ) {
 } // namespace chess::_chess
 namespace chess::attacks {
 
-// Precompute rays for each square and each of 8 directions.
-const std::array<std::array<Bitboard, 64>, 8> RAYS = []() {
-    std::array<std::array<Bitboard, 64>, 8> r{};
-    for (int dir = 0; dir < 8; ++dir) {
-        for (Square sq = SQ_A1; sq < SQ_NONE; ++sq) {
-            Bitboard cur = 1ULL << sq;
-            Bitboard accum = 0ULL;
-            while (true) {
-                switch (dir) {
-                case RD_NORTH:
-                    cur = cur << 8;
-                    break;
-                case RD_SOUTH:
-                    cur = cur >> 8;
-                    break;
-                case RD_EAST:
-                    cur = (cur & ~MASK_FILE[FILE_H]) << 1;
-                    break;
-                case RD_WEST:
-                    cur = (cur & ~MASK_FILE[FILE_A]) >> 1;
-                    break;
-                case RD_NE:
-                    cur = (cur & ~MASK_FILE[FILE_H]) << 9;
-                    break;
-                case RD_NW:
-                    cur = (cur & ~MASK_FILE[FILE_A]) << 7;
-                    break;
-                case RD_SE:
-                    cur = (cur & ~MASK_FILE[FILE_H]) >> 7;
-                    break;
-                case RD_SW:
-                    cur = (cur & ~MASK_FILE[FILE_A]) >> 9;
-                    break;
-                }
-                if (!cur)
-                    break;
-                accum |= cur;
-            }
-            r[dir][sq] = accum;
-        }
-    }
-    return r;
-}();
-
 // clang-format off
 constexpr std::array<uint64_t, 64> RookMagics = {
     0x8a80104000800020ULL, 0x0140002000100040ULL, 0x02801880a0017001ULL, 0x0100081001000420ULL,

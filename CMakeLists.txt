@@ -23,6 +23,21 @@ project(chesslib LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# --- Default build type ---
+# Without this an unconfigured build (`cmake -S . -B build`) gets no -O flag AND no
+# NDEBUG. That is not merely slow: position.cpp and movegen.cpp gate diagnostics on
+# `#if defined(_DEBUG) || !defined(NDEBUG)`, so an unconfigured build compiles in a
+# std::cerr dump of the whole board and the whole move history on every king capture.
+# A single-config generator with no CMAKE_BUILD_TYPE is a near-certain misconfiguration,
+# so default it to RelWithDebInfo rather than silently producing a -O0 build.
+get_property(_chesslib_is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(NOT _chesslib_is_multi_config AND NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Build type" FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+        Debug Release RelWithDebInfo MinSizeRel)
+    message(STATUS "CMAKE_BUILD_TYPE was unset; defaulting to RelWithDebInfo")
+endif()
+
 # --- Link-Time Optimization ---
 option(ENABLE_LTO "Enable Link-Time Optimization" ON)
 
@@ -275,7 +290,11 @@ target_compile_definitions(chesslib PUBLIC
 )
 
 # --- Release-style configurations ---
-target_compile_definitions(chesslib INTERFACE
+# PUBLIC, not INTERFACE: chesslib's own translation units need NDEBUG too, otherwise
+# the `#if defined(_DEBUG) || !defined(NDEBUG)` diagnostics in position.cpp and
+# movegen.cpp stay compiled in. Relying on CMAKE_CXX_FLAGS_<CONFIG> alone only works
+# for CMake's built-in config names.
+target_compile_definitions(chesslib PUBLIC
     "$<$<CONFIG:Release>:NDEBUG>"
     "$<$<CONFIG:RelWithDebInfo>:NDEBUG>"
     "$<$<CONFIG:MinSizeRel>:NDEBUG>"

@@ -50,14 +50,23 @@ template <typename T, Color c, PieceType pt, bool capturesOnly, typename ListT>
 void genSlidingMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard, Bitboard, Bitboard);
 
 /// @brief Precomputed between-square bitboards.
-/// @details squares_between_bb[sq1][sq2] contains a bitboard of all squares
-///          strictly between sq1 and sq2 (excluding both endpoints).
+/// @details squares_between_bb[sq1][sq2] holds the squares strictly between sq1 and sq2
+///          (both endpoints excluded) when they share a rank, file or diagonal, and 0
+///          otherwise. generate_between() in attacks.cpp then ORs in 1ULL << sq2
+///          unconditionally, so the stored table additionally contains sq2.
 extern std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB;
 
 /// @brief Look up the squares between two squares.
-/// @param sq1 First square.
-/// @param sq2 Second square.
-/// @return Bitboard of squares between sq1 and sq2, excluding sq1 and sq2.
-///         Returns 1ULL << sq2 if the squares are not on the same line.
+/// @param sq1 First square. Never included in the result.
+/// @param sq2 Second square. Always included in the result.
+/// @return The squares strictly between sq1 and sq2, **plus sq2 itself**, for any pair
+///         that shares a rank, file or diagonal. For a pair that does not, the result is
+///         just 1ULL << sq2.
+/// @note The trailing sq2 bit is load-bearing for pin handling: between(king, sniper)
+///       is used as the pin *line*, and must therefore cover every square a pinned piece
+///       may move to, including capturing the pinning slider. Callers that instead want
+///       only the occupied squares between the two (for example to count blockers for the
+///       "exactly one blocker" pin test) must mask sq2 off, or the blocker count is off by
+///       one and pin detection silently never fires.
 [[nodiscard]] inline Bitboard between(Square sq1, Square sq2) noexcept { return SQUARES_BETWEEN_BB[sq1][sq2]; }
 } // namespace chess::movegen

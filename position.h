@@ -432,14 +432,15 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      */
     [[nodiscard]] inline bool isAttacked(Square sq, Color by) const noexcept {
         const Bitboard occ_bb = occ();
-        const Bitboard us_bb = occ(by);
 
+        // pieces(pt, by) already returns state().pieces[pt] & state().occ[by], so both
+        // unions below are occupancy-masked by `by`; no extra & occ(by) is needed.
         Bitboard diag_attackers = pieces(PieceType::BISHOP, by) | pieces(PieceType::QUEEN, by);
         Bitboard ortho_attackers = pieces(PieceType::ROOK, by) | pieces(PieceType::QUEEN, by);
 
         return (attacks::pawn(~by, sq) & pieces(PieceType::PAWN, by)) ||
                (attacks::knight(sq) & pieces(PieceType::KNIGHT, by)) || (attacks::king(sq) & pieces(PieceType::KING, by)) ||
-               (attacks::bishop(sq, occ_bb) & diag_attackers & us_bb) || (attacks::rook(sq, occ_bb) & ortho_attackers & us_bb);
+               (attacks::bishop(sq, occ_bb) & diag_attackers) || (attacks::rook(sq, occ_bb) & ortho_attackers);
     }
     /**
      * Checks if a square is attacked by the given color.
@@ -733,7 +734,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     bool is_insufficient_material() const;
 
     /// @brief Whether a colour has any non-pawn, non-king material.
-    inline bool hasNonPawnMaterial(Color c) const { return bool(us(c) & ~(pieces(PAWN) | pieces(KING)) & occ(c)); }
+    // us(c) is occ(c), so the trailing occ(c) would be a no-op.
+    inline bool hasNonPawnMaterial(Color c) const { return bool(us(c) & ~(pieces(PAWN) | pieces(KING))); }
 
     /// @brief Whether the side to move is in check.
     inline bool is_check() const { return checkers() != 0LL; }
@@ -813,7 +815,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         atks |= (attacks::rook(square, occupied) & (pieces<ROOK>(color) | queens));
         atks |= (attacks::king(square) & pieces<KING>(color));
 
-        return atks & occ(color);
+        // Every term above is already masked by occ(color) via pieces<pt>(color).
+        return atks;
     }
 
     /// @brief Check whether any square on path is attacked (for castling through check).
@@ -884,51 +887,19 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     [[nodiscard]] inline Bitboard get_castling_path(Color c, bool isKingSide) const { return getCastlingPath(c, isKingSide); }
     /**
      * Retrieve the castling metadata for a color.
-     * @return The castling metadata for the specified color.
+     * @return A const reference to the castling metadata for the specified color. The
+     *         reference is valid for the lifetime of this position; note that doMove()
+     *         never mutates castling_meta_, only castlingRights(), so it stays valid
+     *         across make/unmake.
      */
-    [[nodiscard]] inline auto getCastlingMetadata(Color c) const { return castling_meta_[c]; }
+    [[nodiscard]] inline const CastlingMeta &getCastlingMetadata(Color c) const { return castling_meta_[c]; }
     /**
      * Castling metadata for a color.
      * @param c Color.
      */
-    [[nodiscard]] inline auto get_castling_metadata(Color c) const { return getCastlingMetadata(c); }
+    [[nodiscard]] inline const CastlingMeta &get_castling_metadata(Color c) const { return getCastlingMetadata(c); }
 
   private:
-    /// @brief Compute pin masks for the king at sq.
-    void pinMasks(Color c, Square sq, Bitboard &rook_pin, Bitboard &bishop_pin) const {
-        ASSUME(sq >= SQ_A1 && sq <= SQ_H8);
-        Bitboard occ_opp = occ(~c);
-        Bitboard occ_us = occ(c);
-        Bitboard opp_queens = pieces(QUEEN, ~c) & occ_opp;
-
-        Bitboard opp_bishops = (pieces<BISHOP>(~c) | opp_queens);
-        Bitboard bishop_atks = attacks::slider<BISHOP>(sq, occ_opp) & opp_bishops;
-
-        Bitboard opp_rooks = (pieces<ROOK>(~c) | opp_queens);
-        Bitboard rook_atks = attacks::slider<ROOK>(sq, occ_opp) & opp_rooks;
-
-        rook_pin = 0;
-        bishop_pin = 0;
-#if defined(_MSC_VER)
-        __pragma(loop(ivdep))
-#endif
-            while (bishop_atks) {
-            auto possible = movegen::between(sq, Square(pop_lsb(bishop_atks)));
-            Bitboard tmp = possible & occ_us;
-            if (tmp && (tmp & (tmp - 1)) == 0)
-                bishop_pin |= possible;
-        }
-#if defined(_MSC_VER)
-        __pragma(loop(ivdep))
-#endif
-            while (rook_atks) {
-            auto possible = movegen::between(sq, Square(pop_lsb(rook_atks)));
-            Bitboard tmp = possible & occ_us;
-            if (tmp && (tmp & (tmp - 1)) == 0)
-                rook_pin |= possible;
-        }
-    }
-
     /**
      * Recompute cached pins, checkers, and check mask for the side to move.
      *

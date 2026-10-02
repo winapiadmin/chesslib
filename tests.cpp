@@ -462,6 +462,84 @@ TEST_CASE("Move making pin update") {
     }
 }
 
+/// @brief Assert a UCI move is generated for @p fen.
+static void require_legal(const char *fen, const char *uci) {
+    Position p(fen);
+    Movelist moves;
+    p.legals(moves);
+    const int want =
+        (int(parse_square(std::string_view(uci).substr(0, 2))) << 6) | int(parse_square(std::string_view(uci).substr(2, 2)));
+    bool found = false;
+    for (const Move &m : moves)
+        found |= (m.from_to() == want);
+    CAPTURE(fen);
+    CAPTURE(uci);
+    REQUIRE(found);
+}
+
+/// @brief Assert a UCI move is NOT generated for @p fen.
+static void require_illegal(const char *fen, const char *uci) {
+    Position p(fen);
+    Movelist moves;
+    p.legals(moves);
+    const int unwanted =
+        (int(parse_square(std::string_view(uci).substr(0, 2))) << 6) | int(parse_square(std::string_view(uci).substr(2, 2)));
+    for (const Move &m : moves) {
+        CAPTURE(fen);
+        CAPTURE(uci);
+        REQUIRE(m.from_to() != unwanted);
+    }
+}
+
+// The pin masks must carry the WHOLE pin line (every square a pinned piece may move to,
+// including the pinning slider), not merely the pinned piece's square. A pin mask that
+// holds only the occupied blocker makes pinned pieces lose every move along the pin,
+// while a blocker count that forgets to exclude the sniper itself silently disables pin
+// detection altogether and permits moves that leave the king in check. Both failure modes
+// are illegal-move bugs, not wrong-move-count bugs, so they are asserted concretely here.
+TEST_CASE("Pinned pieces may move along the pin line") {
+    // King a1, rook b1, black rook h1: the rook is pinned along the first rank.
+    const char *rank_pin = "7k/8/8/8/8/8/8/KR5r w - - 0 1";
+    require_legal(rank_pin, "b1c1");   // slide along the pin line
+    require_legal(rank_pin, "b1h1");   // capture the pinner
+    require_illegal(rank_pin, "b1b8"); // leaving the pin line
+    require_illegal(rank_pin, "b1a1"); // onto own king
+
+    // King a1, bishop c3, black bishop f6: pinned on the a1-h8 diagonal.
+    const char *diag_slider = "7k/8/5b2/8/8/2B5/8/K7 w - - 0 1";
+    require_legal(diag_slider, "c3b2");
+    require_legal(diag_slider, "c3d4");
+    require_legal(diag_slider, "c3f6"); // capture the pinner
+    require_illegal(diag_slider, "c3d2");
+    require_illegal(diag_slider, "c3e1");
+
+    // King a1, pawn a2, black rook a8: pawn pinned on the a-file, so straight pushes
+    // stay legal while every capture off the file is not.
+    const char *file_pawn = "7k/r7/8/8/8/8/P7/K7 w - - 0 1";
+    require_legal(file_pawn, "a2a3");
+    require_legal(file_pawn, "a2a4");   // double push along the pin file
+    require_illegal(file_pawn, "a2b3"); // capture off the pin file
+
+    // King a1, pawn c3, black bishop f6: a pawn cannot move along a diagonal, so being
+    // pinned on one leaves it with no legal move at all.
+    const char *diag_pawn = "7k/8/5b2/8/8/2P5/8/K7 w - - 0 1";
+    require_illegal(diag_pawn, "c3c4");
+    require_illegal(diag_pawn, "c3b4");
+    require_illegal(diag_pawn, "c3d4");
+
+    // King a1 with own rook c1 and knight e1 between it and the black rook h1: two own
+    // pieces on the line means neither is pinned, so both may leave the first rank.
+    const char *not_pinned = "7k/8/8/8/8/8/8/K1R1N2r w - - 0 1";
+    require_legal(not_pinned, "c1c8");
+    require_legal(not_pinned, "c1d1");
+    require_legal(not_pinned, "e1f3");
+
+    // Double check: nothing but king moves is legal.
+    const char *double_check = "4k3/8/8/8/8/2n5/4r3/4K3 w - - 0 1";
+    require_illegal(double_check, "a1a2");
+    require_illegal(double_check, "a1b1");
+}
+
 TEST_CASE("Experienced bugs in this repo") {
     {
         Position p("rnbqkbnr/pp1p1ppp/8/2pPp3/8/8/PPP1PPPP/RNBQKBNR w KQkq e6 0 3");

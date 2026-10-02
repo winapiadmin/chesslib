@@ -41,7 +41,20 @@ namespace chess {
 
 namespace _chess {
 
-#if defined(__AVX512F__) && defined(__AVX512VNNI__) && defined(__AVX512VBMI2__)
+#if defined(__AVX512BW__)
+namespace detail {
+/// @brief Lane mask selecting the low @p n of 32 16-bit lanes.
+/// @param n Number of active lanes, 0..32.
+constexpr __mmask32 lowLanes(uint32_t n) noexcept { return static_cast<__mmask32>(n >= 32u ? ~0u : ((1u << n) - 1u)); }
+} // namespace detail
+#endif
+
+// NOTE: __AVX512BW__ is required here because splat_moves() masks its store down to the
+// number of live lanes with _mm512_mask_storeu_epi16, which is a BW instruction. Every CPU
+// with AVX512VBMI2 also has AVX512BW, so this costs nothing in practice; requiring it
+// explicitly means a hypothetical VBMI2-without-BW part falls through to the portable
+// scalar path instead of failing to build.
+#if defined(__AVX512F__) && defined(__AVX512BW__) && defined(__AVX512VNNI__) && defined(__AVX512VBMI2__)
 
 // clang-format off
 const __m512i AllSquares = _mm512_set_epi8(
@@ -56,17 +69,19 @@ template <Direction offset> /**
                              * @tparam offset Direction offset from destination to origin squares.
                              * @param moveList Output buffer where move objects are written.
                              * @param to_bb Bitboard of destination squares (at most 8 bits set).
-                             * @return Pointer advanced by popcount(to_bb).
+                             * @param n Number of moves to write, i.e. popcount(to_bb). Passed in
+                             *        because the caller has already computed it.
+                             * @return Pointer advanced by @p n.
                              */
-inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb) {
-    assert(popcount(to_bb) <= 8); // <= 8 pawns per side
+inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb, int n) {
+    assert(n == popcount(to_bb) && n <= 8); // <= 8 pawns per side
 
     const __m128i toSquares = _mm_cvtepi8_epi16(_mm512_castsi512_si128(_mm512_maskz_compress_epi8(to_bb, AllSquares)));
     const __m128i fromSquares = _mm_subs_epi16(toSquares, _mm_set1_epi16(offset));
     const __m128i moves = _mm_or_si128(_mm_slli_epi16(fromSquares, 6), _mm_slli_epi16(toSquares, 0));
 
     _mm_storeu_si128(reinterpret_cast<__m128i *>(moveList), moves);
-    return moveList + popcount(to_bb);
+    return moveList + n;
 }
 
 /**
@@ -77,15 +92,20 @@ inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb) {
  * @param to_bb Bitboard of destination squares (popcount must not exceed 32).
  * @return Pointer advanced by the number of moves written.
  */
-inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
-    assert(popcount(to_bb) <= 32); // Q can attack up to 27 squares
+inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb, int n) {
+    assert(n == popcount(to_bb) && n <= 32); // Q can attack up to 27 squares
 
     const __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
     const __m512i toSquares = _mm512_cvtepi8_epi16(_mm512_castsi512_si256(_mm512_maskz_compress_epi8(to_bb, AllSquares)));
     const __m512i moves = _mm512_or_si512(fromVec, _mm512_slli_epi16(toSquares, 0));
 
-    _mm512_storeu_si512(moveList, moves);
-    return moveList + popcount(to_bb);
+    // Store only the lanes that hold moves. An unconditional _mm512_storeu_si512 would
+    // write 32 Move slots even when far fewer are valid, which overruns values_[MaxSize]
+    // once size_ exceeds capacity - 32. Measured high-water mark (size_ at the moment of
+    // a splat) over the test corpus's 271-legal-move position is 260, i.e. this branch
+    // is within 8 slots of the limit; a position with more legal moves would trip it.
+    _mm512_mask_storeu_epi16(reinterpret_cast<__m512i *>(moveList), detail::lowLanes(static_cast<uint32_t>(n)), moves);
+    return moveList + n;
 }
 
 #elif defined(__AVX512BW__) && defined(__AVX512VBMI2__)
@@ -124,12 +144,30 @@ template <int Offset> constexpr SplatTable<Offset> SPLAT_PAWN_TABLE{};
  * @return Pointer to the next available position in the output buffer.
  */
 static inline Move *write_moves(Move *RESTRICT moveList, uint32_t mask, __m512i vector) {
-    // Avoid _mm512_mask_compressstoreu_epi16() as it's 256 uOps on Zen4
-    _mm512_storeu_si512(reinterpret_cast<__m512i *>(moveList), _mm512_maskz_compress_epi16(mask, vector));
-    return moveList + popcount(mask);
+    // Avoid _mm512_mask_compressstoreu_epi16() as it's 256 uOps on Zen4. A plain
+    // _mm512_storeu_si512() would be cheaper still but always writes 32 Move slots
+    // regardless of how many are valid. That is not merely wasted bandwidth: the second
+    // store lands at moveList + popcount(low half), so whenever
+    //     size_ + popcount(to_bb & 0xFFFFFFFF) + 32 > Movelist capacity
+    // it writes past values_[MaxSize]. Measured under Intel SDE with
+    //     -mavx512f -mavx512bw -mavx512vbmi2 (no -mavx512vnni)
+    // it overruns by up to 62 bytes / 31 Move slots once size_ reaches the high 280s.
+    // Masking the store to popcount(mask) lanes removes the overrun and the dead lanes.
+    //
+    // Reachability: every -march that GCC accepts which defines __AVX512VBMI2__ also
+    // defines __AVX512VNNI__ (icelake-client/server, tigerlake, rocketlake,
+    // sapphirerapids, emeraldrapids, graniterapids[-d], diamondrapids, znver4, znver5),
+    // so -march=native picks the branch above and not this one. This branch only compiles
+    // when someone passes the ISA flags by hand, or from a future -march that adds
+    // VBMI2 without VNNI. Kept correct regardless.
+    const uint32_t n = static_cast<uint32_t>(popcount(mask));
+    _mm512_mask_storeu_epi16(reinterpret_cast<__m512i *>(moveList),
+                             detail::lowLanes(n),
+                             _mm512_maskz_compress_epi16(mask, vector));
+    return moveList + n;
 }
 
-inline Move *splat_moves(Move *RESTRICT moveList, Square from, Bitboard to_bb) {
+inline Move *splat_moves(Move *RESTRICT moveList, Square from, Bitboard to_bb, int n) {
     const auto *table = reinterpret_cast<const __m512i *>(SPLAT_TABLE.data.data());
     __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
     // two 32-lane blocks (0..31, 32..63)
@@ -137,18 +175,19 @@ inline Move *splat_moves(Move *RESTRICT moveList, Square from, Bitboard to_bb) {
     moveList =
         write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), _mm512_or_si512(_mm512_load_si512(table + 1), fromVec));
 
-    return moveList;
+    return moveList + n;
 }
 
-template <Direction offset> inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb) {
+template <Direction offset> inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb, int n) {
     const auto *table = reinterpret_cast<const __m512i *>(SPLAT_PAWN_TABLE<offset>.data.data());
     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0), _mm512_load_si512(table + 0));
     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), _mm512_load_si512(table + 1));
 
-    return moveList;
+    return moveList + n;
 }
 #else
-template <Direction offset> inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb) {
+template <Direction offset> inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb, int n) {
+    (void)n; // implied by the loop below
     while (to_bb) {
         auto to = static_cast<Square>(pop_lsb(to_bb));
 #if defined(_DEBUG) || !defined(NDEBUG)
@@ -162,7 +201,8 @@ template <Direction offset> inline Move *splat_pawn_moves(Move *RESTRICT moveLis
     return moveList;
 }
 
-inline Move *splat_moves(Move *RESTRICT moveList, Square from, Bitboard to_bb) {
+inline Move *splat_moves(Move *RESTRICT moveList, Square from, Bitboard to_bb, int n) {
+    (void)n; // implied by the loop below
     while (to_bb)
         *moveList++ = Move(from, static_cast<Square>(pop_lsb(to_bb)));
     return moveList;
@@ -181,8 +221,10 @@ inline Move *splat_moves(Move *RESTRICT moveList, Square from, Bitboard to_bb) {
  */
 template <typename ListT> inline void record_moves(ListT &list, Square from, Bitboard targets) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
-        _chess::splat_moves(list.data() + list.size_, from, targets);
-        list.size_ += popcount(targets);
+        const auto n = static_cast<size_t>(popcount(targets));
+        assert(list.has_room(n) && "Movelist capacity exceeded");
+        _chess::splat_moves(list.data() + list.size_, from, targets, static_cast<int>(n));
+        list.size_ += n;
     } else if constexpr (std::is_same_v<ListT, CountOnlyList>) {
         list.size_ += popcount(targets);
     } else {
@@ -205,6 +247,7 @@ template <Direction offset,
                            */
 inline void record_promotions(ListT &list, Bitboard dests) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
+        assert(list.has_room(4 * popcount(dests)) && "Movelist capacity exceeded");
         while (dests) {
             Square to = static_cast<Square>(pop_lsb(dests));
             Square from = static_cast<Square>(to - offset);
@@ -229,8 +272,10 @@ template <Direction offset, typename ListT> /**
                                              */
 inline void record_pawn_moves(ListT &list, Bitboard targets) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
-        _chess::splat_pawn_moves<offset>(list.data() + list.size_, targets);
-        list.size_ += popcount(targets);
+        const auto n = static_cast<size_t>(popcount(targets));
+        assert(list.has_room(n) && "Movelist capacity exceeded");
+        _chess::splat_pawn_moves<offset>(list.data() + list.size_, targets, static_cast<int>(n));
+        list.size_ += n;
     } else if constexpr (std::is_same_v<ListT, CountOnlyList>) {
         // CountOnlyList doesn't store moves; just increase the counter.
         list.size_ += popcount(targets);
@@ -438,6 +483,12 @@ void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bitboard _
         if (UNLIKELY(pos.checkers()))
             return;
 
+        // NOTE: the four loads below are deliberately NOT hoisted behind a
+        // `if (castlingRights())` guard. Gating them was measured and is a ~3% net loss
+        // on castling-rich perft trees (Kiwipete, position 4): the guard branch
+        // mispredicts whenever rights are gained/lost, and it puts otherwise-independent
+        // loads on the critical path, where the out-of-order engine was previously
+        // issuing them early and overlapping them with the rest of this function.
         Bitboard enemy_attacks = enemyAttacks;
         constexpr CastlingRights kingRights = KING_SIDE & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING),
                                  queenRights = QUEEN_SIDE & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING);
@@ -445,7 +496,8 @@ void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bitboard _
         Bitboard OO_SAFE = between(kingSq, castling_king_square(c, true));
         Bitboard OOO_EMPTY = pos.get_castling_path(c, false);
         Bitboard OOO_SAFE = between(kingSq, castling_king_square(c, false));
-        Square rookKing = pos.get_castling_metadata(c).rook_start_ks, rookQueen = pos.get_castling_metadata(c).rook_start_qs;
+        const Square rookKing = pos.get_castling_metadata(c).rook_start_ks;
+        const Square rookQueen = pos.get_castling_metadata(c).rook_start_qs;
 
         if (pos.castlingRights() & kingRights &&
             !(occ_all & OO_EMPTY || enemy_attacks & OO_SAFE || _pin_mask & 1ULL << rookKing)) {
