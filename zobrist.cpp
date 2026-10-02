@@ -318,5 +318,18 @@ uint64_t RandomEP[9] = {
     0x0000000000000000
 };
 std::array<uint64_t, 64> *RandomPiece[3] = { _RandomPiece, RandomPiece_EnginePiece, RandomPiece_ContiguousMappingPiece };
+
+// Flat Zobrist piece table — eliminates pointer chain indirection.
+// Layout: RandomPieceFlat[type][piece * 64 + square]
+uint64_t RandomPieceFlat[3][16 * 64] = {};
+static struct InitFlatZobrist {
+    InitFlatZobrist() {
+        constexpr int counts[3] = { 12, 16, 12 }; // Polyglot, Engine, Contiguous
+        for (int t = 0; t < 3; t++)
+            for (int p = 0; p < counts[t]; p++)
+                for (int sq = 0; sq < 64; sq++)
+                    RandomPieceFlat[t][p * 64 + sq] = RandomPiece[t][p][sq];
+    }
+} init_flat_zobrist;
 // clang-format on
 } // namespace chess::zobrist

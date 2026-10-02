@@ -186,7 +186,7 @@ void check_perfts(std::vector<TestEntry<std::string, perft_t>> &entries) {
     std::cout << "Speed: " << mnps << "Mnps\n";
 }
 
-TEST_CASE("Chess960" * doctest::timeout(36000)) {
+TEST_CASE("Chess960 perft 01/24" * doctest::timeout(36000)) {
     std::vector<TestEntry<std::string, perft_t>> tests = {
         {      "bqnb1rkr/pp3ppp/3ppn2/2p5/5P2/P2P4/NPP1P1PP/BQ1BNRKR w HFhf - 2 9", 1,         21 },
         {      "bqnb1rkr/pp3ppp/3ppn2/2p5/5P2/P2P4/NPP1P1PP/BQ1BNRKR w HFhf - 2 9", 2,        528 },
@@ -428,6 +428,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {     "nb1qbrkr/p1pppp2/1p1n2pp/8/1P6/2PN3P/P2PPPP1/NB1QBRKR w HFhf - 0 9", 4,     306427 },
         {     "nb1qbrkr/p1pppp2/1p1n2pp/8/1P6/2PN3P/P2PPPP1/NB1QBRKR w HFhf - 0 9", 5,    8697700 },
         {     "nb1qbrkr/p1pppp2/1p1n2pp/8/1P6/2PN3P/P2PPPP1/NB1QBRKR w HFhf - 0 9", 6,  201455191 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 02/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {            "nnq1brkr/pp1pppp1/8/2p4P/8/5K2/PPPbPP1P/NNQBBR1R w hf - 0 9", 1,         23 },
         {            "nnq1brkr/pp1pppp1/8/2p4P/8/5K2/PPPbPP1P/NNQBBR1R w hf - 0 9", 2,        724 },
         {            "nnq1brkr/pp1pppp1/8/2p4P/8/5K2/PPPbPP1P/NNQBBR1R w hf - 0 9", 3,      18263 },
@@ -668,6 +673,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {            "bbnnrkrq/ppp1pp2/6p1/3p4/7p/7P/PPPPPPP1/BBNNRRKQ w ge - 0 9", 4,     355326 },
         {            "bbnnrkrq/ppp1pp2/6p1/3p4/7p/7P/PPPPPPP1/BBNNRRKQ w ge - 0 9", 5,    8427161 },
         {            "bbnnrkrq/ppp1pp2/6p1/3p4/7p/7P/PPPPPPP1/BBNNRRKQ w ge - 0 9", 6,  252274233 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 03/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {    "bnnbrkr1/ppp2p1p/5q2/3pp1p1/4P3/1N4P1/PPPPRP1P/BN1B1KRQ w Gge - 0 9", 1,         26 },
         {    "bnnbrkr1/ppp2p1p/5q2/3pp1p1/4P3/1N4P1/PPPPRP1P/BN1B1KRQ w Gge - 0 9", 2,       1036 },
         {    "bnnbrkr1/ppp2p1p/5q2/3pp1p1/4P3/1N4P1/PPPPRP1P/BN1B1KRQ w Gge - 0 9", 3,      27228 },
@@ -908,6 +918,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {      "nb1r1nkr/ppp1ppp1/2bp4/7p/3P2qP/P6R/1PP1PPP1/NBQRBNK1 w Dhd - 1 9", 4,    2526992 },
         {      "nb1r1nkr/ppp1ppp1/2bp4/7p/3P2qP/P6R/1PP1PPP1/NBQRBNK1 w Dhd - 1 9", 5,   88557078 },
         {      "nb1r1nkr/ppp1ppp1/2bp4/7p/3P2qP/P6R/1PP1PPP1/NBQRBNK1 w Dhd - 1 9", 6, 3589649998 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 04/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {   "n1rbbnkr/1p1pp1pp/p7/2p1qp2/1B3P2/3P4/PPP1P1PP/NQRB1NKR w HChc - 0 9", 1,         24 },
         {   "n1rbbnkr/1p1pp1pp/p7/2p1qp2/1B3P2/3P4/PPP1P1PP/NQRB1NKR w HChc - 0 9", 2,        913 },
         {   "n1rbbnkr/1p1pp1pp/p7/2p1qp2/1B3P2/3P4/PPP1P1PP/NQRB1NKR w HChc - 0 9", 3,      21595 },
@@ -1148,6 +1163,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {            "bbnrnkqr/1pppp1pp/5p2/p7/7P/1P6/PBPPPPPR/1BNRNKQ1 w D - 2 9", 4,     502279 },
         {            "bbnrnkqr/1pppp1pp/5p2/p7/7P/1P6/PBPPPPPR/1BNRNKQ1 w D - 2 9", 5,   14375839 },
         {            "bbnrnkqr/1pppp1pp/5p2/p7/7P/1P6/PBPPPPPR/1BNRNKQ1 w D - 2 9", 6,  435585252 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 05/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {        "bnrbk1qr/1ppp1ppp/p2np3/8/P7/2N2P2/1PPPP1PP/B1RBNKQR w HC - 0 9", 1,         26 },
         {        "bnrbk1qr/1ppp1ppp/p2np3/8/P7/2N2P2/1PPPP1PP/B1RBNKQR w HC - 0 9", 2,        621 },
         {        "bnrbk1qr/1ppp1ppp/p2np3/8/P7/2N2P2/1PPPP1PP/B1RBNKQR w HC - 0 9", 3,      17569 },
@@ -1388,6 +1408,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {     "qbnrbknr/ppp2p1p/8/3pp1p1/1PP1B3/5N2/P2PPPPP/Q1NRBK1R w HDhd - 0 9", 4,     930619 },
         {     "qbnrbknr/ppp2p1p/8/3pp1p1/1PP1B3/5N2/P2PPPPP/Q1NRBK1R w HDhd - 0 9", 5,   32523099 },
         {     "qbnrbknr/ppp2p1p/8/3pp1p1/1PP1B3/5N2/P2PPPPP/Q1NRBK1R w HDhd - 0 9", 6,  955802240 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 06/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {         "qnrbb1nr/pp1p1ppp/2p2k2/4p3/4P3/5PPP/PPPP4/QNRBBKNR w HC - 0 9", 1,         20 },
         {         "qnrbb1nr/pp1p1ppp/2p2k2/4p3/4P3/5PPP/PPPP4/QNRBBKNR w HC - 0 9", 2,        460 },
         {         "qnrbb1nr/pp1p1ppp/2p2k2/4p3/4P3/5PPP/PPPP4/QNRBBKNR w HC - 0 9", 3,      10287 },
@@ -1628,6 +1653,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {        "1bnrkqnr/p1pppp2/7p/1p4p1/4b3/7N/PPPP1PPP/BBNRKQ1R w HDhd - 0 9", 4,     565006 },
         {        "1bnrkqnr/p1pppp2/7p/1p4p1/4b3/7N/PPPP1PPP/BBNRKQ1R w HDhd - 0 9", 5,   16661676 },
         {        "1bnrkqnr/p1pppp2/7p/1p4p1/4b3/7N/PPPP1PPP/BBNRKQ1R w HDhd - 0 9", 6,  487354613 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 07/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {     "bnrbkq1r/pp2p1pp/5n2/2pp1p2/P7/N1PP4/1P2PPPP/B1RBKQNR w HChc - 1 9", 1,         24 },
         {     "bnrbkq1r/pp2p1pp/5n2/2pp1p2/P7/N1PP4/1P2PPPP/B1RBKQNR w HChc - 1 9", 2,        745 },
         {     "bnrbkq1r/pp2p1pp/5n2/2pp1p2/P7/N1PP4/1P2PPPP/B1RBKQNR w HChc - 1 9", 3,      18494 },
@@ -1868,6 +1898,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {        "nbrkb1rq/p1pp1ppp/4n3/4p3/Pp6/6N1/1PPPPPPP/NBRKBRQ1 w Cgc - 0 9", 4,     247733 },
         {        "nbrkb1rq/p1pp1ppp/4n3/4p3/Pp6/6N1/1PPPPPPP/NBRKBRQ1 w Cgc - 0 9", 5,    6124625 },
         {        "nbrkb1rq/p1pp1ppp/4n3/4p3/Pp6/6N1/1PPPPPPP/NBRKBRQ1 w Cgc - 0 9", 6,  154766108 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 08/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {       "nrkb1nrq/p2pp1pp/1pp2p2/7b/6PP/5P2/PPPPP2N/NRKBB1RQ w GBgb - 0 9", 1,         21 },
         {       "nrkb1nrq/p2pp1pp/1pp2p2/7b/6PP/5P2/PPPPP2N/NRKBB1RQ w GBgb - 0 9", 2,        479 },
         {       "nrkb1nrq/p2pp1pp/1pp2p2/7b/6PP/5P2/PPPPP2N/NRKBB1RQ w GBgb - 0 9", 3,      11152 },
@@ -2108,6 +2143,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {     "1bnrqkrn/2ppppp1/p7/1p1b3p/3PP1P1/8/PPPQ1P1P/BBNR1KRN w GDgd - 1 9", 4,     857060 },
         {     "1bnrqkrn/2ppppp1/p7/1p1b3p/3PP1P1/8/PPPQ1P1P/BBNR1KRN w GDgd - 1 9", 5,   30458921 },
         {     "1bnrqkrn/2ppppp1/p7/1p1b3p/3PP1P1/8/PPPQ1P1P/BBNR1KRN w GDgd - 1 9", 6,  824344087 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 09/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {      "bnrbqkr1/ppp2pp1/6n1/3pp2p/1P6/2N3N1/P1PPPPPP/B1RBQRK1 w gc - 0 9", 1,         23 },
         {      "bnrbqkr1/ppp2pp1/6n1/3pp2p/1P6/2N3N1/P1PPPPPP/B1RBQRK1 w gc - 0 9", 2,        704 },
         {      "bnrbqkr1/ppp2pp1/6n1/3pp2p/1P6/2N3N1/P1PPPPPP/B1RBQRK1 w gc - 0 9", 3,      17345 },
@@ -2348,6 +2388,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {        "nbrk1rqn/p1ppp2p/1p6/5ppb/8/1N2P2P/PPPP1PP1/1BKRBRQN w fc - 0 9", 4,     408544 },
         {        "nbrk1rqn/p1ppp2p/1p6/5ppb/8/1N2P2P/PPPP1PP1/1BKRBRQN w fc - 0 9", 5,    9329122 },
         {        "nbrk1rqn/p1ppp2p/1p6/5ppb/8/1N2P2P/PPPP1PP1/1BKRBRQN w fc - 0 9", 6,  315021712 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 10/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {         "nrkbbrqn/3pppp1/7p/ppp5/P7/1N5P/1PPPPPP1/1RKBBRQN w FBfb - 0 9", 1,         19 },
         {         "nrkbbrqn/3pppp1/7p/ppp5/P7/1N5P/1PPPPPP1/1RKBBRQN w FBfb - 0 9", 2,        417 },
         {         "nrkbbrqn/3pppp1/7p/ppp5/P7/1N5P/1PPPPPP1/1RKBBRQN w FBfb - 0 9", 3,       9026 },
@@ -2588,6 +2633,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {        "bbrqn1kr/1pppp1pp/4n3/5p2/p5P1/3P4/PPP1PPKP/BBRQNN1R w hc - 0 9", 4,     335845 },
         {        "bbrqn1kr/1pppp1pp/4n3/5p2/p5P1/3P4/PPP1PPKP/BBRQNN1R w hc - 0 9", 5,    8191054 },
         {        "bbrqn1kr/1pppp1pp/4n3/5p2/p5P1/3P4/PPP1PPKP/BBRQNN1R w hc - 0 9", 6,  227555387 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 11/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {        "brqb1nkr/pppppp1p/8/4N1pn/5P2/6P1/PPPPP2P/BRQB1NKR w HBhb - 0 9", 1,         26 },
         {        "brqb1nkr/pppppp1p/8/4N1pn/5P2/6P1/PPPPP2P/BRQB1NKR w HBhb - 0 9", 2,        550 },
         {        "brqb1nkr/pppppp1p/8/4N1pn/5P2/6P1/PPPPP2P/BRQB1NKR w HBhb - 0 9", 3,      14338 },
@@ -2828,6 +2878,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {           "rbnnbq1r/ppppppkp/6p1/N7/4P3/P7/1PPP1PPP/RB1NBQKR w HA - 5 9", 4,     440594 },
         {           "rbnnbq1r/ppppppkp/6p1/N7/4P3/P7/1PPP1PPP/RB1NBQKR w HA - 5 9", 5,   13909432 },
         {           "rbnnbq1r/ppppppkp/6p1/N7/4P3/P7/1PPP1PPP/RB1NBQKR w HA - 5 9", 6,  349478320 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 12/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {      "r1nbbqkr/pppppp1p/8/8/1n3Pp1/3N1QP1/PPPPP2P/RN1BB1KR w HAha - 0 9", 1,         31 },
         {      "r1nbbqkr/pppppp1p/8/8/1n3Pp1/3N1QP1/PPPPP2P/RN1BB1KR w HAha - 0 9", 2,        791 },
         {      "r1nbbqkr/pppppp1p/8/8/1n3Pp1/3N1QP1/PPPPP2P/RN1BB1KR w HAha - 0 9", 3,      25431 },
@@ -3068,6 +3123,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {     "bbqr1knr/pppppp1p/8/4n1p1/2P1P3/6P1/PPQP1P1P/BB1RNKNR w HDhd - 0 9", 4,     481200 },
         {     "bbqr1knr/pppppp1p/8/4n1p1/2P1P3/6P1/PPQP1P1P/BB1RNKNR w HDhd - 0 9", 5,   14301029 },
         {     "bbqr1knr/pppppp1p/8/4n1p1/2P1P3/6P1/PPQP1P1P/BB1RNKNR w HDhd - 0 9", 6,  394943978 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 13/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {          "bq1bnknr/pprppp1p/8/2p3p1/4PPP1/8/PPPP3P/BQRBNKNR w HCh - 0 9", 1,         24 },
         {          "bq1bnknr/pprppp1p/8/2p3p1/4PPP1/8/PPPP3P/BQRBNKNR w HCh - 0 9", 2,        548 },
         {          "bq1bnknr/pprppp1p/8/2p3p1/4PPP1/8/PPPP3P/BQRBNKNR w HCh - 0 9", 3,      14021 },
@@ -3308,6 +3368,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {       "rbnqbknr/1p1ppp1p/6p1/p1p5/7P/3P4/PPP1PPP1/RBNQBKNR w HAha - 0 9", 4,     575027 },
         {       "rbnqbknr/1p1ppp1p/6p1/p1p5/7P/3P4/PPP1PPP1/RBNQBKNR w HAha - 0 9", 5,   15992882 },
         {       "rbnqbknr/1p1ppp1p/6p1/p1p5/7P/3P4/PPP1PPP1/RBNQBKNR w HAha - 0 9", 6,  501093456 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 14/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {     "r1qbbk1r/pp1ppppp/n1p5/5n2/B1P3P1/8/PP1PPP1P/RNQ1BKNR w HAha - 0 9", 1,         27 },
         {     "r1qbbk1r/pp1ppppp/n1p5/5n2/B1P3P1/8/PP1PPP1P/RNQ1BKNR w HAha - 0 9", 2,        831 },
         {     "r1qbbk1r/pp1ppppp/n1p5/5n2/B1P3P1/8/PP1PPP1P/RNQ1BKNR w HAha - 0 9", 3,      22293 },
@@ -3548,6 +3613,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {        "bbrnknrq/1pp3pp/p2p1p2/4p3/P7/1P2N3/2PPPPPP/BBRN1RKQ w gc - 0 9", 4,     326175 },
         {        "bbrnknrq/1pp3pp/p2p1p2/4p3/P7/1P2N3/2PPPPPP/BBRN1RKQ w gc - 0 9", 5,    9139962 },
         {        "bbrnknrq/1pp3pp/p2p1p2/4p3/P7/1P2N3/2PPPPPP/BBRN1RKQ w gc - 0 9", 6,  226253685 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 15/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {        "brnb1nrq/pppp1kpp/4p3/8/5p1P/P1P3P1/1P1PPP2/BRNBKNRQ w GB - 1 9", 1,         29 },
         {        "brnb1nrq/pppp1kpp/4p3/8/5p1P/P1P3P1/1P1PPP2/BRNBKNRQ w GB - 1 9", 2,        773 },
         {        "brnb1nrq/pppp1kpp/4p3/8/5p1P/P1P3P1/1P1PPP2/BRNBKNRQ w GB - 1 9", 3,      23904 },
@@ -3788,6 +3858,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {       "rbqnb1rn/p1pp1kpp/1p2pp2/8/4P2P/P5P1/1PPP1P2/RBQNBKRN w GA - 0 9", 4,     222154 },
         {       "rbqnb1rn/p1pp1kpp/1p2pp2/8/4P2P/P5P1/1PPP1P2/RBQNBKRN w GA - 0 9", 5,    5282124 },
         {       "rbqnb1rn/p1pp1kpp/1p2pp2/8/4P2P/P5P1/1PPP1P2/RBQNBKRN w GA - 0 9", 6,  132309824 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 16/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {      "rqnbbkrn/p1p1pppp/3p4/1p5B/8/1P1NP3/P1PP1PPP/RQ2BKRN w GAga - 0 9", 1,         30 },
         {      "rqnbbkrn/p1p1pppp/3p4/1p5B/8/1P1NP3/P1PP1PPP/RQ2BKRN w GAga - 0 9", 2,        606 },
         {      "rqnbbkrn/p1p1pppp/3p4/1p5B/8/1P1NP3/P1PP1PPP/RQ2BKRN w GAga - 0 9", 3,      18382 },
@@ -4028,6 +4103,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {      "bbrnkrqn/1ppp1p2/6pp/p3p3/5PP1/2PB4/PP1PP2P/B1RNKRQN w FCfc - 0 9", 4,     550527 },
         {      "bbrnkrqn/1ppp1p2/6pp/p3p3/5PP1/2PB4/PP1PP2P/B1RNKRQN w FCfc - 0 9", 5,   20138432 },
         {      "bbrnkrqn/1ppp1p2/6pp/p3p3/5PP1/2PB4/PP1PP2P/B1RNKRQN w FCfc - 0 9", 6,  481498664 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 17/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {       "b1rbkrqn/ppp2ppp/1n2p3/3p4/6P1/2PP4/PP2PP1P/BRNBKRQN w FBf - 1 9", 1,         21 },
         {       "b1rbkrqn/ppp2ppp/1n2p3/3p4/6P1/2PP4/PP2PP1P/BRNBKRQN w FBf - 1 9", 2,        463 },
         {       "b1rbkrqn/ppp2ppp/1n2p3/3p4/6P1/2PP4/PP2PP1P/BRNBKRQN w FBf - 1 9", 3,      10610 },
@@ -4268,6 +4348,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {       "qbrk1nnr/1pp1pppp/2b5/p2p4/P2P2P1/8/1PP1PP1P/QBKRBNNR w hc - 1 9", 4,     471653 },
         {       "qbrk1nnr/1pp1pppp/2b5/p2p4/P2P2P1/8/1PP1PP1P/QBKRBNNR w hc - 1 9", 5,   13740891 },
         {       "qbrk1nnr/1pp1pppp/2b5/p2p4/P2P2P1/8/1PP1PP1P/QBKRBNNR w hc - 1 9", 6,  373081138 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 18/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {       "qrkbbnnr/ppp2p1p/4p3/3p2p1/P7/2PP4/1P2PPPP/QRKBBNNR w HBhb - 0 9", 1,         25 },
         {       "qrkbbnnr/ppp2p1p/4p3/3p2p1/P7/2PP4/1P2PPPP/QRKBBNNR w HBhb - 0 9", 2,        626 },
         {       "qrkbbnnr/ppp2p1p/4p3/3p2p1/P7/2PP4/1P2PPPP/QRKBBNNR w HBhb - 0 9", 3,      16616 },
@@ -4508,6 +4593,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {       "bbrk1q1r/ppppppp1/3n4/7p/3Pn3/6PN/PPP1PPNP/BBRK1Q1R w HChc - 2 9", 4,     516177 },
         {       "bbrk1q1r/ppppppp1/3n4/7p/3Pn3/6PN/PPP1PPNP/BBRK1Q1R w HChc - 2 9", 5,   12995202 },
         {       "bbrk1q1r/ppppppp1/3n4/7p/3Pn3/6PN/PPP1PPNP/BBRK1Q1R w HChc - 2 9", 6,  411077508 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 19/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {    "brkbnq1r/p1ppp2p/5ppn/1p6/5P2/1P1P2P1/P1P1P2P/BRKBNQNR w HBhb - 0 9", 1,         28 },
         {    "brkbnq1r/p1ppp2p/5ppn/1p6/5P2/1P1P2P1/P1P1P2P/BRKBNQNR w HBhb - 0 9", 2,        856 },
         {    "brkbnq1r/p1ppp2p/5ppn/1p6/5P2/1P1P2P1/P1P1P2P/BRKBNQNR w HBhb - 0 9", 3,      24984 },
@@ -4748,6 +4838,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {       "rbknb1rq/ppp1p1p1/3pnp1p/8/6PP/2PP4/PP2PP2/RBKNBNRQ w GAga - 0 9", 4,     736910 },
         {       "rbknb1rq/ppp1p1p1/3pnp1p/8/6PP/2PP4/PP2PP2/RBKNBNRQ w GAga - 0 9", 5,   24008129 },
         {       "rbknb1rq/ppp1p1p1/3pnp1p/8/6PP/2PP4/PP2PP2/RBKNBNRQ w GAga - 0 9", 6,  677776408 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 20/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {  "rknbb1rq/p1pn1ppp/4p3/1p1p4/2P5/1P2N1P1/P2PPP1P/RKNBB1RQ w GAga - 1 9", 1,         29 },
         {  "rknbb1rq/p1pn1ppp/4p3/1p1p4/2P5/1P2N1P1/P2PPP1P/RKNBB1RQ w GAga - 1 9", 2,        830 },
         {  "rknbb1rq/p1pn1ppp/4p3/1p1p4/2P5/1P2N1P1/P2PPP1P/RKNBB1RQ w GAga - 1 9", 3,      24798 },
@@ -4988,6 +5083,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {       "1brkq1rn/2pppppp/1p2n3/p2bN3/8/7P/PPPPPPP1/BBRKQ1RN w GCgc - 2 9", 4,     580054 },
         {       "1brkq1rn/2pppppp/1p2n3/p2bN3/8/7P/PPPPPPP1/BBRKQ1RN w GCgc - 2 9", 5,   16010135 },
         {       "1brkq1rn/2pppppp/1p2n3/p2bN3/8/7P/PPPPPPP1/BBRKQ1RN w GCgc - 2 9", 6,  475206624 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 21/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {         "brkbqnrn/2pp1ppp/8/1p2p3/Pp2N3/8/2PPPPPP/BRKBQNR1 w GBgb - 0 9", 1,         30 },
         {         "brkbqnrn/2pp1ppp/8/1p2p3/Pp2N3/8/2PPPPPP/BRKBQNR1 w GBgb - 0 9", 2,        827 },
         {         "brkbqnrn/2pp1ppp/8/1p2p3/Pp2N3/8/2PPPPPP/BRKBQNR1 w GBgb - 0 9", 3,      25308 },
@@ -5228,6 +5328,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {          "rbk1brqn/ppp1pppp/8/3p4/7P/1P4P1/2PPPP2/RBKNBRQN w FAfa - 0 9", 4,     322175 },
         {          "rbk1brqn/ppp1pppp/8/3p4/7P/1P4P1/2PPPP2/RBKNBRQN w FAfa - 0 9", 5,    9054028 },
         {          "rbk1brqn/ppp1pppp/8/3p4/7P/1P4P1/2PPPP2/RBKNBRQN w FAfa - 0 9", 6,  222704171 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 22/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {         "rknbbrqn/pp3pp1/4p3/2pp3p/2P5/8/PPBPPPPP/RKN1BRQN w FAfa - 0 9", 1,         26 },
         {         "rknbbrqn/pp3pp1/4p3/2pp3p/2P5/8/PPBPPPPP/RKN1BRQN w FAfa - 0 9", 2,        756 },
         {         "rknbbrqn/pp3pp1/4p3/2pp3p/2P5/8/PPBPPPPP/RKN1BRQN w FAfa - 0 9", 3,      19280 },
@@ -5468,6 +5573,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {           "bbrqkrnn/3ppppp/8/ppp5/6P1/4P2N/PPPPKP1P/BBRQ1R1N w fc - 0 9", 4,     546215 },
         {           "bbrqkrnn/3ppppp/8/ppp5/6P1/4P2N/PPPPKP1P/BBRQ1R1N w fc - 0 9", 5,   13676371 },
         {           "bbrqkrnn/3ppppp/8/ppp5/6P1/4P2N/PPPPKP1P/BBRQ1R1N w fc - 0 9", 6,  470796854 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 23/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {       "brqbkrnn/1pp2p1p/3pp1p1/p5N1/8/1P6/P1PPPPPP/BRQBK1RN w Bfb - 0 9", 1,         34 },
         {       "brqbkrnn/1pp2p1p/3pp1p1/p5N1/8/1P6/P1PPPPPP/BRQBK1RN w Bfb - 0 9", 2,        688 },
         {       "brqbkrnn/1pp2p1p/3pp1p1/p5N1/8/1P6/P1PPPPPP/BRQBK1RN w Bfb - 0 9", 3,      22827 },
@@ -5708,6 +5818,11 @@ TEST_CASE("Chess960" * doctest::timeout(36000)) {
         {      "rbkrbnn1/ppppp1pp/5q2/5p2/5P2/P3P2N/1PPP2PP/RBKRBQ1N w DAda - 3 9", 4,     876068 },
         {      "rbkrbnn1/ppppp1pp/5q2/5p2/5P2/P3P2N/1PPP2PP/RBKRBQ1N w DAda - 3 9", 5,   26007841 },
         {      "rbkrbnn1/ppppp1pp/5q2/5p2/5P2/P3P2N/1PPP2PP/RBKRBQ1N w DAda - 3 9", 6,  838704143 },
+    };
+    check_perfts(tests);
+}
+TEST_CASE("Chess960 perft 24/24" * doctest::timeout(36000)) {
+    std::vector<TestEntry<std::string, perft_t>> tests = {
         {     "rkr1bqnn/1ppp1p1p/p5p1/4p3/3PP2b/2P2P2/PP4PP/RKRBBQNN w CAca - 0 9", 1,         31 },
         {     "rkr1bqnn/1ppp1p1p/p5p1/4p3/3PP2b/2P2P2/PP4PP/RKRBBQNN w CAca - 0 9", 2,       1004 },
         {     "rkr1bqnn/1ppp1p1p/p5p1/4p3/3PP2b/2P2P2/PP4PP/RKRBBQNN w CAca - 0 9", 3,      32006 },

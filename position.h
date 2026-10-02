@@ -140,7 +140,6 @@ template <typename MoveGenType> constexpr MoveGenType operator|(MoveGenType a, M
 template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_enum<PieceC>::value>> class _Position {
   private:
     std::vector<HistoryEntry<PieceC>> history;
-    std::vector<Key> rep_hashes_;
     Bitboard _rook_pin{};
     Bitboard _bishop_pin{};
     Bitboard _checkers{};
@@ -171,6 +170,28 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         std::array<Bitboard, 2> castling_paths{}; ///< Castling path bitboards [ks, qs].
     } castling_meta_[2]{};
 
+    /// @brief Per-square castling rights to clear for king moves, indexed by [color][square].
+    std::array<std::array<CastlingRights, 64>, 2> castling_rights_lost_king_{};
+    /// @brief Per-square castling rights to clear for rook moves/captures, indexed by [color][square].
+    std::array<std::array<CastlingRights, 64>, 2> castling_rights_lost_rook_{};
+
+    /// @brief Rebuild castling rights lost tables from current castling_meta_.
+    void rebuild_castling_rights_lost() {
+        castling_rights_lost_king_[0].fill(NO_CASTLING);
+        castling_rights_lost_king_[1].fill(NO_CASTLING);
+        castling_rights_lost_rook_[0].fill(NO_CASTLING);
+        castling_rights_lost_rook_[1].fill(NO_CASTLING);
+        for (Color c : {WHITE, BLACK}) {
+            auto &m = castling_meta_[c];
+            if (m.king_start != SQ_NONE)
+                castling_rights_lost_king_[c][m.king_start] = (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING);
+            if (m.rook_start_ks != SQ_NONE)
+                castling_rights_lost_rook_[c][m.rook_start_ks] = (c == WHITE ? WHITE_OO : BLACK_OO);
+            if (m.rook_start_qs != SQ_NONE)
+                castling_rights_lost_rook_[c][m.rook_start_qs] = (c == WHITE ? WHITE_OOO : BLACK_OOO);
+        }
+    }
+
   public:
     /// @brief Standard starting FEN for classical chess.
     static inline constexpr auto START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -199,29 +220,30 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         if constexpr (effectivePieces == 0 && modeBits != 0)
             return;
 
+        const Bitboard occ_all = occ();
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::KING)) {
-            movegen::genKingMoves<PieceC, c, captureOnly, ListT>(*this, out, _pin_mask);
+            movegen::genKingMoves<PieceC, c, captureOnly, ListT>(*this, out, _pin_mask, occ_all);
         }
         if (_check_mask == 0)
             return;
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::PAWN)) {
-            movegen::genPawnSingleMoves<PieceC, c, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask);
+            movegen::genPawnSingleMoves<PieceC, c, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask, occ_all);
             if constexpr (includeQuiet)
-                movegen::genPawnDoubleMoves<PieceC, c, ListT>(*this, out, _pin_mask, _check_mask);
+                movegen::genPawnDoubleMoves<PieceC, c, ListT>(*this, out, _pin_mask, _check_mask, occ_all);
             if constexpr (includeCaps)
-                movegen::genEP<PieceC, c, ListT>(*this, out);
+                movegen::genEP<PieceC, c, ListT>(*this, out, occ_all);
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::KNIGHT)) {
-            movegen::genKnightMoves<PieceC, c, captureOnly, ListT>(*this, out, _pin_mask, _check_mask);
+            movegen::genKnightMoves<PieceC, c, captureOnly, ListT>(*this, out, _pin_mask, _check_mask, occ_all);
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::BISHOP)) {
-            movegen::genSlidingMoves<PieceC, c, BISHOP, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask);
+            movegen::genSlidingMoves<PieceC, c, BISHOP, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask, occ_all);
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::ROOK)) {
-            movegen::genSlidingMoves<PieceC, c, ROOK, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask);
+            movegen::genSlidingMoves<PieceC, c, ROOK, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask, occ_all);
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::QUEEN)) {
-            movegen::genSlidingMoves<PieceC, c, QUEEN, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask);
+            movegen::genSlidingMoves<PieceC, c, QUEEN, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask, occ_all);
         }
     }
 
@@ -249,7 +271,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Execute a move on the board.
     /// @tparam Strict If true, validates that the move is legal.
-    template <bool Strict = true> void doMove(const Move &move);
+    template <bool Strict = true> HOTFUNC void doMove(const Move &move);
     /// @brief Snake-case alias for doMove().
     template <bool Strict = true> void do_move(const Move &move) { doMove<Strict>(move); }
 
@@ -262,7 +284,6 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         pieces_list[st.incr_sqs[1]] = st.incr_pc[1];
         pieces_list[st.incr_sqs[2]] = st.incr_pc[2];
         pieces_list[st.incr_sqs[3]] = st.incr_pc[3];
-        rep_hashes_.pop_back();
         _rook_pin = st.saved_rook_pin;
         _bishop_pin = st.saved_bishop_pin;
         _checkers = st.saved_checkers;
@@ -289,23 +310,23 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      */
     inline void doNullMove() {
         history.push_back(state());
-        state().saved_rook_pin = _rook_pin;
-        state().saved_bishop_pin = _bishop_pin;
-        state().saved_checkers = _checkers;
-        state().saved_check_mask = _check_mask;
-        state().saved_enemy_attacks = _enemy_attacks;
-        state().incr_sqs[0] = state().incr_sqs[1] = state().incr_sqs[2] = state().incr_sqs[3] = SQ_NONE;
-        state().incr_pc[0] = state().incr_pc[1] = state().incr_pc[2] = state().incr_pc[3] = PieceC::NO_PIECE;
-        state().hash ^= (ep_square() != SQ_NONE && state().epIncluded) ? zobrist::RandomEP[file_of(ep_square())] : 0;
-        state().epIncluded = false;
-        state().enPassant = SQ_NONE;
-        state().turn = ~state().turn;
-        state().hash ^= zobrist::RandomTurn;
-        rep_hashes_.push_back(state().hash);
-        state().fullMoveNumber += (state().turn == WHITE);
-        state().pliesFromNull = state().repetition = 0;
-        state().mv = Move::null();
-        state().halfMoveClock++;
+        auto &st = state();
+        st.saved_rook_pin = _rook_pin;
+        st.saved_bishop_pin = _bishop_pin;
+        st.saved_checkers = _checkers;
+        st.saved_check_mask = _check_mask;
+        st.saved_enemy_attacks = _enemy_attacks;
+        st.incr_sqs[0] = st.incr_sqs[1] = st.incr_sqs[2] = st.incr_sqs[3] = SQ_NONE;
+        st.incr_pc[0] = st.incr_pc[1] = st.incr_pc[2] = st.incr_pc[3] = PieceC::NO_PIECE;
+        st.hash ^= (ep_square() != SQ_NONE && st.epIncluded) ? zobrist::RandomEP[file_of(ep_square())] : 0;
+        st.epIncluded = false;
+        st.enPassant = SQ_NONE;
+        st.turn = ~st.turn;
+        st.hash ^= zobrist::RandomTurn;
+        st.fullMoveNumber += (st.turn == WHITE);
+        st.pliesFromNull = st.repetition = 0;
+        st.mv = Move::null();
+        st.halfMoveClock++;
         refresh_attacks();
     }
     /// @brief Perform a null move (pass the turn).
@@ -460,50 +481,54 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     /// @brief Place a piece on the board (compile-time piece type).
     template <PieceType pt> inline void placePiece(Square sq, Color c) {
         if constexpr (pt != NO_PIECE_TYPE) {
+            auto &st = state();
             Bitboard v = 1ULL << sq;
-            state().pieces[pt] |= v;
-            state().occ[c] |= v;
+            st.pieces[pt] |= v;
+            st.occ[c] |= v;
             pieces_list[sq] = make_piece<PieceC>(pt, c);
-            state().hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][(int)pieces_list[sq]][sq];
+            st.hash ^= zobrist::RandomPieceFlat[enum_idx<PieceC>()][(int)pieces_list[sq] * 64 + sq];
             if constexpr (pt == KING)
-                state().kings[c] = sq;
+                st.kings[c] = sq;
         }
     }
 
     /// @brief Remove a piece from the board (compile-time piece type).
     template <PieceType pt> inline void removePiece(Square sq, Color c) {
         if constexpr (pt != NO_PIECE_TYPE) {
+            auto &st = state();
             Bitboard v = ~(1ULL << sq);
-            state().pieces[pt] &= v;
-            state().occ[c] &= v;
+            st.pieces[pt] &= v;
+            st.occ[c] &= v;
             pieces_list[sq] = PieceC::NO_PIECE;
-            state().hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][static_cast<int>(make_piece<PieceC>(pt, c))][sq];
+            st.hash ^= zobrist::RandomPieceFlat[enum_idx<PieceC>()][static_cast<int>(make_piece<PieceC>(pt, c)) * 64 + sq];
             if constexpr (pt == KING)
-                state().kings[c] = SQ_NONE;
+                st.kings[c] = SQ_NONE;
         }
     }
 
     /// @brief Place a piece (runtime piece type).
-    inline void placePiece(PieceType pt, Square sq, Color c) {
+    HOTFUNC inline void placePiece(PieceType pt, Square sq, Color c) {
         bool a = pt == KING;
+        auto &st = state();
         Bitboard v = 1ULL << sq;
-        state().pieces[pt] |= v;
-        state().occ[c] |= v;
+        st.pieces[pt] |= v;
+        st.occ[c] |= v;
         pieces_list[sq] = make_piece<PieceC>(pt, c);
-        state().hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][(int)pieces_list[sq]][sq];
-        state().kings[c] = a ? sq : state().kings[c];
+        st.hash ^= zobrist::RandomPieceFlat[enum_idx<PieceC>()][(int)pieces_list[sq] * 64 + sq];
+        st.kings[c] = a ? sq : st.kings[c];
     }
 
     /// @brief Remove a piece (runtime piece type).
-    inline void removePiece(PieceType pt, Square sq, Color c) {
+    HOTFUNC inline void removePiece(PieceType pt, Square sq, Color c) {
         bool a = pt == KING;
         if (pt != NO_PIECE_TYPE) {
+            auto &st = state();
             Bitboard v = ~(1ULL << sq);
-            state().pieces[pt] &= v;
-            state().occ[c] &= v;
+            st.pieces[pt] &= v;
+            st.occ[c] &= v;
             pieces_list[sq] = PieceC::NO_PIECE;
-            state().hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][static_cast<int>(make_piece<PieceC>(pt, c))][sq];
-            state().kings[c] = a ? SQ_NONE : state().kings[c];
+            st.hash ^= zobrist::RandomPieceFlat[enum_idx<PieceC>()][static_cast<int>(make_piece<PieceC>(pt, c)) * 64 + sq];
+            st.kings[c] = a ? SQ_NONE : st.kings[c];
         }
     }
 
@@ -593,7 +618,6 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     inline _Position(std::string fen = START_FEN, bool chess960 = false, FENParsingMode xfen = MODE_AUTO) {
         history.reserve(6144);
         history.emplace_back();
-        rep_hashes_.reserve(6144);
         setFEN(fen, chess960, xfen);
     }
 
@@ -910,7 +934,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      *
      * Detects pinned pieces and checking pieces, then updates the check mask accordingly.
      */
-    void refresh_attacks();
+    HOTFUNC void refresh_attacks();
 
     inline const auto &state() const { return history.back(); }
     inline auto &state() { return history.back(); }
@@ -918,8 +942,10 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
   public:
     /// @brief Copy constructor (deep copy of position state).
     inline _Position(const _Position &other)
-        : history(other.history), rep_hashes_(other.rep_hashes_), _chess960(other._chess960),
-          castling_meta_{ other.castling_meta_[0], other.castling_meta_[1] } {
+        : history(other.history), _chess960(other._chess960),
+          castling_meta_{ other.castling_meta_[0], other.castling_meta_[1] },
+          castling_rights_lost_king_{ other.castling_rights_lost_king_ },
+          castling_rights_lost_rook_{ other.castling_rights_lost_rook_ } {
         std::copy(std::begin(other.pieces_list), std::end(other.pieces_list), std::begin(pieces_list));
         // Copy cached attack/pin/check masks from the source position so the copy
         // is an exact snapshot. This avoids subtle inconsistencies with incremental saved state

@@ -29,6 +29,9 @@ namespace chess::zobrist {
 /// @details Indexed as RandomPiece[piece_enum_idx][piece_value][square].
 extern std::array<uint64_t, 64> *RandomPiece[];
 
+/// @brief Flat Zobrist piece table (avoids pointer chain indirection).
+extern uint64_t RandomPieceFlat[3][16 * 64];
+
 /// @brief Random values for castling rights (indexed by CastlingRights bitmask, 0-15).
 extern uint64_t RandomCastle[16];
 

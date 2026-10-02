@@ -153,13 +153,8 @@ const std::array<std::array<Bitboard, 64>, 8> RAYS = []() {
     return r;
 }();
 
-#ifndef GENERATE_AT_RUNTIME
-#define _POSSIBLY_CONSTEXPR constexpr
-#else
-#define _POSSIBLY_CONSTEXPR
-#endif
 // clang-format off
-_POSSIBLY_CONSTEXPR std::array<uint64_t, 64> RookMagics = {
+constexpr std::array<uint64_t, 64> RookMagics = {
     0x8a80104000800020ULL, 0x0140002000100040ULL, 0x02801880a0017001ULL, 0x0100081001000420ULL,
     0x0200020010080420ULL, 0x03001c0002010008ULL, 0x8480008002000100ULL, 0x2080088004402900ULL,
     0x0000800098204000ULL, 0x2024401000200040ULL, 0x0100802000801000ULL, 0x0120800800801000ULL,
@@ -177,7 +172,7 @@ _POSSIBLY_CONSTEXPR std::array<uint64_t, 64> RookMagics = {
     0x0280001040802101ULL, 0x2100190040002085ULL, 0x80c0084100102001ULL, 0x4024081001000421ULL,
     0x00020030a0244872ULL, 0x0012001008414402ULL, 0x02006104900a0804ULL, 0x0001004081002402ULL
 };
-_POSSIBLY_CONSTEXPR std::array<uint64_t, 64> BishopMagics = {
+constexpr std::array<uint64_t, 64> BishopMagics = {
     0x00262011140108c0ULL, 0x000404040400a100ULL, 0x0908a08409808000ULL, 0x0204404080800004ULL,
     0x018a021105200000ULL, 0x0000900420010001ULL, 0x181400841422c000ULL, 0x000a014900882000ULL,
     0x2818401001120980ULL, 0x4000081104008200ULL, 0x0208081081021004ULL, 0x082108208060a000ULL,
@@ -210,7 +205,7 @@ template <auto AttackFunc, size_t TableSize, bool IsBishop>
  * @return A pair containing the Magic entry table (64 entries, one per square) and the corresponding precomputed attack
  * bitboards table.
  */
-_POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, TableSize>> generate_magic_table() {
+constexpr std::pair<std::array<Magic, 64>, std::array<Bitboard, TableSize>> generate_magic_table() {
     std::array<Magic, 64> table{};
     std::array<Bitboard, TableSize> attacks{};
 
@@ -249,15 +244,21 @@ _POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, TableS
     }
     return std::pair{ table, attacks };
 }
-_POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, 0x1480>> bishopData =
+//_POSSIBLY_CONSTEXPR
+std::pair<std::array<Magic, 64>, std::array<Bitboard, 0x1480>> bishopData =
     generate_magic_table<_chess::_HyperbolaBishopAttacks, 0x1480, true>();
-_POSSIBLY_CONSTEXPR std::array<Magic, 64> BishopTable = bishopData.first;
-_POSSIBLY_CONSTEXPR std::array<Bitboard, 0x1480> BishopAttacks = bishopData.second;
+//_POSSIBLY_CONSTEXPR
+std::array<Magic, 64> BishopTable = bishopData.first;
+//_POSSIBLY_CONSTEXPR
+std::array<Bitboard, 0x1480> BishopAttacks = bishopData.second;
 
-_POSSIBLY_CONSTEXPR std::pair<std::array<Magic, 64>, std::array<Bitboard, 0x19000>> rookData =
+//_POSSIBLY_CONSTEXPR
+std::pair<std::array<Magic, 64>, std::array<Bitboard, 0x19000>> rookData =
     generate_magic_table<_chess::_HyperbolaRookAttacks, 0x19000, false>();
-_POSSIBLY_CONSTEXPR std::array<Magic, 64> RookTable = rookData.first;
-_POSSIBLY_CONSTEXPR std::array<Bitboard, 0x19000> RookAttacks = rookData.second;
+//_POSSIBLY_CONSTEXPR
+std::array<Magic, 64> RookTable = rookData.first;
+//_POSSIBLY_CONSTEXPR
+std::array<Bitboard, 0x19000> RookAttacks = rookData.second;
 
 // Split magic arrays (parallel scalars to avoid struct-load codegen issues)
 static inline std::array<Bitboard, 64> makeMasks(const std::array<Magic, 64> &tbl) {
