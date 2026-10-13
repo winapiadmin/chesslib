@@ -230,8 +230,14 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
             movegen::genPawnSingleMoves<PieceC, c, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask, occ_all);
             if constexpr (includeQuiet)
                 movegen::genPawnDoubleMoves<PieceC, c, ListT>(*this, out, _pin_mask, _check_mask, occ_all);
-            if constexpr (includeCaps)
-                movegen::genEP<PieceC, c, ListT>(*this, out, occ_all);
+            // Hoist genEP's SQ_NONE early-return here to avoid a call on the
+            // ~80% of nodes with no EP square (VTune: genEP 0.24s, mostly
+            // call overhead + early return). Equivalent: genEP returns
+            // immediately for SQ_NONE.
+            if constexpr (includeCaps) {
+                if (ep_square() != SQ_NONE)
+                    movegen::genEP<PieceC, c, ListT>(*this, out, occ_all);
+            }
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::KNIGHT)) {
             movegen::genKnightMoves<PieceC, c, captureOnly, ListT>(*this, out, _pin_mask, _check_mask, occ_all);
@@ -508,7 +514,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     }
 
     /// @brief Place a piece (runtime piece type).
-    HOTFUNC inline void placePiece(PieceType pt, Square sq, Color c) {
+    HOTFUNC FORCEINLINE void placePiece(PieceType pt, Square sq, Color c) {
         bool a = pt == KING;
         auto &st = state();
         Bitboard v = 1ULL << sq;
@@ -520,7 +526,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     }
 
     /// @brief Remove a piece (runtime piece type).
-    HOTFUNC inline void removePiece(PieceType pt, Square sq, Color c) {
+    HOTFUNC FORCEINLINE void removePiece(PieceType pt, Square sq, Color c) {
         bool a = pt == KING;
         if (pt != NO_PIECE_TYPE) {
             auto &st = state();
@@ -905,7 +911,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      *
      * Detects pinned pieces and checking pieces, then updates the check mask accordingly.
      */
-    HOTFUNC void refresh_attacks();
+    HOTFUNC FORCEINLINE void refresh_attacks();
 
     inline const auto &state() const { return history.back(); }
     inline auto &state() { return history.back(); }

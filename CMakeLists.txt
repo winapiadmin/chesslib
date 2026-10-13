@@ -118,8 +118,16 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR
    (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
     CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC"))
 
+    # Portable max-NPS choice: cap MSVC-frontend native at AVX2 (x86-64-v3).
+    # /arch:AVX512 is deliberately NOT used: the AUTO probe false-positives
+    # with clang-cl (probe binary passes without AVX512, full build then emits
+    # AVX512 and dies with ILLEGAL_INSTRUCTION on AVX2 CPUs such as Coffee
+    # Lake), AVX512 auto-vectorization throttles clocks for this integer
+    # workload, and the AVX-512 movegen splat needs VBMI2+VNNI which
+    # /arch:AVX512 does not enable anyway (scalar path is used either way).
+    # AVX2 enables BMI2/PEXT for magic bitboards and runs everywhere v3+.
     set(_chesslib_native_flags
-        /arch:AVX512
+        /arch:AVX2
     )
 
     set(_chesslib_fallback_flags
@@ -282,6 +290,24 @@ else()
 
     endif()
 
+endif()
+
+# --- MSVC-frontend inline/intrinsic tuning (portable, behavior-preserving) ---
+# CMake's RelWithDebInfo defaults to /Ob1 (inline __inline only). Measured
+# +5% perft NPS from /Ob2 (inline any suitable) + /Oi (intrinsics) on
+# clang-cl with no ISA change. Guarded to MSVC-frontend compilers only;
+# GNU-like builds already use -O2/-O3 defaults.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR
+   (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
+    CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC"))
+    # PRIVATE, not PUBLIC: only chesslib's own TUs get /Ob2+/Oi. Propagating
+    # /Oi to dependents (doctest-based tests) triggers duplicate-symbol
+    # ReadNoFence64/ReadPointerNoFence link errors with lld-link.
+    target_compile_options(chesslib PRIVATE
+        "$<$<CONFIG:Release>:/Ob2;/Oi>"
+        "$<$<CONFIG:RelWithDebInfo>:/Ob2;/Oi>"
+        "$<$<CONFIG:MinSizeRel>:/Ob1;/Oi>"
+    )
 endif()
 
 # --- Public error mode ---

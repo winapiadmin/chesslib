@@ -93,8 +93,19 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     Square from_sq = move.from_sq(), to_sq = move.to_sq();
     Color us = side_to_move(), them = ~us;
     MoveType move_type = move.type_of();
-    PieceC moving_piece = piece_on(from_sq);
-    PieceC target_piece = piece_on(to_sq);
+    // Hot path: from/to are 6-bit squares from our own movegen, always 0..63,
+    // so the is_valid() branch inside piece_on() never fires here. For the
+    // unchecked perft path (Strict=false) read pieces_list directly to avoid
+    // two predictable-but-dead branches per node. Strict=true keeps checks.
+    PieceC moving_piece, target_piece;
+    if constexpr (Strict) {
+        moving_piece = piece_on(from_sq);
+        target_piece = piece_on(to_sq);
+    } else {
+        ASSUME(::chess::is_valid(from_sq) && ::chess::is_valid(to_sq));
+        moving_piece = pieces_list[from_sq];
+        target_piece = pieces_list[to_sq];
+    }
     PieceType moving_piecetype = piece_of(moving_piece);
     PieceType target_piecetype = piece_of(target_piece);
     Color target_color = color_of(target_piece);
@@ -882,69 +893,73 @@ template <typename PieceC, typename T> void _Position<PieceC, T>::refresh_attack
     checkers |= (attacks::pawn(c, ksq) & (st.pieces[PAWN] & occ_them));
     checkers |= (attacks::knight(ksq) & (st.pieces[KNIGHT] & occ_them));
 
-    const Bitboard king_diags = attacks::bishop(ksq, Bitboard(0));
-    const Bitboard king_ranks = attacks::rook(ksq, Bitboard(0));
+    // Precomputed equivalent of attacks::bishop(ksq, 0) / attacks::rook(ksq, 0): the
+    // empty-occupancy magic index is constant per square, so this reads a 512-byte table
+    // instead of probing the 800 KiB RookAttacks table twice per node.
+    const Bitboard king_diags = attacks::DiagFromSquare[ksq];
+    const Bitboard king_ranks = attacks::OrthoFromSquare[ksq];
 
     Bitboard ea = 0;
 
-    // Merged slider loop: process queens, bishops, and rooks in one pass
-    Bitboard all_sliders = st.pieces[QUEEN] | st.pieces[BISHOP] | st.pieces[ROOK];
-    all_sliders &= occ_them;
-    while (all_sliders) {
-        Square s = static_cast<Square>(pop_lsb(all_sliders));
-        Bitboard sqBB = 1ULL << s;
-        Bitboard between = 0;
-        
-        if (st.pieces[QUEEN] & sqBB) {
-            // Queen: both diagonal and straight attacks
-            Bitboard q_atk = attacks::bishop(s, occ_without_king) | attacks::rook(s, occ_without_king);
-            ea |= q_atk;
-            // Queens can pin/check along both diagonals and ranks/files
-            bool on_diag = (king_diags & sqBB) != 0;
-            bool on_rank = (king_ranks & sqBB) != 0;
-            if (on_diag) {
-                between = movegen::between(ksq, s);
-                Bitboard blockers = between & occ_all & ~sqBB;
-                if (!blockers) {
-                    checkers |= sqBB;
-                } else if (!(blockers & (blockers - 1)) && (blockers & occ_us)) {
-                    bishop_pin |= between;
-                }
-            }
-            if (on_rank) {
-                if (!between) between = movegen::between(ksq, s);
-                Bitboard blockers = between & occ_all & ~sqBB;
-                if (!blockers) {
-                    checkers |= sqBB;
-                } else if (!(blockers & (blockers - 1)) && (blockers & occ_us)) {
-                    rook_pin |= between;
-                }
-            }
-        } else if (st.pieces[BISHOP] & sqBB) {
-            // Bishop: diagonal attacks only
+    // Separate loops per slider class. The merged loop this replaces paid a 3-way
+    // branch on piece type for every enemy slider; splitting the sets removes that
+    // branch and lets each loop's magic lookups issue independently.
+    // Queens appear in both the diagonal and the orthogonal pass because they attack
+    // along both ray families; their bishop/rook pair is computed once and reused,
+    // exactly as the merged loop did.
+    {
+        Bitboard b = st.pieces[BISHOP] & occ_them;
+        while (b) {
+            const Square s = static_cast<Square>(pop_lsb(b));
+            const Bitboard sqBB = 1ULL << s;
             ea |= attacks::bishop(s, occ_without_king);
-            // Bishops only pin/check along diagonals
             if (king_diags & sqBB) {
-                Bitboard between = movegen::between(ksq, s);
-                Bitboard blockers = between & occ_all & ~sqBB;
-                if (!blockers) {
+                const Bitboard btw = movegen::between(ksq, s);
+                const Bitboard blockers = btw & occ_all & ~sqBB;
+                if (!blockers)
                     checkers |= sqBB;
-                } else if (!(blockers & (blockers - 1)) && (blockers & occ_us)) {
-                    bishop_pin |= between;
-                }
+                else if (!(blockers & (blockers - 1)) && (blockers & occ_us))
+                    bishop_pin |= btw;
             }
-        } else {
-            // Rook: straight attacks only
+        }
+    }
+    {
+        Bitboard r = st.pieces[ROOK] & occ_them;
+        while (r) {
+            const Square s = static_cast<Square>(pop_lsb(r));
+            const Bitboard sqBB = 1ULL << s;
             ea |= attacks::rook(s, occ_without_king);
-            // Rooks only pin/check along ranks/files
             if (king_ranks & sqBB) {
-                Bitboard between = movegen::between(ksq, s);
-                Bitboard blockers = between & occ_all & ~sqBB;
-                if (!blockers) {
+                const Bitboard btw = movegen::between(ksq, s);
+                const Bitboard blockers = btw & occ_all & ~sqBB;
+                if (!blockers)
                     checkers |= sqBB;
-                } else if (!(blockers & (blockers - 1)) && (blockers & occ_us)) {
-                    rook_pin |= between;
-                }
+                else if (!(blockers & (blockers - 1)) && (blockers & occ_us))
+                    rook_pin |= btw;
+            }
+        }
+    }
+    {
+        Bitboard q = st.pieces[QUEEN] & occ_them;
+        while (q) {
+            const Square s = static_cast<Square>(pop_lsb(q));
+            const Bitboard sqBB = 1ULL << s;
+            ea |= attacks::bishop(s, occ_without_king) | attacks::rook(s, occ_without_king);
+            if (king_diags & sqBB) {
+                const Bitboard btw = movegen::between(ksq, s);
+                const Bitboard blockers = btw & occ_all & ~sqBB;
+                if (!blockers)
+                    checkers |= sqBB;
+                else if (!(blockers & (blockers - 1)) && (blockers & occ_us))
+                    bishop_pin |= btw;
+            }
+            if (king_ranks & sqBB) {
+                const Bitboard btw = movegen::between(ksq, s);
+                const Bitboard blockers = btw & occ_all & ~sqBB;
+                if (!blockers)
+                    checkers |= sqBB;
+                else if (!(blockers & (blockers - 1)) && (blockers & occ_us))
+                    rook_pin |= btw;
             }
         }
     }

@@ -95,164 +95,70 @@ private:
  * which was a C++ data race and therefore undefined behavior.
  */
 
-/* ===================== Perft core ===================== */
+/* ===================== Perft core (runtime depth, no template bloat) ===================== */
 
-template <int D, bool tb = true, bool div = true>
-uint64_t perft(Position &pos, PerftTT *tt)
+// Two runtime-depth recursions (not 24 template instantiations): one without
+// TT (hot benchmark path, zero TT branches) and one with TT.
+inline uint64_t perft_no_tt(Position &pos, int depth)
 {
-    static_assert(D >= 1);
-
-    if constexpr (D == 1) {
-        if constexpr (div) {
-            Movelist moves;
-            pos.legals(moves);
-            for (const Move &m : moves)
-                std::cout << m << ": 1\n";
-            return moves.size();
-        } else {
-            CountOnlyList moves;
-            pos.legals(moves);
-            return moves.size();
-        }
-    } else {
-        uint64_t key = 0;
-
-        if constexpr (tb) {
-            key = pos.hash();
-
-            uint64_t cached;
-
-            if (tt != nullptr && tt->probe(key, D, cached))
-                return cached;
-        }
-
-        Movelist moves;
+    if (depth <= 1) {
+        if (depth <= 0)
+            return 1;
+        CountOnlyList moves;
         pos.legals(moves);
-
-        uint64_t nodes = 0;
-
-        for (const Move &m : moves) {
-            pos.doMove<false>(m);
-
-            uint64_t child_nodes =
-                perft<D - 1, tb, false>(pos, tt);
-
-            nodes += child_nodes;
-
-            if constexpr (div)
-                std::cout << m << ": " << child_nodes << '\n';
-
-            pos.undoMove();
-        }
-
-        if constexpr (tb) {
-            if (tt != nullptr)
-                tt->store(key, D, nodes);
-        }
-
-        return nodes;
+        return moves.size_;
     }
+
+    Movelist moves;
+    pos.legals(moves);
+
+    uint64_t nodes = 0;
+    for (const Move &m : moves) {
+        pos.doMove<false>(m);
+        nodes += perft_no_tt(pos, depth - 1);
+        pos.undoMove();
+    }
+    return nodes;
 }
 
-/* ===================== Runtime-depth dispatch ===================== */
-
-template <bool tb = true>
-uint64_t perft_no_div(Position &pos, int depth, PerftTT *tt)
+inline uint64_t perft_with_tt(Position &pos, int depth, PerftTT *tt)
 {
-    switch (depth) {
-    case 0:
-        return 1;
-
-    case 1:
-        return perft<1, tb, false>(pos, tt);
-
-    case 2:
-        return perft<2, tb, false>(pos, tt);
-
-    case 3:
-        return perft<3, tb, false>(pos, tt);
-
-    case 4:
-        return perft<4, tb, false>(pos, tt);
-
-    case 5:
-        return perft<5, tb, false>(pos, tt);
-
-    case 6:
-        return perft<6, tb, false>(pos, tt);
-
-    case 7:
-        return perft<7, tb, false>(pos, tt);
-
-    case 8:
-        return perft<8, tb, false>(pos, tt);
-
-    case 9:
-        return perft<9, tb, false>(pos, tt);
-
-    case 10:
-        return perft<10, tb, false>(pos, tt);
-
-    case 11:
-        return perft<11, tb, false>(pos, tt);
-
-    case 12:
-        return perft<12, tb, false>(pos, tt);
-
-    default:
-        return 0;
+    if (depth <= 1) {
+        if (depth <= 0)
+            return 1;
+        CountOnlyList moves;
+        pos.legals(moves);
+        return moves.size_;
     }
+
+    const uint64_t key = pos.hash();
+    uint64_t cached;
+    if (tt->probe(key, depth, cached))
+        return cached;
+
+    Movelist moves;
+    pos.legals(moves);
+
+    uint64_t nodes = 0;
+    for (const Move &m : moves) {
+        pos.doMove<false>(m);
+        nodes += perft_with_tt(pos, depth - 1, tt);
+        pos.undoMove();
+    }
+
+    tt->store(key, depth, nodes);
+    return nodes;
 }
 
-template <bool tb = true>
-uint64_t perftdiv(Position &pos, int depth, PerftTT *tt)
+inline uint64_t perft_no_div(Position &pos, int depth, PerftTT *tt)
 {
-    switch (depth) {
-    case 0:
-        return 1;
-
-    case 1:
-        return perft<1, tb>(pos, tt);
-
-    case 2:
-        return perft<2, tb>(pos, tt);
-
-    case 3:
-        return perft<3, tb>(pos, tt);
-
-    case 4:
-        return perft<4, tb>(pos, tt);
-
-    case 5:
-        return perft<5, tb>(pos, tt);
-
-    case 6:
-        return perft<6, tb>(pos, tt);
-
-    case 7:
-        return perft<7, tb>(pos, tt);
-
-    case 8:
-        return perft<8, tb>(pos, tt);
-
-    case 9:
-        return perft<9, tb>(pos, tt);
-
-    case 10:
-        return perft<10, tb>(pos, tt);
-
-    case 11:
-        return perft<11, tb>(pos, tt);
-
-    case 12:
-        return perft<12, tb>(pos, tt);
-
-    default:
-        std::cout
-            << "info string Unsupported depth (max 12 for this build)\n";
-
+    if (depth < 0)
         return 0;
-    }
+    if (depth == 0)
+        return 1;
+    if (tt == nullptr)
+        return perft_no_tt(pos, depth);
+    return perft_with_tt(pos, depth, tt);
 }
 
 /* ===================== Threaded perft ===================== */
@@ -316,13 +222,13 @@ static void thread_worker(
         uint64_t nodes;
 
         if (task.use_tt) {
-            nodes = perft_no_div<true>(
+            nodes = perft_no_div(
                 local,
                 task.depth - 1,
                 &local_tt
             );
         } else {
-            nodes = perft_no_div<false>(
+            nodes = perft_no_div(
                 local,
                 task.depth - 1,
                 nullptr
@@ -394,6 +300,25 @@ static uint64_t run_threaded_perft(
                 static_cast<int>(n_moves)
             )
         );
+
+    // Single-thread fast path: no thread spawn, no Position copies, no atomics.
+    // Same node counts and same div output order as the 1-worker threaded path.
+    if (n_threads == 1) {
+        PerftTT local_tt;
+        if (use_tt)
+            local_tt.resize(tt_bits);
+        PerftTT *ttp = use_tt ? &local_tt : nullptr;
+        uint64_t total = 0;
+        for (size_t i = 0; i < n_moves; ++i) {
+            pos.doMove<false>(moves[i]);
+            const uint64_t sub = perft_no_div(pos, depth - 1, ttp);
+            total += sub;
+            if (print_div)
+                std::cout << moves[i] << ": " << sub << '\n';
+            pos.undoMove();
+        }
+        return total;
+    }
 
     std::vector<std::thread> thread_pool;
     thread_pool.reserve(n_threads);

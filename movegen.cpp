@@ -219,12 +219,30 @@ inline Move *splat_moves(Move *RESTRICT moveList, Square from, Bitboard to_bb, i
  * @param from Source square for all moves.
  * @param targets Bitboard of destination squares.
  */
+// Whether the active splat implementation needs a precomputed popcount.
+// AVX-512 masked stores need n; the portable scalar loop derives the count
+// from the returned pointer and must NOT pay for a dead POPCNT.
+#if (defined(__AVX512F__) && defined(__AVX512BW__) && defined(__AVX512VNNI__) && defined(__AVX512VBMI2__)) ||                         \
+    (defined(__AVX512BW__) && defined(__AVX512VBMI2__))
+#define CHESSLIB_SPLAT_NEEDS_COUNT 1
+#else
+#define CHESSLIB_SPLAT_NEEDS_COUNT 0
+#endif
+
 template <typename ListT> inline void record_moves(ListT &list, Square from, Bitboard targets) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
+#if CHESSLIB_SPLAT_NEEDS_COUNT
         const auto n = static_cast<size_t>(popcount(targets));
         assert(list.has_room(n) && "Movelist capacity exceeded");
         _chess::splat_moves(list.data() + list.size_, from, targets, static_cast<int>(n));
         list.size_ += n;
+#else
+        assert(list.has_room(static_cast<size_t>(popcount(targets))) && "Movelist capacity exceeded");
+        Move *const base = list.data();
+        Move *const out = base + list.size_;
+        Move *const end = _chess::splat_moves(out, from, targets, 0);
+        list.size_ = static_cast<size_t>(end - base);
+#endif
     } else if constexpr (std::is_same_v<ListT, CountOnlyList>) {
         list.size_ += popcount(targets);
     } else {
@@ -272,10 +290,18 @@ template <Direction offset, typename ListT> /**
                                              */
 inline void record_pawn_moves(ListT &list, Bitboard targets) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
+#if CHESSLIB_SPLAT_NEEDS_COUNT
         const auto n = static_cast<size_t>(popcount(targets));
         assert(list.has_room(n) && "Movelist capacity exceeded");
         _chess::splat_pawn_moves<offset>(list.data() + list.size_, targets, static_cast<int>(n));
         list.size_ += n;
+#else
+        assert(list.has_room(static_cast<size_t>(popcount(targets))) && "Movelist capacity exceeded");
+        Move *const base = list.data();
+        Move *const out = base + list.size_;
+        Move *const end = _chess::splat_pawn_moves<offset>(out, targets, 0);
+        list.size_ = static_cast<size_t>(end - base);
+#endif
     } else if constexpr (std::is_same_v<ListT, CountOnlyList>) {
         // CountOnlyList doesn't store moves; just increase the counter.
         list.size_ += popcount(targets);

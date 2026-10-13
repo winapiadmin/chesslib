@@ -275,6 +275,7 @@ extern const std::array<Bitboard, 64> BishopMasks;
 extern const std::array<int, 64> BishopIndexBase;
 extern const std::array<Bitboard, 64> RookMasks;
 extern const std::array<int, 64> RookIndexBase;
+
 #ifndef __BMI2__
 extern std::array<Bitboard, 64> BishopMagicFactors;
 extern std::array<Bitboard, 64> BishopShifts;
@@ -305,6 +306,15 @@ extern std::array<Bitboard, 64> RookShifts;
 
 /// @brief Compute queen attacks (bishop | rook).
 [[nodiscard]] inline Bitboard queen(Square sq, Bitboard occupied) { return bishop(sq, occupied) | rook(sq, occupied); }
+
+/// @brief Diagonals through each square, ignoring blockers: exactly `bishop(sq, 0)`.
+/// @details Precomputed because refresh_attacks() needs it for every node. With an empty
+///          occupancy the magic index is always `IndexBase[sq]` (pext of 0 is 0), so this
+///          is a fixed entry per square and belongs in a 512-byte table rather than being
+///          a probe into the 800 KiB RookAttacks / 41 KiB BishopAttacks tables.
+extern const std::array<Bitboard, 64> DiagFromSquare;
+/// @brief Ranks and files through each square, ignoring blockers: exactly `rook(sq, 0)`.
+extern const std::array<Bitboard, 64> OrthoFromSquare;
 
 /// @brief Look up king attacks for a single square.
 /// @param sq Square.

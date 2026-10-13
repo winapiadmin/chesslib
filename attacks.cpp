@@ -252,6 +252,20 @@ std::array<Bitboard, 64> RookMagicFactors = makeFactors(RookTable);
 std::array<Bitboard, 64> RookShifts = makeShifts(RookTable);
 #endif
 
+const std::array<Bitboard, 64> DiagFromSquare = [] {
+    std::array<Bitboard, 64> t{};
+    for (int i = 0; i < 64; ++i)
+        t[i] = BishopAttacks[BishopIndexBase[i]];
+    return t;
+}();
+
+const std::array<Bitboard, 64> OrthoFromSquare = [] {
+    std::array<Bitboard, 64> t{};
+    for (int i = 0; i < 64; ++i)
+        t[i] = RookAttacks[RookIndexBase[i]];
+    return t;
+}();
+
 } // namespace chess::attacks
 namespace chess::movegen {
 
