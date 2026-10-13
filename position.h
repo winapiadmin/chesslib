@@ -277,7 +277,19 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Execute a move on the board.
     /// @tparam Strict If true, validates that the move is legal.
-    template <bool Strict = true> HOTFUNC void doMove(const Move &move);
+    /// @details Tiny dispatcher: routes once on side-to-move to the
+    /// color-specialized doMoveImpl (replaces ~6 scattered runtime-color
+    /// branches with one predictable branch). Force-inlined into callers;
+    /// the heavy impls stay out-of-line in position.cpp.
+    template <bool Strict = true> HOTFUNC FORCEINLINE void doMove(const Move &move) {
+        if (side_to_move() == WHITE)
+            doMoveImpl<Strict, WHITE>(move);
+        else
+            doMoveImpl<Strict, BLACK>(move);
+    }
+    /// @brief Color-specialized move execution (private impl, see position.cpp).
+    /// @tparam us Mover color (compile-time; must equal side_to_move()).
+    template <bool Strict, Color us> HOTFUNC void doMoveImpl(const Move &move);
     /// @brief Snake-case alias for doMove().
     template <bool Strict = true> void do_move(const Move &move) { doMove<Strict>(move); }
 
@@ -911,7 +923,15 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      *
      * Detects pinned pieces and checking pieces, then updates the check mask accordingly.
      */
-    HOTFUNC FORCEINLINE void refresh_attacks();
+    HOTFUNC FORCEINLINE void refresh_attacks() {
+        if (state().turn == WHITE)
+            refresh_attacks_impl<WHITE>();
+        else
+            refresh_attacks_impl<BLACK>();
+    }
+    /// @brief Color-specialized attack refresh (private impl, see position.cpp).
+    /// @tparam c Side to move (compile-time; must equal state().turn).
+    template <Color c> HOTFUNC void refresh_attacks_impl();
 
     inline const auto &state() const { return history.back(); }
     inline auto &state() { return history.back(); }

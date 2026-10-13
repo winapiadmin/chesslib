@@ -87,11 +87,13 @@ constexpr auto ep_pawn_masks = make_ep_pawn_masks();
 } // namespace
 /// @brief Apply a move to the board, updating all internal state.
 /// @tparam Strict If true, asserts/checks for invalid moves.
+/// @tparam us Mover color (compile-time; must equal side_to_move()).
 /// @param move The move to execute.
-template <typename PieceC, typename T> template <bool Strict> void _Position<PieceC, T>::doMove(const Move &move) {
+template <typename PieceC, typename T> template <bool Strict, Color us> HOTFUNC void _Position<PieceC, T>::doMoveImpl(const Move &move) {
     INVALID_ARG_IF(!move.is_ok(), uci::IllegalMoveException("doMove called with invalid move"));
+    assert(us == side_to_move());
     Square from_sq = move.from_sq(), to_sq = move.to_sq();
-    Color us = side_to_move(), them = ~us;
+    constexpr Color them = ~us;
     MoveType move_type = move.type_of();
     // Hot path: from/to are 6-bit squares from our own movegen, always 0..63,
     // so the is_valid() branch inside piece_on() never fires here. For the
@@ -207,7 +209,7 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
         if ((moving_piecetype == PAWN) && (abs(to_sq - from_sq) == 16)) {
             st.enPassant = from_sq + pawn_push(us);
             File f = file_of(st.enPassant);
-            st.epIncluded = (ep_pawn_masks[st.enPassant] & pieces<PAWN>(~us)) != 0;
+            st.epIncluded = (ep_pawn_masks[st.enPassant] & pieces<PAWN, ~us>()) != 0;
             st.hash ^= st.epIncluded ? zobrist::RandomEP[f] : 0;
         }
     }
@@ -225,10 +227,11 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
             st.hash ^= zobrist::RandomCastle[prev] ^ zobrist::RandomCastle[st.castlingRights];
         }
     }
-    st.turn = ~st.turn;
+    assert(st.turn == us);
+    st.turn = ~us;
     // Update halfmoves, fullmoves and stm
     st.hash ^= zobrist::RandomTurn;
-    refresh_attacks();
+    refresh_attacks_impl<~us>();
     // DO NOT MIX REPETITIONS
     if constexpr (Strict) {
         st.fullMoveNumber += (st.turn == WHITE);
@@ -876,14 +879,14 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
     return CheckType::NO_CHECK; // Prevent a compiler warning
 }
 
-template <typename PieceC, typename T> void _Position<PieceC, T>::refresh_attacks() {
+template <typename PieceC, typename T> template <Color c> HOTFUNC void _Position<PieceC, T>::refresh_attacks_impl() {
     const auto& st = state();
-    const Color c = st.turn;
+    assert(st.turn == c);
     const Square ksq = st.kings[c];
     ASSUME(ksq >= SQ_A1 && ksq <= SQ_H8);
     const Bitboard occ_all = st.occ[0] | st.occ[1];
     const Bitboard occ_us = st.occ[c];
-    const Color them = ~c;
+    constexpr Color them = ~c;
     const Bitboard occ_them = st.occ[them];
     const Bitboard occ_without_king = occ_all ^ (1ULL << ksq);
 
@@ -1156,8 +1159,10 @@ template <typename PieceC, typename T> CastlingRights _Position<PieceC, T>::clea
 #define INSTANTIATE(PieceC) \
 template bool _Position<PieceC, void>::setFEN(const std::string &, bool, FENParsingMode); \
 template std::string _Position<PieceC, void>::fen(bool) const; \
-template void _Position<PieceC, void>::doMove<false>(const Move &move); \
-template void _Position<PieceC, void>::doMove<true>(const Move &move); \
+template void _Position<PieceC, void>::doMoveImpl<false, WHITE>(const Move &move); \
+template void _Position<PieceC, void>::doMoveImpl<false, BLACK>(const Move &move); \
+template void _Position<PieceC, void>::doMoveImpl<true, WHITE>(const Move &move); \
+template void _Position<PieceC, void>::doMoveImpl<true, BLACK>(const Move &move); \
 template uint64_t _Position<PieceC, void>::zobrist() const; \
 template Move _Position<PieceC, void>::parse_uci(std::string) const; \
 template Move _Position<PieceC, void>::push_uci(std::string); \
@@ -1165,7 +1170,8 @@ template bool _Position<PieceC, void>::is_valid<false>() const; \
 template bool _Position<PieceC, void>::is_valid<true>() const; \
 template CheckType _Position<PieceC, void>::givesCheck(Move) const; \
 template bool _Position<PieceC, void>::is_insufficient_material() const; \
-template void _Position<PieceC, void>::refresh_attacks();
+template void _Position<PieceC, void>::refresh_attacks_impl<WHITE>(); \
+template void _Position<PieceC, void>::refresh_attacks_impl<BLACK>();
 // clang-format off
 INSTANTIATE(PolyglotPiece)
 INSTANTIATE(EnginePiece)
