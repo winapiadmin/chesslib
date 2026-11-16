@@ -534,10 +534,19 @@ TEST_CASE("Pinned pieces may move along the pin line") {
     require_legal(not_pinned, "c1d1");
     require_legal(not_pinned, "e1f3");
 
-    // Double check: nothing but king moves is legal.
-    const char *double_check = "4k3/8/8/8/8/2n5/4r3/4K3 w - - 0 1";
-    require_illegal(double_check, "a1a2");
-    require_illegal(double_check, "a1b1");
+    // The white king is checked by both the rook on e2 and knight on c2. Capturing
+    // the rook with the rook from h2 leaves the knight check unresolved.
+    const char *double_check = "4k3/8/8/8/8/8/2n1r2R/4K3 w - - 0 1";
+    require_illegal(double_check, "h2e2");
+}
+
+TEST_CASE("FEN fullmove counter must be positive") {
+    Position p;
+#if defined(_CHESSLIB_ERROR_MODE_THROW)
+    REQUIRE_THROWS(p.setFEN("4k3/8/8/8/8/8/8/4K3 w - - 0 0"));
+#elif defined(_CHESSLIB_ERROR_MODE_NONE)
+    REQUIRE_FALSE(p.setFEN("4k3/8/8/8/8/8/8/4K3 w - - 0 0"));
+#endif
 }
 
 TEST_CASE("Experienced bugs in this repo") {

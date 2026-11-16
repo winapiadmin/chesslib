@@ -192,7 +192,7 @@ if(CHESSLIB_NATIVE_ARCH_RUNS STREQUAL "AUTO")
 
                 return 0;
             }
-        " CHESSLIB_NATIVE_ARCH_RUNS)
+        " _chesslib_native_arch_runs)
 
         unset(CMAKE_REQUIRED_FLAGS)
 
@@ -204,7 +204,7 @@ if(CHESSLIB_NATIVE_ARCH_RUNS STREQUAL "AUTO")
             "using fallback architecture flags."
         )
 
-        set(CHESSLIB_NATIVE_ARCH_RUNS FALSE)
+        set(_chesslib_native_arch_runs FALSE)
 
     endif()
 
@@ -214,7 +214,7 @@ elseif(CHESSLIB_NATIVE_ARCH_RUNS STREQUAL "ON")
         "chesslib: native architecture detection forced ON by user"
     )
 
-    set(CHESSLIB_NATIVE_ARCH_RUNS TRUE)
+    set(_chesslib_native_arch_runs TRUE)
 
 else()
 
@@ -222,13 +222,13 @@ else()
         "chesslib: native architecture detection forced OFF by user"
     )
 
-    set(CHESSLIB_NATIVE_ARCH_RUNS FALSE)
+    set(_chesslib_native_arch_runs FALSE)
 
 endif()
 
 # --- Select architecture flags ---
 
-if(CHESSLIB_NATIVE_ARCH_RUNS)
+if(_chesslib_native_arch_runs)
 
     target_compile_options(chesslib PUBLIC
         ${_chesslib_native_flags}

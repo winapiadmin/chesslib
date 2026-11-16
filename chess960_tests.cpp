@@ -6158,3 +6158,14 @@ TEST_CASE("Chess960 double setFEN reinitializes castling metadata") {
         REQUIRE(meta_w.rook_start_qs == SQ_F1);
     }
 }
+
+TEST_CASE("X-FEN KQ castling selects outermost rooks") {
+    Position p("rr1k1r1r/8/8/8/8/8/8/RR1K1R1R w KQkq - 0 1", true);
+    const auto white = p.getCastlingMetadata(WHITE);
+    const auto black = p.getCastlingMetadata(BLACK);
+
+    REQUIRE(white.rook_start_ks == SQ_H1);
+    REQUIRE(white.rook_start_qs == SQ_A1);
+    REQUIRE(black.rook_start_ks == SQ_H8);
+    REQUIRE(black.rook_start_qs == SQ_A8);
+}

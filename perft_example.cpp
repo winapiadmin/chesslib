@@ -10,6 +10,7 @@
 #include <mutex>
 #include <algorithm>
 #include <cstdlib>
+#include <exception>
 #include <stdexcept>
 #include <limits>
 #include <functional>
@@ -26,6 +27,12 @@ struct TTEntry {
     uint8_t depth = 0;
 };
 
+static bool valid_tt_bits(size_t bits)
+{
+    return bits < std::numeric_limits<size_t>::digits &&
+           bits < std::numeric_limits<unsigned long long>::digits;
+}
+
 class PerftTT {
 public:
     PerftTT() = default;
@@ -35,7 +42,7 @@ public:
     }
 
     void resize(size_t bits) {
-        if (bits >= sizeof(size_t) * 8)
+        if (!valid_tt_bits(bits))
             throw std::runtime_error("TT size is too large");
 
         const size_t count = size_t(1) << bits;
@@ -291,6 +298,8 @@ static uint64_t run_threaded_perft(
     std::atomic<size_t> next_idx{0};
 
     std::mutex print_mtx;
+    std::mutex worker_exception_mtx;
+    std::exception_ptr worker_exception;
 
     const int n_threads =
         std::max(
@@ -323,20 +332,38 @@ static uint64_t run_threaded_perft(
     std::vector<std::thread> thread_pool;
     thread_pool.reserve(n_threads);
 
-    for (int t = 0; t < n_threads; ++t) {
-        thread_pool.emplace_back(
-            thread_worker,
-            std::cref(tasks),
-            std::ref(results),
-            std::ref(next_idx),
-            std::ref(print_mtx),
-            print_div,
-            tt_bits
-        );
+    try {
+        for (int t = 0; t < n_threads; ++t) {
+            thread_pool.emplace_back([&] {
+                try {
+                    thread_worker(
+                        tasks,
+                        results,
+                        next_idx,
+                        print_mtx,
+                        print_div,
+                        tt_bits
+                    );
+                } catch (...) {
+                    std::lock_guard<std::mutex> lock(worker_exception_mtx);
+                    if (!worker_exception)
+                        worker_exception = std::current_exception();
+                }
+            });
+        }
+    } catch (...) {
+        for (auto &t : thread_pool) {
+            if (t.joinable())
+                t.join();
+        }
+        throw;
     }
 
     for (auto &t : thread_pool)
         t.join();
+
+    if (worker_exception)
+        std::rethrow_exception(worker_exception);
 
     uint64_t total = 0;
 
@@ -398,6 +425,12 @@ static void run_perft(
     size_t tt_bits,
     int threads)
 {
+    if (!valid_tt_bits(tt_bits)) {
+        std::cout << "info string TT size is too large\n";
+        std::cout.flush();
+        return;
+    }
+
     if (depth < 0) {
         std::cout
             << "info string Depth must be non-negative\n";
@@ -419,7 +452,7 @@ static void run_perft(
                 depth,
                 tt_bits,
                 threads,
-                true
+                false
             );
 
         const auto end =
@@ -473,7 +506,7 @@ static void print_usage(const char *prog)
         << "Usage: " << prog << " [options]\n"
         << "  -f,--fen FEN    FEN string (default: startpos)\n"
         << "  -d,--depth N    Perft depth (default: 6)\n"
-        << "  -m,--hash MB    Hash size in MB (default: 0)\n"
+        << "  -m,--hash MB    Hash size in MB per worker (default: 0)\n"
         << "  -z,--ttsize N   TT size in bits, raw override (default: 0)\n"
         << "  -t,--threads N  Number of threads (default: 1)\n"
         << "\n"
@@ -483,7 +516,7 @@ static void print_usage(const char *prog)
         << "  uci\n"
         << "  isready\n"
         << "  setoption name Threads value <N>\n"
-        << "  setoption name Hash value <MB>\n"
+        << "  setoption name Hash value <MB> (per worker)\n"
         << "  ucinewgame\n"
         << "  position [startpos | fen <FEN>] [moves <moves>]\n"
         << "  go perft <depth> [hash <MB>] [threads <N>]\n"
@@ -508,9 +541,10 @@ split_args(const std::string &cmd)
 
 /* ===================== Standalone CLI ===================== */
 
-static void uci_command_line(int argc, char **argv)
+static int uci_command_line(int argc, char **argv)
 {
     std::string fen = Position::START_FEN;
+    std::string ttsize_value = "0";
 
     size_t tt_bits = 0;
 
@@ -534,7 +568,22 @@ static void uci_command_line(int argc, char **argv)
                     std::strcmp(argv[i], "--ttsize") == 0) &&
                    i + 1 < argc) {
 
-            tt_bits = std::stoul(argv[++i]);
+            ttsize_value = argv[++i];
+            try {
+                size_t parsed_chars = 0;
+                const unsigned long parsed =
+                    std::stoul(ttsize_value, &parsed_chars);
+                if (parsed_chars != ttsize_value.size() ||
+                    parsed > std::numeric_limits<size_t>::max())
+                    throw std::invalid_argument("invalid TT size");
+                tt_bits = static_cast<size_t>(parsed);
+            } catch (const std::exception &) {
+                std::cerr
+                    << "Invalid --ttsize value: "
+                    << ttsize_value
+                    << '\n';
+                return EXIT_FAILURE;
+            }
 
         } else if ((std::strcmp(argv[i], "-m") == 0 ||
                     std::strcmp(argv[i], "--hash") == 0) &&
@@ -554,8 +603,16 @@ static void uci_command_line(int argc, char **argv)
                    std::strcmp(argv[i], "--help") == 0) {
 
             print_usage(argv[0]);
-            return;
+            return EXIT_SUCCESS;
         }
+    }
+
+    if (!valid_tt_bits(tt_bits)) {
+        std::cerr
+            << "Unsupported --ttsize width: "
+            << ttsize_value
+            << '\n';
+        return EXIT_FAILURE;
     }
 
     Position pos;
@@ -570,7 +627,7 @@ static void uci_command_line(int argc, char **argv)
             << e.what()
             << '\n';
 
-        return;
+        return EXIT_FAILURE;
     }
 
     std::cerr
@@ -635,6 +692,8 @@ static void uci_command_line(int argc, char **argv)
                 : 0
         )
         << " nps\n";
+
+    return EXIT_SUCCESS;
 }
 
 /* ===================== UCI ===================== */
@@ -690,7 +749,8 @@ static void uci_loop()
                 << "type spin "
                 << "default 0 "
                 << "min 0 "
-                << "max 65536\n";
+                << "max 65536\n"
+                << "info string Hash size is allocated per worker\n";
 
             std::cout
                 << "uciok\n";
@@ -829,10 +889,12 @@ static void uci_loop()
                 }
 
                 try {
-                    if (!pos.setFEN(fen_str))
+                    Position candidate = pos;
+                    if (!candidate.setFEN(fen_str))
                         throw std::runtime_error(
                             "invalid FEN"
                         );
+                    pos = std::move(candidate);
                 }
                 catch (const std::exception &e) {
                     std::cout
@@ -889,61 +951,90 @@ static void uci_loop()
             int local_threads = threads;
 
             bool perft_cmd = false;
+            std::string parsing_value;
+            std::string ttsize_value;
 
             size_t i = 1;
 
-            while (i < tokens.size()) {
-                if (tokens[i] == "perft" &&
-                    i + 1 < tokens.size()) {
+            try {
+                while (i < tokens.size()) {
+                    if (tokens[i] == "perft" &&
+                        i + 1 < tokens.size()) {
 
-                    depth =
-                        std::stoi(tokens[i + 1]);
+                        parsing_value = tokens[i + 1];
+                        depth = std::stoi(parsing_value);
 
-                    perft_cmd = true;
+                        perft_cmd = true;
 
-                    i += 2;
+                        i += 2;
 
-                } else if (tokens[i] == "threads" &&
-                           i + 1 < tokens.size()) {
+                    } else if (tokens[i] == "threads" &&
+                               i + 1 < tokens.size()) {
 
-                    local_threads =
-                        std::stoi(tokens[i + 1]);
+                        parsing_value = tokens[i + 1];
+                        local_threads =
+                            std::stoi(parsing_value);
 
-                    local_threads =
-                        std::max(
-                            1,
-                            std::min(
-                                local_threads,
-                                1024
-                            )
-                        );
+                        local_threads =
+                            std::max(
+                                1,
+                                std::min(
+                                    local_threads,
+                                    1024
+                                )
+                            );
 
-                    i += 2;
+                        i += 2;
 
-                } else if (tokens[i] == "hash" &&
-                           i + 1 < tokens.size()) {
+                    } else if (tokens[i] == "hash" &&
+                               i + 1 < tokens.size()) {
 
-                    local_tt =
-                        mb_to_tt_bits(
-                            std::stoi(tokens[i + 1])
-                        );
+                        parsing_value = tokens[i + 1];
+                        local_tt =
+                            mb_to_tt_bits(
+                                std::stoi(parsing_value)
+                            );
 
-                    i += 2;
+                        i += 2;
 
-                } else if (tokens[i] == "ttsize" &&
-                           i + 1 < tokens.size()) {
+                    } else if (tokens[i] == "ttsize" &&
+                               i + 1 < tokens.size()) {
 
-                    local_tt =
-                        std::stoul(tokens[i + 1]);
+                        ttsize_value = tokens[i + 1];
+                        parsing_value = ttsize_value;
+                        size_t parsed_chars = 0;
+                        const unsigned long parsed =
+                            std::stoul(parsing_value, &parsed_chars);
+                        if (parsed_chars != parsing_value.size() ||
+                            parsed > std::numeric_limits<size_t>::max())
+                            throw std::invalid_argument("invalid TT size");
+                        local_tt = static_cast<size_t>(parsed);
 
-                    i += 2;
+                        i += 2;
 
-                } else {
-                    /*
-                     * Ignore unsupported UCI go parameters.
-                     */
-                    ++i;
+                    } else {
+                        /*
+                         * Ignore unsupported UCI go parameters.
+                         */
+                        ++i;
+                    }
                 }
+            } catch (const std::exception &) {
+                std::cout
+                    << "info string Invalid go perft value: "
+                    << parsing_value
+                    << '\n';
+                std::cout.flush();
+                continue;
+            }
+
+            if (!valid_tt_bits(local_tt)) {
+                std::cout
+                    << "info string Unsupported go perft ttsize width: "
+                    << ttsize_value
+                    << '\n';
+                std::cout.flush();
+                continue;
             }
 
             if (!perft_cmd || depth < 0) {
@@ -984,7 +1075,7 @@ static void uci_loop()
 int main(int argc, char **argv)
 {
     if (argc > 1) {
-        uci_command_line(argc, argv);
+        return uci_command_line(argc, argv);
     } else {
         uci_loop();
     }

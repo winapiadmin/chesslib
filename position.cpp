@@ -400,7 +400,7 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
         for (Color color : { WHITE, BLACK }) {
             auto findRookQS = [&](Square king_sq, Color color_) -> Square {
                 Rank r = rank_of(king_sq);
-                for (int f = file_of(king_sq) - 1; f >= FILE_A; --f) {
+                for (int f = FILE_A; f < file_of(king_sq); ++f) {
                     Square sq = make_sq(r, static_cast<File>(f));
                     PieceC p = pieces_list[sq];
                     if (p != PieceC::NO_PIECE && type_of(p) == ROOK && color_of(p) == color_)
@@ -411,7 +411,7 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
 
             auto findRookKS = [&](Square king_sq, Color color_) -> Square {
                 Rank r = rank_of(king_sq);
-                for (int f = file_of(king_sq) + 1; f <= FILE_H; ++f) {
+                for (int f = FILE_H; f > file_of(king_sq); --f) {
                     Square sq = make_sq(r, static_cast<File>(f));
                     PieceC p = pieces_list[sq];
                     if (p != PieceC::NO_PIECE && type_of(p) == ROOK && color_of(p) == color_)
@@ -476,8 +476,8 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
                         result_castling = false;
                         return;
                     }
-                    Square rook_sq = make_sq(rank_of(king_sq), FILE_H);
-                    if (pieces_list[rook_sq] == PieceC::NO_PIECE || type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != WHITE) {
+                    Square rook_sq = chess960 ? rook_ks : make_sq(rank_of(king_sq), FILE_H);
+                    if (rook_sq == SQ_NONE || pieces_list[rook_sq] == PieceC::NO_PIECE || type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != WHITE) {
                         result_castling = false;
                         return;
                     }
@@ -488,8 +488,8 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
                         result_castling = false;
                         return;
                     }
-                    Square rook_sq = make_sq(rank_of(king_sq), FILE_A);
-                    if (pieces_list[rook_sq] == PieceC::NO_PIECE || type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != WHITE) {
+                    Square rook_sq = chess960 ? rook_qs : make_sq(rank_of(king_sq), FILE_A);
+                    if (rook_sq == SQ_NONE || pieces_list[rook_sq] == PieceC::NO_PIECE || type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != WHITE) {
                         result_castling = false;
                         return;
                     }
@@ -500,8 +500,8 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
                         result_castling = false;
                         return;
                     }
-                    Square rook_sq = make_sq(rank_of(king_sq), FILE_H);
-                    if (pieces_list[rook_sq] == PieceC::NO_PIECE || type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != BLACK) {
+                    Square rook_sq = chess960 ? rook_ks : make_sq(rank_of(king_sq), FILE_H);
+                    if (rook_sq == SQ_NONE || pieces_list[rook_sq] == PieceC::NO_PIECE || type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != BLACK) {
                         result_castling = false;
                         return;
                     }
@@ -512,8 +512,8 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
                         result_castling = false;
                         return;
                     }
-                    Square rook_sq = make_sq(rank_of(king_sq), FILE_A);
-                    if (pieces_list[rook_sq] == PieceC::NO_PIECE || type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != BLACK) {
+                    Square rook_sq = chess960 ? rook_qs : make_sq(rank_of(king_sq), FILE_A);
+                    if (rook_sq == SQ_NONE || pieces_list[rook_sq] == PieceC::NO_PIECE || type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != BLACK) {
                         result_castling = false;
                         return;
                     }
@@ -609,8 +609,8 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
     }
 
     // 5. Halfmove clock
-    INVALID_ARG_IF(halfmove < 0 || fullmove < 0, std::runtime_error("Invalid halfmove and/or fullmove counters"));
-    if (halfmove < 0 || fullmove < 0)
+    INVALID_ARG_IF(halfmove < 0 || fullmove < 1, std::runtime_error("Invalid halfmove and/or fullmove counters"));
+    if (halfmove < 0 || fullmove < 1)
         return false;
     state().halfMoveClock = static_cast<uint8_t>(halfmove);
 

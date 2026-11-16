@@ -80,7 +80,11 @@ inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb, int n) {
     const __m128i fromSquares = _mm_subs_epi16(toSquares, _mm_set1_epi16(offset));
     const __m128i moves = _mm_or_si128(_mm_slli_epi16(fromSquares, 6), _mm_slli_epi16(toSquares, 0));
 
-    _mm_storeu_si128(reinterpret_cast<__m128i *>(moveList), moves);
+    if (n > 0) {
+        _mm512_mask_storeu_epi16(reinterpret_cast<__m512i *>(moveList),
+                                 detail::lowLanes(static_cast<uint32_t>(n)),
+                                 _mm512_castsi128_si512(moves));
+    }
     return moveList + n;
 }
 
@@ -175,7 +179,8 @@ inline Move *splat_moves(Move *RESTRICT moveList, Square from, Bitboard to_bb, i
     moveList =
         write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), _mm512_or_si512(_mm512_load_si512(table + 1), fromVec));
 
-    return moveList + n;
+    (void)n;
+    return moveList;
 }
 
 template <Direction offset> inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb, int n) {
@@ -183,7 +188,8 @@ template <Direction offset> inline Move *splat_pawn_moves(Move *RESTRICT moveLis
     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0), _mm512_load_si512(table + 0));
     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), _mm512_load_si512(table + 1));
 
-    return moveList + n;
+    (void)n;
+    return moveList;
 }
 #else
 template <Direction offset> inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb, int n) {
