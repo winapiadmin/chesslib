@@ -21,9 +21,9 @@
 /// @file position.cpp
 /// @brief Position implementation: doMove, undoMove, setFEN, FEN export, and validation.
 
-#include "position.h"
 #include "movegen.h"
 #include "moves_io.h"
+#include "position.h"
 #include "printers.h"
 #include "zobrist.h"
 #include <algorithm>
@@ -89,7 +89,9 @@ constexpr auto ep_pawn_masks = make_ep_pawn_masks();
 /// @tparam Strict If true, asserts/checks for invalid moves.
 /// @tparam us Mover color (compile-time; must equal side_to_move()).
 /// @param move The move to execute.
-template <typename PieceC, typename T> template <bool Strict, Color us> HOTFUNC void _Position<PieceC, T>::doMoveImpl(const Move &move) {
+template <typename PieceC, typename T>
+template <bool Strict, Color us>
+HOTFUNC void _Position<PieceC, T>::doMoveImpl(const Move &move) {
     INVALID_ARG_IF(!move.is_ok(), uci::IllegalMoveException("doMove called with invalid move"));
     assert(us == side_to_move());
     Square from_sq = move.from_sq(), to_sq = move.to_sq();
@@ -477,7 +479,8 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
                         return;
                     }
                     Square rook_sq = chess960 ? rook_ks : make_sq(rank_of(king_sq), FILE_H);
-                    if (rook_sq == SQ_NONE || pieces_list[rook_sq] == PieceC::NO_PIECE || type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != WHITE) {
+                    if (rook_sq == SQ_NONE || pieces_list[rook_sq] == PieceC::NO_PIECE ||
+                        type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != WHITE) {
                         result_castling = false;
                         return;
                     }
@@ -489,7 +492,8 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
                         return;
                     }
                     Square rook_sq = chess960 ? rook_qs : make_sq(rank_of(king_sq), FILE_A);
-                    if (rook_sq == SQ_NONE || pieces_list[rook_sq] == PieceC::NO_PIECE || type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != WHITE) {
+                    if (rook_sq == SQ_NONE || pieces_list[rook_sq] == PieceC::NO_PIECE ||
+                        type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != WHITE) {
                         result_castling = false;
                         return;
                     }
@@ -501,7 +505,8 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
                         return;
                     }
                     Square rook_sq = chess960 ? rook_ks : make_sq(rank_of(king_sq), FILE_H);
-                    if (rook_sq == SQ_NONE || pieces_list[rook_sq] == PieceC::NO_PIECE || type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != BLACK) {
+                    if (rook_sq == SQ_NONE || pieces_list[rook_sq] == PieceC::NO_PIECE ||
+                        type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != BLACK) {
                         result_castling = false;
                         return;
                     }
@@ -513,7 +518,8 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
                         return;
                     }
                     Square rook_sq = chess960 ? rook_qs : make_sq(rank_of(king_sq), FILE_A);
-                    if (rook_sq == SQ_NONE || pieces_list[rook_sq] == PieceC::NO_PIECE || type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != BLACK) {
+                    if (rook_sq == SQ_NONE || pieces_list[rook_sq] == PieceC::NO_PIECE ||
+                        type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != BLACK) {
                         result_castling = false;
                         return;
                     }
@@ -880,7 +886,7 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
 }
 
 template <typename PieceC, typename T> template <Color c> HOTFUNC void _Position<PieceC, T>::refresh_attacks_impl() {
-    const auto& st = state();
+    const auto &st = state();
     assert(st.turn == c);
     const Square ksq = st.kings[c];
     ASSUME(ksq >= SQ_A1 && ksq <= SQ_H8);

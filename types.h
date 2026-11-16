@@ -25,9 +25,9 @@
 #include "fwd_decl.h"
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 #include <string>
-#include <cmath>
 /// @file types.h
 /// @brief Core chess type definitions: squares, pieces, colours, move encoding, and ValueList.
 #if defined(__clang__) || defined(__GNUC__)
