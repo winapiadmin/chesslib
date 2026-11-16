@@ -181,7 +181,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         castling_rights_lost_king_[1].fill(NO_CASTLING);
         castling_rights_lost_rook_[0].fill(NO_CASTLING);
         castling_rights_lost_rook_[1].fill(NO_CASTLING);
-        for (Color c : {WHITE, BLACK}) {
+        for (Color c : { WHITE, BLACK }) {
             auto &m = castling_meta_[c];
             if (m.king_start != SQ_NONE)
                 castling_rights_lost_king_[c][m.king_start] = (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING);
@@ -227,7 +227,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         if (_check_mask == 0)
             return;
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::PAWN)) {
-            movegen::genPawnSingleMoves<PieceC, c, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask, occ_all);
+            movegen::genPawnSingleMoves<PieceC, c, captureOnly, ListT>(*this,
+                                                                       out,
+                                                                       _rook_pin,
+                                                                       _bishop_pin,
+                                                                       _check_mask,
+                                                                       occ_all);
             if constexpr (includeQuiet)
                 movegen::genPawnDoubleMoves<PieceC, c, ListT>(*this, out, _pin_mask, _check_mask, occ_all);
             // Hoist genEP's SQ_NONE early-return here to avoid a call on the
@@ -243,13 +248,28 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
             movegen::genKnightMoves<PieceC, c, captureOnly, ListT>(*this, out, _pin_mask, _check_mask, occ_all);
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::BISHOP)) {
-            movegen::genSlidingMoves<PieceC, c, BISHOP, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask, occ_all);
+            movegen::genSlidingMoves<PieceC, c, BISHOP, captureOnly, ListT>(*this,
+                                                                            out,
+                                                                            _rook_pin,
+                                                                            _bishop_pin,
+                                                                            _check_mask,
+                                                                            occ_all);
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::ROOK)) {
-            movegen::genSlidingMoves<PieceC, c, ROOK, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask, occ_all);
+            movegen::genSlidingMoves<PieceC, c, ROOK, captureOnly, ListT>(*this,
+                                                                          out,
+                                                                          _rook_pin,
+                                                                          _bishop_pin,
+                                                                          _check_mask,
+                                                                          occ_all);
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::QUEEN)) {
-            movegen::genSlidingMoves<PieceC, c, QUEEN, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask, occ_all);
+            movegen::genSlidingMoves<PieceC, c, QUEEN, captureOnly, ListT>(*this,
+                                                                           out,
+                                                                           _rook_pin,
+                                                                           _bishop_pin,
+                                                                           _check_mask,
+                                                                           occ_all);
         }
     }
 
