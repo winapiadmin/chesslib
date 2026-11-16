@@ -661,7 +661,7 @@ static int uci_command_line(int argc, char **argv)
             depth,
             tt_bits,
             threads,
-            true
+            false
         );
 
     const auto end =

@@ -112,7 +112,6 @@ if(NOT CHESSLIB_NATIVE_ARCH_RUNS MATCHES "^(AUTO|ON|OFF)$")
 endif()
 
 include(CheckCXXSourceRuns)
-include(CheckCXXCompilerFlag)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR
    (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
@@ -130,19 +129,10 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR
         /arch:AVX2
     )
 
-    set(_chesslib_fallback_flags
-        /arch:AVX2
-    )
-
 else()
 
     set(_chesslib_native_flags
         -march=native
-        -mtune=native
-    )
-
-    set(_chesslib_fallback_flags
-        -march=x86-64-v3
         -mtune=native
     )
 
@@ -152,11 +142,6 @@ endif()
 string(REPLACE ";" " "
     _chesslib_native_flags_str
     "${_chesslib_native_flags}"
-)
-
-string(REPLACE ";" " "
-    _chesslib_fallback_flags_str
-    "${_chesslib_fallback_flags}"
 )
 
 # --- Architecture detection ---
@@ -244,51 +229,13 @@ else()
     message(WARNING
         "chesslib: '${_chesslib_native_flags_str}' failed a compile+run "
         "self-test on this build machine (crashed, or the probe could not "
-        "be executed at all, e.g. cross-compiling) -- falling back to "
-        "'${_chesslib_fallback_flags_str}'."
+        "be executed at all, e.g. cross-compiling) -- using compiler-default "
+        "architecture flags."
     )
 
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR
-       (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
-        CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC"))
-
-        target_compile_options(chesslib PUBLIC
-            ${_chesslib_fallback_flags}
-        )
-
-        message(STATUS
-            "chesslib: using fallback architecture flags: "
-            "${_chesslib_fallback_flags_str}"
-        )
-
-    else()
-
-        check_cxx_compiler_flag(
-            "-march=x86-64-v3"
-            CHESSLIB_HAS_X86_64_V3
-        )
-
-        if(CHESSLIB_HAS_X86_64_V3)
-
-            target_compile_options(chesslib PUBLIC
-                ${_chesslib_fallback_flags}
-            )
-
-            message(STATUS
-                "chesslib: x86-64-v3 supported; using fallback flags: "
-                "${_chesslib_fallback_flags_str}"
-            )
-
-        else()
-
-            message(WARNING
-                "chesslib: x86-64-v3 is not recognized by this compiler; "
-                "building with compiler-default architecture flags."
-            )
-
-        endif()
-
-    endif()
+    message(STATUS
+        "chesslib: using compiler-default architecture flags"
+    )
 
 endif()
 
