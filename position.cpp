@@ -232,12 +232,12 @@ template <typename PieceC, typename T> template <bool Strict, Color us> HOTFUNC 
     // Update halfmoves, fullmoves and stm
     st.hash ^= zobrist::RandomTurn;
     refresh_attacks_impl<~us>();
+    st.fullMoveNumber += (st.turn == WHITE);
+    bool is_capt = move_type == EN_PASSANT || (move_type != CASTLING && target_piece != PieceC::NO_PIECE);
+    st.halfMoveClock = (is_capt || moving_piecetype == PAWN) ? 0 : (st.halfMoveClock + 1);
+    st.pliesFromNull++;
     // DO NOT MIX REPETITIONS
     if constexpr (Strict) {
-        st.fullMoveNumber += (st.turn == WHITE);
-        bool is_capt = move_type == EN_PASSANT || (move_type != CASTLING && target_piece != PieceC::NO_PIECE);
-        st.halfMoveClock = (is_capt || moving_piecetype == PAWN) ? 0 : (st.halfMoveClock + 1);
-        st.pliesFromNull++;
         st.repetition = 0;
         int end = std::min(static_cast<int>(st.halfMoveClock), static_cast<int>(st.pliesFromNull));
         if (end >= 4) {

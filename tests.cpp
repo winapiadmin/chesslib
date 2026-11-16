@@ -549,6 +549,20 @@ TEST_CASE("FEN fullmove counter must be positive") {
 #endif
 }
 
+TEST_CASE("Unchecked moves update position counters") {
+    Position p("4k3/8/8/8/8/8/8/R3K3 w - - 7 1");
+
+    p.doMove<false>(Move(SQ_A1, SQ_A2));
+    REQUIRE(p.rule50_count() == 8);
+    REQUIRE(p.ply() == 1);
+    REQUIRE(p.fullmoveNumber() == 1);
+
+    p.doMove<false>(Move(SQ_E8, SQ_E7));
+    REQUIRE(p.rule50_count() == 9);
+    REQUIRE(p.ply() == 2);
+    REQUIRE(p.fullmoveNumber() == 2);
+}
+
 TEST_CASE("Experienced bugs in this repo") {
     {
         Position p("rnbqkbnr/pp1p1ppp/8/2pPp3/8/8/PPP1PPPP/RNBQKBNR w KQkq e6 0 3");
