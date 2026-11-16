@@ -382,9 +382,7 @@ TEST_CASE("attacks") {
     }
 }
 
-TEST_CASE("Namespace-scope position initializes slider attacks before use") {
-    REQUIRE(global_checked_position.is_check());
-}
+TEST_CASE("Namespace-scope position initializes slider attacks before use") { REQUIRE(global_checked_position.is_check()); }
 
 TEST_CASE("Castling move making FEN rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8") {
     std::string fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";

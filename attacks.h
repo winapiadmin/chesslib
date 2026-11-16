@@ -292,21 +292,16 @@ inline const MagicTables &magic_tables() {
 }
 
 /// @brief Diagonals through a square, ignoring blockers.
-[[nodiscard]] inline Bitboard diag_from_square(Square sq) {
-    return magic_tables().diag_from_square[static_cast<size_t>(sq)];
-}
+[[nodiscard]] inline Bitboard diag_from_square(Square sq) { return magic_tables().diag_from_square[static_cast<size_t>(sq)]; }
 /// @brief Ranks and files through a square, ignoring blockers.
-[[nodiscard]] inline Bitboard ortho_from_square(Square sq) {
-    return magic_tables().ortho_from_square[static_cast<size_t>(sq)];
-}
+[[nodiscard]] inline Bitboard ortho_from_square(Square sq) { return magic_tables().ortho_from_square[static_cast<size_t>(sq)]; }
 
 /// @brief Look up bishop attacks via magic bitboard.
 [[nodiscard]] inline Bitboard bishop(Square sq, Bitboard occupied) {
     const int i = (int)sq;
 #if defined(__BMI2__)
     const auto &tables = magic_tables();
-    return tables.bishop_attacks[tables.bishop_index_base[i] +
-                                 static_cast<int>(_pext_u64(occupied, tables.bishop_masks[i]))];
+    return tables.bishop_attacks[tables.bishop_index_base[i] + static_cast<int>(_pext_u64(occupied, tables.bishop_masks[i]))];
 #else
     const auto &tables = magic_tables();
     return tables.bishop_attacks[tables.bishop_index_base[i] +
@@ -320,8 +315,7 @@ inline const MagicTables &magic_tables() {
     const int i = (int)sq;
 #if defined(__BMI2__)
     const auto &tables = magic_tables();
-    return tables.rook_attacks[tables.rook_index_base[i] +
-                               static_cast<int>(_pext_u64(occupied, tables.rook_masks[i]))];
+    return tables.rook_attacks[tables.rook_index_base[i] + static_cast<int>(_pext_u64(occupied, tables.rook_masks[i]))];
 #else
     const auto &tables = magic_tables();
     return tables.rook_attacks[tables.rook_index_base[i] +

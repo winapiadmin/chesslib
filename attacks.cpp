@@ -226,10 +226,8 @@ static std::array<Bitboard, 64> makeShifts(const std::array<Magic, 64> &tbl) {
 const MagicTables &initialize_magic_tables() {
     static MagicTables tables;
     static const bool initialized = [&] {
-        generate_magic_table<_chess::_HyperbolaBishopAttacks, 0x1480, true>(
-            tables.bishop_table, tables.bishop_attacks);
-        generate_magic_table<_chess::_HyperbolaRookAttacks, 0x19000, false>(
-            tables.rook_table, tables.rook_attacks);
+        generate_magic_table<_chess::_HyperbolaBishopAttacks, 0x1480, true>(tables.bishop_table, tables.bishop_attacks);
+        generate_magic_table<_chess::_HyperbolaRookAttacks, 0x19000, false>(tables.rook_table, tables.rook_attacks);
 
         tables.bishop_masks = makeMasks(tables.bishop_table);
         tables.bishop_index_base = makeIndices(tables.bishop_table);
@@ -243,11 +241,9 @@ const MagicTables &initialize_magic_tables() {
 #endif
 
         for (size_t i = 0; i < tables.diag_from_square.size(); ++i)
-            tables.diag_from_square[i] =
-                tables.bishop_attacks[tables.bishop_index_base[i]];
+            tables.diag_from_square[i] = tables.bishop_attacks[tables.bishop_index_base[i]];
         for (size_t i = 0; i < tables.ortho_from_square.size(); ++i)
-            tables.ortho_from_square[i] =
-                tables.rook_attacks[tables.rook_index_base[i]];
+            tables.ortho_from_square[i] = tables.rook_attacks[tables.rook_index_base[i]];
 
         return true;
     }();
