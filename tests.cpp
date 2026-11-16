@@ -27,6 +27,7 @@
 #include <random>
 #include <sstream>
 using namespace chess;
+const Position global_checked_position("4k3/8/8/8/8/8/4r3/4K3 w - - 0 1");
 // --------- Color assertions ----------
 static_assert(color_of(PolyglotPiece::BPAWN) == BLACK, "BPAWN should be BLACK");
 static_assert(color_of(PolyglotPiece::BKNIGHT) == BLACK, "BKNIGHT should be BLACK");
@@ -380,6 +381,11 @@ TEST_CASE("attacks") {
         }
     }
 }
+
+TEST_CASE("Namespace-scope position initializes slider attacks before use") {
+    REQUIRE(global_checked_position.is_check());
+}
+
 TEST_CASE("Castling move making FEN rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8") {
     std::string fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
     Position position(fen);

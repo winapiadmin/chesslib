@@ -905,8 +905,8 @@ template <typename PieceC, typename T> template <Color c> HOTFUNC void _Position
     // Precomputed equivalent of attacks::bishop(ksq, 0) / attacks::rook(ksq, 0): the
     // empty-occupancy magic index is constant per square, so this reads a 512-byte table
     // instead of probing the 800 KiB RookAttacks table twice per node.
-    const Bitboard king_diags = attacks::DiagFromSquare[ksq];
-    const Bitboard king_ranks = attacks::OrthoFromSquare[ksq];
+    const Bitboard king_diags = attacks::diag_from_square(ksq);
+    const Bitboard king_ranks = attacks::ortho_from_square(ksq);
 
     Bitboard ea = 0;
 

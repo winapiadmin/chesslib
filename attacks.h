@@ -264,33 +264,54 @@ struct Magic {
 };
 #endif
 
-/// @brief Precomputed magic-bitboard tables (defined in attacks.cpp).
-extern std::array<Magic, 64> BishopTable;
-extern std::array<Bitboard, 0x1480> BishopAttacks;
-extern std::array<Magic, 64> RookTable;
-extern std::array<Bitboard, 0x19000> RookAttacks;
-
-/// @brief Split arrays for magic lookups (avoids struct load, helps MSVC codegen).
-extern const std::array<Bitboard, 64> BishopMasks;
-extern const std::array<int, 64> BishopIndexBase;
-extern const std::array<Bitboard, 64> RookMasks;
-extern const std::array<int, 64> RookIndexBase;
-
+/// @brief Magic-bitboard tables, initialized on first use.
+struct MagicTables {
+    std::array<Magic, 64> bishop_table{};
+    std::array<Bitboard, 0x1480> bishop_attacks{};
+    std::array<Magic, 64> rook_table{};
+    std::array<Bitboard, 0x19000> rook_attacks{};
+    std::array<Bitboard, 64> bishop_masks{};
+    std::array<int, 64> bishop_index_base{};
+    std::array<Bitboard, 64> rook_masks{};
+    std::array<int, 64> rook_index_base{};
 #ifndef __BMI2__
-extern std::array<Bitboard, 64> BishopMagicFactors;
-extern std::array<Bitboard, 64> BishopShifts;
-extern std::array<Bitboard, 64> RookMagicFactors;
-extern std::array<Bitboard, 64> RookShifts;
+    std::array<Bitboard, 64> bishop_magic_factors{};
+    std::array<Bitboard, 64> bishop_shifts{};
+    std::array<Bitboard, 64> rook_magic_factors{};
+    std::array<Bitboard, 64> rook_shifts{};
 #endif
+    std::array<Bitboard, 64> diag_from_square{};
+    std::array<Bitboard, 64> ortho_from_square{};
+};
+
+const MagicTables &initialize_magic_tables();
+
+inline const MagicTables &magic_tables() {
+    static const MagicTables &tables = initialize_magic_tables();
+    return tables;
+}
+
+/// @brief Diagonals through a square, ignoring blockers.
+[[nodiscard]] inline Bitboard diag_from_square(Square sq) {
+    return magic_tables().diag_from_square[static_cast<size_t>(sq)];
+}
+/// @brief Ranks and files through a square, ignoring blockers.
+[[nodiscard]] inline Bitboard ortho_from_square(Square sq) {
+    return magic_tables().ortho_from_square[static_cast<size_t>(sq)];
+}
 
 /// @brief Look up bishop attacks via magic bitboard.
 [[nodiscard]] inline Bitboard bishop(Square sq, Bitboard occupied) {
     const int i = (int)sq;
 #if defined(__BMI2__)
-    return BishopAttacks[BishopIndexBase[i] + static_cast<int>(_pext_u64(occupied, BishopMasks[i]))];
+    const auto &tables = magic_tables();
+    return tables.bishop_attacks[tables.bishop_index_base[i] +
+                                 static_cast<int>(_pext_u64(occupied, tables.bishop_masks[i]))];
 #else
-    return BishopAttacks[BishopIndexBase[i] +
-                         static_cast<int>(((occupied & BishopMasks[i]) * BishopMagicFactors[i]) >> BishopShifts[i])];
+    const auto &tables = magic_tables();
+    return tables.bishop_attacks[tables.bishop_index_base[i] +
+                                 static_cast<int>(((occupied & tables.bishop_masks[i]) * tables.bishop_magic_factors[i]) >>
+                                                  tables.bishop_shifts[i])];
 #endif
 }
 
@@ -298,23 +319,19 @@ extern std::array<Bitboard, 64> RookShifts;
 [[nodiscard]] inline Bitboard rook(Square sq, Bitboard occupied) {
     const int i = (int)sq;
 #if defined(__BMI2__)
-    return RookAttacks[RookIndexBase[i] + static_cast<int>(_pext_u64(occupied, RookMasks[i]))];
+    const auto &tables = magic_tables();
+    return tables.rook_attacks[tables.rook_index_base[i] +
+                               static_cast<int>(_pext_u64(occupied, tables.rook_masks[i]))];
 #else
-    return RookAttacks[RookIndexBase[i] + static_cast<int>(((occupied & RookMasks[i]) * RookMagicFactors[i]) >> RookShifts[i])];
+    const auto &tables = magic_tables();
+    return tables.rook_attacks[tables.rook_index_base[i] +
+                               static_cast<int>(((occupied & tables.rook_masks[i]) * tables.rook_magic_factors[i]) >>
+                                                tables.rook_shifts[i])];
 #endif
 }
 
 /// @brief Compute queen attacks (bishop | rook).
 [[nodiscard]] inline Bitboard queen(Square sq, Bitboard occupied) { return bishop(sq, occupied) | rook(sq, occupied); }
-
-/// @brief Diagonals through each square, ignoring blockers: exactly `bishop(sq, 0)`.
-/// @details Precomputed because refresh_attacks() needs it for every node. With an empty
-///          occupancy the magic index is always `IndexBase[sq]` (pext of 0 is 0), so this
-///          is a fixed entry per square and belongs in a 512-byte table rather than being
-///          a probe into the 800 KiB RookAttacks / 41 KiB BishopAttacks tables.
-extern const std::array<Bitboard, 64> DiagFromSquare;
-/// @brief Ranks and files through each square, ignoring blockers: exactly `rook(sq, 0)`.
-extern const std::array<Bitboard, 64> OrthoFromSquare;
 
 /// @brief Look up king attacks for a single square.
 /// @param sq Square.

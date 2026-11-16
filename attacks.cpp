@@ -153,18 +153,14 @@ constexpr std::array<uint64_t, 64> BishopMagics = {
 /// @tparam AttackFunc The hyperbola attack function to use.
 /// @tparam TableSize Total number of attack entries.
 /// @tparam IsBishop true for bishop, false for rook.
-/// @return Pair of (magic table, attack table).
 template <auto AttackFunc, size_t TableSize, bool IsBishop>
 /**
  * @brief Generates magic bitboard tables for fast attack computation.
  *
- * @return A pair containing the Magic entry table (64 entries, one per square) and the corresponding precomputed attack
- * bitboards table.
+ * @param table Destination for the Magic entries.
+ * @param attacks Destination for the precomputed attack bitboards.
  */
-constexpr std::pair<std::array<Magic, 64>, std::array<Bitboard, TableSize>> generate_magic_table() {
-    std::array<Magic, 64> table{};
-    std::array<Bitboard, TableSize> attacks{};
-
+void generate_magic_table(std::array<Magic, 64> &table, std::array<Bitboard, TableSize> &attacks) {
     size_t offset = 0;
     for (Square sq = SQ_A1; sq < SQ_NONE; ++sq) {
         Bitboard occ = 0;
@@ -198,73 +194,66 @@ constexpr std::pair<std::array<Magic, 64>, std::array<Bitboard, TableSize>> gene
 
         offset += (1ULL << bits);
     }
-    return std::pair{ table, attacks };
 }
-//_POSSIBLY_CONSTEXPR
-std::pair<std::array<Magic, 64>, std::array<Bitboard, 0x1480>> bishopData =
-    generate_magic_table<_chess::_HyperbolaBishopAttacks, 0x1480, true>();
-//_POSSIBLY_CONSTEXPR
-std::array<Magic, 64> BishopTable = bishopData.first;
-//_POSSIBLY_CONSTEXPR
-std::array<Bitboard, 0x1480> BishopAttacks = bishopData.second;
-
-//_POSSIBLY_CONSTEXPR
-std::pair<std::array<Magic, 64>, std::array<Bitboard, 0x19000>> rookData =
-    generate_magic_table<_chess::_HyperbolaRookAttacks, 0x19000, false>();
-//_POSSIBLY_CONSTEXPR
-std::array<Magic, 64> RookTable = rookData.first;
-//_POSSIBLY_CONSTEXPR
-std::array<Bitboard, 0x19000> RookAttacks = rookData.second;
-
 // Split magic arrays (parallel scalars to avoid struct-load codegen issues)
-static inline std::array<Bitboard, 64> makeMasks(const std::array<Magic, 64> &tbl) {
+static std::array<Bitboard, 64> makeMasks(const std::array<Magic, 64> &tbl) {
     std::array<Bitboard, 64> arr{};
     for (int i = 0; i < 64; i++)
         arr[i] = tbl[i].mask;
     return arr;
 }
-static inline std::array<int, 64> makeIndices(const std::array<Magic, 64> &tbl) {
+static std::array<int, 64> makeIndices(const std::array<Magic, 64> &tbl) {
     std::array<int, 64> arr{};
     for (int i = 0; i < 64; i++)
         arr[i] = tbl[i].index;
     return arr;
 }
-const std::array<Bitboard, 64> BishopMasks = makeMasks(BishopTable);
-const std::array<int, 64> BishopIndexBase = makeIndices(BishopTable);
-const std::array<Bitboard, 64> RookMasks = makeMasks(RookTable);
-const std::array<int, 64> RookIndexBase = makeIndices(RookTable);
 #ifndef __BMI2__
-static inline std::array<Bitboard, 64> makeFactors(const std::array<Magic, 64> &tbl) {
+static std::array<Bitboard, 64> makeFactors(const std::array<Magic, 64> &tbl) {
     std::array<Bitboard, 64> arr{};
     for (int i = 0; i < 64; i++)
         arr[i] = tbl[i].magic;
     return arr;
 }
-static inline std::array<Bitboard, 64> makeShifts(const std::array<Magic, 64> &tbl) {
+static std::array<Bitboard, 64> makeShifts(const std::array<Magic, 64> &tbl) {
     std::array<Bitboard, 64> arr{};
     for (int i = 0; i < 64; i++)
         arr[i] = tbl[i].shift;
     return arr;
 }
-std::array<Bitboard, 64> BishopMagicFactors = makeFactors(BishopTable);
-std::array<Bitboard, 64> BishopShifts = makeShifts(BishopTable);
-std::array<Bitboard, 64> RookMagicFactors = makeFactors(RookTable);
-std::array<Bitboard, 64> RookShifts = makeShifts(RookTable);
 #endif
 
-const std::array<Bitboard, 64> DiagFromSquare = [] {
-    std::array<Bitboard, 64> t{};
-    for (int i = 0; i < 64; ++i)
-        t[i] = BishopAttacks[BishopIndexBase[i]];
-    return t;
-}();
+const MagicTables &initialize_magic_tables() {
+    static MagicTables tables;
+    static const bool initialized = [&] {
+        generate_magic_table<_chess::_HyperbolaBishopAttacks, 0x1480, true>(
+            tables.bishop_table, tables.bishop_attacks);
+        generate_magic_table<_chess::_HyperbolaRookAttacks, 0x19000, false>(
+            tables.rook_table, tables.rook_attacks);
 
-const std::array<Bitboard, 64> OrthoFromSquare = [] {
-    std::array<Bitboard, 64> t{};
-    for (int i = 0; i < 64; ++i)
-        t[i] = RookAttacks[RookIndexBase[i]];
-    return t;
-}();
+        tables.bishop_masks = makeMasks(tables.bishop_table);
+        tables.bishop_index_base = makeIndices(tables.bishop_table);
+        tables.rook_masks = makeMasks(tables.rook_table);
+        tables.rook_index_base = makeIndices(tables.rook_table);
+#ifndef __BMI2__
+        tables.bishop_magic_factors = makeFactors(tables.bishop_table);
+        tables.bishop_shifts = makeShifts(tables.bishop_table);
+        tables.rook_magic_factors = makeFactors(tables.rook_table);
+        tables.rook_shifts = makeShifts(tables.rook_table);
+#endif
+
+        for (size_t i = 0; i < tables.diag_from_square.size(); ++i)
+            tables.diag_from_square[i] =
+                tables.bishop_attacks[tables.bishop_index_base[i]];
+        for (size_t i = 0; i < tables.ortho_from_square.size(); ++i)
+            tables.ortho_from_square[i] =
+                tables.rook_attacks[tables.rook_index_base[i]];
+
+        return true;
+    }();
+    (void)initialized;
+    return tables;
+}
 
 } // namespace chess::attacks
 namespace chess::movegen {

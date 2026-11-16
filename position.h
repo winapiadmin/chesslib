@@ -296,11 +296,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     }
 
     /// @brief Execute a move on the board.
-    /// @tparam Strict If true, validates that the move is legal.
-    /// @details Tiny dispatcher: routes once on side-to-move to the
-    /// color-specialized doMoveImpl (replaces ~6 scattered runtime-color
-    /// branches with one predictable branch). Force-inlined into callers;
-    /// the heavy impls stay out-of-line in position.cpp.
+    /// @tparam Strict If true, use checked piece access and update repetition bookkeeping.
+    /// @details Use the same Strict value for every move applied to a Position instance.
+    /// Mixing `doMove<true>` and `doMove<false>` on one instance leaves its repetition
+    /// bookkeeping incomplete. This tiny dispatcher routes once on side-to-move to the
+    /// color-specialized doMoveImpl. It is force-inlined; the heavy implementations
+    /// stay out-of-line in position.cpp.
     template <bool Strict = true> HOTFUNC FORCEINLINE void doMove(const Move &move) {
         if (side_to_move() == WHITE)
             doMoveImpl<Strict, WHITE>(move);
@@ -310,7 +311,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     /// @brief Color-specialized move execution (private impl, see position.cpp).
     /// @tparam us Mover color (compile-time; must equal side_to_move()).
     template <bool Strict, Color us> HOTFUNC void doMoveImpl(const Move &move);
-    /// @brief Snake-case alias for doMove().
+    /// @brief Snake-case alias for doMove(); keep Strict consistent per Position instance.
     template <bool Strict = true> void do_move(const Move &move) { doMove<Strict>(move); }
 
     /// @brief Undo the last move. Returns saved HistoryEntry when RetAll=true.
