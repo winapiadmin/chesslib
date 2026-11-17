@@ -49,12 +49,8 @@ void genKingMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard);
 template <typename T, Color c, PieceType pt, bool capturesOnly, typename ListT>
 void genSlidingMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard, Bitboard, Bitboard);
 
-/// @brief Precomputed between-square bitboards.
-/// @details squares_between_bb[sq1][sq2] holds the squares strictly between sq1 and sq2
-///          (both endpoints excluded) when they share a rank, file or diagonal, and 0
-///          otherwise. generate_between() in attacks.cpp then ORs in 1ULL << sq2
-///          unconditionally, so the stored table additionally contains sq2.
-extern std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB;
+/// @brief Access the lazily initialized between-square bitboards.
+[[nodiscard]] const std::array<std::array<Bitboard, 64>, 64> &squares_between_bb() noexcept;
 
 /// @brief Look up the squares between two squares.
 /// @param sq1 First square. Never included in the result.
@@ -68,5 +64,5 @@ extern std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB;
 ///       only the occupied squares between the two (for example to count blockers for the
 ///       "exactly one blocker" pin test) must mask sq2 off, or the blocker count is off by
 ///       one and pin detection silently never fires.
-[[nodiscard]] inline Bitboard between(Square sq1, Square sq2) noexcept { return SQUARES_BETWEEN_BB[sq1][sq2]; }
+[[nodiscard]] inline Bitboard between(Square sq1, Square sq2) noexcept { return squares_between_bb()[sq1][sq2]; }
 } // namespace chess::movegen

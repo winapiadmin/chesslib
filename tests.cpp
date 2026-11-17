@@ -382,7 +382,10 @@ TEST_CASE("attacks") {
     }
 }
 
-TEST_CASE("Namespace-scope position initializes slider attacks before use") { REQUIRE(global_checked_position.is_check()); }
+TEST_CASE("Namespace-scope position initializes tables before use") {
+    REQUIRE(global_checked_position.is_check());
+    REQUIRE(global_checked_position.hash() == global_checked_position.zobrist());
+}
 
 TEST_CASE("Castling move making FEN rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8") {
     std::string fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
@@ -542,6 +545,19 @@ TEST_CASE("Pinned pieces may move along the pin line") {
     // the rook with the rook from h2 leaves the knight check unresolved.
     const char *double_check = "4k3/8/8/8/8/8/2n1r2R/4K3 w - - 0 1";
     require_illegal(double_check, "h2e2");
+}
+
+TEST_CASE("Distant slider check mask includes every blocking square") {
+    // A check on the e-file must be blockable on every square between the king
+    // and the checking rook, not just on the endpoints nearest each piece.
+    const Bitboard expected_mask = (1ULL << SQ_E2) | (1ULL << SQ_E3) | (1ULL << SQ_E4) | (1ULL << SQ_E5) |
+                                   (1ULL << SQ_E6) | (1ULL << SQ_E7) | (1ULL << SQ_E8);
+    REQUIRE(movegen::between(SQ_E1, SQ_E8) == expected_mask);
+
+    const char *fen = "k3r3/R7/8/8/8/8/R7/4K3 w - - 0 1";
+    require_legal(fen, "a7e7");
+    require_legal(fen, "a2e2");
+    require_illegal(fen, "a7d7");
 }
 
 TEST_CASE("FEN fullmove counter must be positive") {

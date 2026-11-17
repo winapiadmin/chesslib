@@ -159,58 +159,51 @@ if(CHESSLIB_NATIVE_ARCH_RUNS STREQUAL "AUTO")
             "${_chesslib_native_flags_str}"
         )
 
-        if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR
-           CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
-            set(_chesslib_native_probe_source [=[
-                #include <immintrin.h>
+        set(_chesslib_native_probe_source [=[
+            #include <immintrin.h>
 
-                int main()
-                {
-                    __m256i a = _mm256_set1_epi32(1);
-                    __m256i b = _mm256_add_epi32(a, a);
-                    int values[8];
-                    _mm256_storeu_si256(reinterpret_cast<__m256i *>(values), b);
+            int main(int argc, char **)
+            {
+                volatile int runtime_value = argc;
 
-                    int sum = 0;
-                    for (int value : values)
-                        sum += value;
-                    if (sum != 16)
-                        return 1;
+            #if defined(__AVX2__) || defined(_M_AVX2)
+                __m256i a = _mm256_set1_epi32(runtime_value);
+                __m256i b = _mm256_add_epi32(a, a);
+                int values[8];
+                _mm256_storeu_si256(reinterpret_cast<__m256i *>(values), b);
 
-                #if defined(__BMI2__)
-                    if (_pext_u64(0xFF00ULL, 0xFF00ULL) != 0xFFULL)
-                        return 1;
-                #endif
+                int sum = 0;
+                for (int value : values)
+                    sum += value;
+                if (sum != runtime_value * 16)
+                    return 1;
+            #endif
 
-                    return 0;
-                }
-            ]=])
+            #if defined(__AVX512F__)
+                __m512i a512 = _mm512_set1_epi32(runtime_value);
+                __m512i b512 = _mm512_add_epi32(a512, a512);
+                if (_mm512_reduce_add_epi32(b512) != runtime_value * 32)
+                    return 1;
+            #endif
+
+            #if defined(__BMI2__)
+                if (_pext_u64(0xFF00ULL, 0xFF00ULL) != 0xFFULL)
+                    return 1;
+            #endif
+
+                return 0;
+            }
+        ]=])
+
+        if(CMAKE_CROSSCOMPILING AND NOT CMAKE_CROSSCOMPILING_EMULATOR)
+            set(_chesslib_native_arch_probe_result "0")
+            message(STATUS "chesslib: skipping native architecture run probe while cross-compiling without an emulator")
         else()
-            set(_chesslib_native_probe_source [=[
-                #include <immintrin.h>
-
-                int main()
-                {
-                    __m512i a = _mm512_set1_epi32(1);
-                    __m512i b = _mm512_add_epi32(a, a);
-
-                    if (_mm512_reduce_add_epi32(b) != 32)
-                        return 1;
-
-                #if defined(__BMI2__)
-                    if (_pext_u64(0xFF00ULL, 0xFF00ULL) != 0xFFULL)
-                        return 1;
-                #endif
-
-                    return 0;
-                }
-            ]=])
+            check_cxx_source_runs(
+                "${_chesslib_native_probe_source}"
+                _chesslib_native_arch_probe_result
+            )
         endif()
-
-        check_cxx_source_runs(
-            "${_chesslib_native_probe_source}"
-            _chesslib_native_arch_probe_result
-        )
 
         unset(CMAKE_REQUIRED_FLAGS)
 
@@ -385,6 +378,14 @@ if(BUILD_TESTING)
         test_chess960
         PROPERTIES
             INTERPROCEDURAL_OPTIMIZATION FALSE
+    )
+
+    # test_chess960 opts out of IPO because its large test TU exceeds
+    # memory limits with LTO. Keep the library archive native as well so
+    # non-IPO consumers do not need an LTO linker plugin to read it.
+    set_property(
+        TARGET chesslib
+        PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE
     )
 
     add_test(

@@ -369,6 +369,10 @@ static size_t mb_to_tt_bits(int mb) {
     return bits;
 }
 
+static bool has_one_king_each_color(const Position &pos) {
+    return pos.count<KING, WHITE>() == 1 && pos.count<KING, BLACK>() == 1;
+}
+
 /* ===================== Perft command ===================== */
 
 static void run_perft(Position &pos, int depth, size_t tt_bits, int threads) {
@@ -510,6 +514,8 @@ static int uci_command_line(int argc, char **argv) {
     try {
         if (!pos.setFEN(fen))
             throw std::runtime_error("invalid FEN");
+        if (!has_one_king_each_color(pos))
+            throw std::runtime_error("FEN must contain exactly one king per color");
     } catch (const std::exception &e) {
         std::cerr << "Invalid FEN: " << e.what() << '\n';
 
@@ -715,6 +721,8 @@ static void uci_loop() {
                     Position candidate = pos;
                     if (!candidate.setFEN(fen_str))
                         throw std::runtime_error("invalid FEN");
+                    if (!has_one_king_each_color(candidate))
+                        throw std::runtime_error("FEN must contain exactly one king per color");
                     pos = std::move(candidate);
                 } catch (const std::exception &e) {
                     std::cout << "info string Invalid FEN: " << e.what() << '\n';

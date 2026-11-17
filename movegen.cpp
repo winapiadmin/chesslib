@@ -55,6 +55,8 @@ constexpr __mmask32 lowLanes(uint32_t n) noexcept { return static_cast<__mmask32
 // explicitly means a hypothetical VBMI2-without-BW part falls through to the portable
 // scalar path instead of failing to build.
 #if defined(__AVX512F__) && defined(__AVX512BW__) && defined(__AVX512VNNI__) && defined(__AVX512VBMI2__)
+// This branch's masked stores need the caller's precomputed move count.
+#define CHESSLIB_SPLAT_NEEDS_COUNT 1
 
 // clang-format off
 const __m512i AllSquares = _mm512_set_epi8(
@@ -113,6 +115,9 @@ inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb, int n) {
 }
 
 #elif defined(__AVX512BW__) && defined(__AVX512VBMI2__)
+// This branch's masked stores also need the caller's precomputed move count.
+#define CHESSLIB_SPLAT_NEEDS_COUNT 1
+
 // NOTE: this branch's write_moves() uses _mm512_maskz_compress_epi16, which is an
 // AVX512VBMI2 instruction (VPCOMPRESSW) despite operating on the "BW" (byte/word) data
 // type — AVX512BW alone does not provide it. Guarding on __AVX512BW__ alone used to let
@@ -192,6 +197,10 @@ template <Direction offset> inline Move *splat_pawn_moves(Move *RESTRICT moveLis
     return moveList;
 }
 #else
+// The portable scalar loop derives the count from the returned pointer and must
+// NOT pay for a dead POPCNT.
+#define CHESSLIB_SPLAT_NEEDS_COUNT 0
+
 template <Direction offset> inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb, int n) {
     (void)n; // implied by the loop below
     while (to_bb) {
@@ -225,16 +234,6 @@ inline Move *splat_moves(Move *RESTRICT moveList, Square from, Bitboard to_bb, i
  * @param from Source square for all moves.
  * @param targets Bitboard of destination squares.
  */
-// Whether the active splat implementation needs a precomputed popcount.
-// AVX-512 masked stores need n; the portable scalar loop derives the count
-// from the returned pointer and must NOT pay for a dead POPCNT.
-#if (defined(__AVX512F__) && defined(__AVX512BW__) && defined(__AVX512VNNI__) && defined(__AVX512VBMI2__)) ||                  \
-    (defined(__AVX512BW__) && defined(__AVX512VBMI2__))
-#define CHESSLIB_SPLAT_NEEDS_COUNT 1
-#else
-#define CHESSLIB_SPLAT_NEEDS_COUNT 0
-#endif
-
 template <typename ListT> inline void record_moves(ListT &list, Square from, Bitboard targets) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
 #if CHESSLIB_SPLAT_NEEDS_COUNT

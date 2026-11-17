@@ -259,8 +259,8 @@ inline static Bitboard att(PieceType pt, Square sq, Bitboard occ) {
     return (pt == BISHOP) ? chess::_chess::_HyperbolaBishopAttacks(sq, occ) : chess::_chess::_HyperbolaRookAttacks(sq, occ);
 }
 
-/// @brief Generate the between-square table at program startup.
-inline static std::array<std::array<Bitboard, 64>, 64> generate_between() {
+/// @brief Generate the between-square table.
+static std::array<std::array<Bitboard, 64>, 64> generate_between() {
     std::array<std::array<Bitboard, 64>, 64> squares_between_bb{};
 
     for (int sq1 = 0; sq1 < 64; ++sq1) {
@@ -276,5 +276,9 @@ inline static std::array<std::array<Bitboard, 64>, 64> generate_between() {
 
     return squares_between_bb;
 }
-std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB = generate_between();
+
+const std::array<std::array<Bitboard, 64>, 64> &squares_between_bb() noexcept {
+    static const auto table = generate_between();
+    return table;
+}
 } // namespace chess::movegen

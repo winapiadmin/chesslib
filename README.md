@@ -31,6 +31,7 @@ The build produces:
 ```cpp
 #include "position.h"
 #include "printers.h"
+#include <iostream>
 
 using namespace chess;
 
@@ -60,16 +61,13 @@ pos.doMove(move);  // Execute the move
 std::cout << pos << std::endl;
 ```
 
-### Perft Testing (Example)
-```cpp
-#include "perft_example.cpp"
+### Perft Testing
+Build the existing `perft_example` executable, then run a depth-6 perft with one
+thread from the repository root:
 
-int main() {
-    Position pos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    uint64_t nodes = run_perft(pos, 6, 0, 1);  // 6-ply perft with 1 thread
-    std::cout << "Nodes searched: " << nodes << std::endl;
-    return 0;
-}
+```bash
+cmake --build build --target perft_example
+./build/perft_example --depth 6 --threads 1
 ```
 
 ## License
