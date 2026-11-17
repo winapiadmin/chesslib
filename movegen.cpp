@@ -331,7 +331,7 @@ void movegen::genEP(const _Position<T, void> &pos, ListT &mv, Bitboard occ_all) 
         return;
 
     const Square ep_pawn_sq = ep_sq - pawn_push(c);
-    const Bitboard ep_mask = (1ULL << ep_pawn_sq) | (1ULL << ep_sq);
+    const Bitboard ep_mask = square_bb(ep_pawn_sq) | square_bb(ep_sq);
 
     const Bitboard enemy_bq = pos.template pieces<BISHOP, ~c>() | pos.template pieces<QUEEN, ~c>();
 
@@ -341,7 +341,7 @@ void movegen::genEP(const _Position<T, void> &pos, ListT &mv, Bitboard occ_all) 
         Square from = static_cast<Square>(pop_lsb(candidates));
 
         // Remove the EP pawn and this attacker from occupancy
-        Bitboard occ_temp = occ_all ^ ((1ULL << from) | ep_mask);
+        Bitboard occ_temp = occ_all ^ (square_bb(from) | ep_mask);
 
         // attackers check
         Bitboard atks = 0;
@@ -412,7 +412,7 @@ void movegen::genPawnSingleMoves(const _Position<T, void> &pos,
     constexpr auto RANK_PROMO = attacks::MASK_RANK[relative_rank(c, RANK_8)];
 
     const auto pawns = pos.template pieces<PAWN, c>();
-    const Bitboard enemy_king = 1ULL << pos.kingSq(~c);
+    const Bitboard enemy_king = square_bb(pos.kingSq(~c));
     const auto occ_opp = pos.occ(~c) & ~enemy_king;
     // These pawns can maybe take Left or Right
     const Bitboard pawns_lr = pawns & ~_rook_pin;
@@ -474,7 +474,7 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
 void movegen::genKnightMoves(
     const _Position<T, void> &pos, ListT &list, Bitboard _pin_mask, Bitboard _check_mask, Bitboard occ_all) {
     Bitboard knights = pos.template pieces<KNIGHT, c>() & ~_pin_mask;
-    Bitboard enemy_king = 1ULL << pos.kingSq(~c);
+    Bitboard enemy_king = square_bb(pos.kingSq(~c));
     Bitboard mask1 = ~(pos.occ(c) | enemy_king) & _check_mask;
     if constexpr (capturesOnly)
         mask1 &= pos.occ(~c);
@@ -499,6 +499,8 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
 void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bitboard _pin_mask, Bitboard occ_all) {
     constexpr Color them = ~c;
     const Square kingSq = pos.king_sq(c);
+    if (UNLIKELY(kingSq == SQ_NONE))
+        return;
     ASSUME(kingSq >= SQ_A1 && kingSq <= SQ_H8);
     const Bitboard myOcc = pos.occ(c);
     const Bitboard enemy_king_bb = pos.template pieces<KING, them>();
@@ -536,11 +538,11 @@ void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bitboard _
         const Square rookQueen = pos.get_castling_metadata(c).rook_start_qs;
 
         if (pos.castlingRights() & kingRights &&
-            !(occ_all & OO_EMPTY || enemy_attacks & OO_SAFE || _pin_mask & 1ULL << rookKing)) {
+            !(occ_all & OO_EMPTY || enemy_attacks & OO_SAFE || _pin_mask & square_bb(rookKing))) {
             out.push_back(Move::make<CASTLING>(kingSq, rookKing));
         }
         if (pos.castlingRights() & queenRights &&
-            !(occ_all & OOO_EMPTY || enemy_attacks & OOO_SAFE || _pin_mask & 1ULL << rookQueen)) {
+            !(occ_all & OOO_EMPTY || enemy_attacks & OOO_SAFE || _pin_mask & square_bb(rookQueen))) {
             out.push_back(Move::make<CASTLING>(kingSq, rookQueen));
         }
     }
@@ -580,7 +582,7 @@ void movegen::genSlidingMoves(const _Position<T, void> &pos,
 
     while (sliders) {
         const Square from = static_cast<Square>(pop_lsb(sliders));
-        const Bitboard from_bb = 1ULL << from;
+        const Bitboard from_bb = square_bb(from);
 
         Bitboard pin_mask;
         if constexpr (pt == BISHOP) {

@@ -23,7 +23,6 @@
 #include "types.h"
 #include <array>
 #include <immintrin.h>
-#include <vector>
 
 /// @file attacks.h
 /// @brief Precomputed attack tables and magic-bitboard lookup functions.

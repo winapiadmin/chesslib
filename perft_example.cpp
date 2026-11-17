@@ -473,7 +473,17 @@ static int uci_command_line(int argc, char **argv) {
 
         } else if ((std::strcmp(argv[i], "-d") == 0 || std::strcmp(argv[i], "--depth") == 0) && i + 1 < argc) {
 
-            depth = std::atoi(argv[++i]);
+            const std::string value = argv[++i];
+            try {
+                size_t parsed_chars = 0;
+                const long parsed = std::stol(value, &parsed_chars);
+                if (parsed_chars != value.size() || parsed < 0 || parsed > std::numeric_limits<int>::max())
+                    throw std::invalid_argument("invalid depth");
+                depth = static_cast<int>(parsed);
+            } catch (const std::exception &) {
+                std::cerr << "Invalid --depth value: " << value << '\n';
+                return EXIT_FAILURE;
+            }
 
         } else if ((std::strcmp(argv[i], "-z") == 0 || std::strcmp(argv[i], "--ttsize") == 0) && i + 1 < argc) {
 
@@ -491,11 +501,31 @@ static int uci_command_line(int argc, char **argv) {
 
         } else if ((std::strcmp(argv[i], "-m") == 0 || std::strcmp(argv[i], "--hash") == 0) && i + 1 < argc) {
 
-            tt_bits = mb_to_tt_bits(std::atoi(argv[++i]));
+            const std::string value = argv[++i];
+            try {
+                size_t parsed_chars = 0;
+                const long parsed = std::stol(value, &parsed_chars);
+                if (parsed_chars != value.size() || parsed < 0 || parsed > std::numeric_limits<int>::max())
+                    throw std::invalid_argument("invalid hash size");
+                tt_bits = mb_to_tt_bits(static_cast<int>(parsed));
+            } catch (const std::exception &) {
+                std::cerr << "Invalid --hash value: " << value << '\n';
+                return EXIT_FAILURE;
+            }
 
         } else if ((std::strcmp(argv[i], "-t") == 0 || std::strcmp(argv[i], "--threads") == 0) && i + 1 < argc) {
 
-            threads = std::atoi(argv[++i]);
+            const std::string value = argv[++i];
+            try {
+                size_t parsed_chars = 0;
+                const long parsed = std::stol(value, &parsed_chars);
+                if (parsed_chars != value.size() || parsed < 1 || parsed > 1024)
+                    throw std::invalid_argument("invalid thread count");
+                threads = static_cast<int>(parsed);
+            } catch (const std::exception &) {
+                std::cerr << "Invalid --threads value: " << value << '\n';
+                return EXIT_FAILURE;
+            }
 
         } else if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
 
@@ -535,7 +565,13 @@ static int uci_command_line(int argc, char **argv) {
 
     const auto start = std::chrono::steady_clock::now();
 
-    const uint64_t nodes = run_threaded_perft(pos, depth, tt_bits, threads, false);
+    uint64_t nodes = 0;
+    try {
+        nodes = run_threaded_perft(pos, depth, tt_bits, threads, false);
+    } catch (const std::exception &e) {
+        std::cerr << "Perft error: " << e.what() << '\n';
+        return EXIT_FAILURE;
+    }
 
     const auto end = std::chrono::steady_clock::now();
 

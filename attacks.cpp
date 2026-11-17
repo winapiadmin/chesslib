@@ -81,7 +81,7 @@ static constexpr Bitboard antidiag_mask(Square sq) {
 
 /// @brief Bishop attacks via hyperbola quintessence.
 static constexpr Bitboard _HyperbolaBishopAttacks(Square sq, Bitboard occ) {
-    Bitboard slider = 1ULL << sq;
+    Bitboard slider = square_bb(sq);
     Bitboard d_mask = diag_mask(sq);
     Bitboard ad_mask = antidiag_mask(sq);
     return hyp_quint(slider, occ, d_mask) | hyp_quint(slider, occ, ad_mask);
@@ -101,7 +101,7 @@ static constexpr Bitboard file_mask(Square sq) { return attacks::MASK_FILE[file_
  * @return Bitboard of attacked squares.
  */
 static constexpr Bitboard _HyperbolaRookAttacks(Square sq, Bitboard occ) {
-    Bitboard slider = 1ULL << sq;
+    Bitboard slider = square_bb(sq);
     Bitboard r_mask = rank_mask(sq);
     Bitboard f_mask = file_mask(sq);
     return hyp_quint(slider, occ, r_mask) | hyp_quint(slider, occ, f_mask);
@@ -266,10 +266,11 @@ static std::array<std::array<Bitboard, 64>, 64> generate_between() {
     for (int sq1 = 0; sq1 < 64; ++sq1) {
         for (PieceType pt : { BISHOP, ROOK }) {
             for (int sq2 = 0; sq2 < 64; ++sq2) {
-                if (att(pt, Square(sq1), 0) & (1ULL << sq2)) {
-                    squares_between_bb[sq1][sq2] = att(pt, Square(sq1), 1ULL << (sq2)) & att(pt, Square(sq2), 1ULL << (sq1));
+                if (att(pt, Square(sq1), 0) & square_bb(Square(sq2))) {
+                    squares_between_bb[sq1][sq2] =
+                        att(pt, Square(sq1), square_bb(Square(sq2))) & att(pt, Square(sq2), square_bb(Square(sq1)));
                 }
-                squares_between_bb[sq1][sq2] |= 1ULL << (sq2);
+                squares_between_bb[sq1][sq2] |= square_bb(Square(sq2));
             }
         }
     }

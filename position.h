@@ -22,6 +22,7 @@
 #include "types.h"
 #include "zobrist.h"
 #include <algorithm>
+#include <array>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -220,6 +221,11 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         if constexpr (effectivePieces == 0 && modeBits != 0)
             return;
 
+        // Without a king there are no legal moves (and several generators would
+        // index attack tables with SQ_NONE). setFEN permits kingless placements,
+        // so guard here rather than in every generator.
+        if (UNLIKELY(king_sq(c) == SQ_NONE))
+            return;
         const Bitboard occ_all = occ();
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::KING)) {
             movegen::genKingMoves<PieceC, c, captureOnly, ListT>(*this, out, _pin_mask, occ_all);
@@ -318,6 +324,13 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     /// @tparam RetAll If true, return the popped HistoryEntry.
     /// @return The saved state if RetAll, otherwise void.
     template <bool RetAll = false> inline auto undoMove() -> std::conditional_t<RetAll, HistoryEntry<PieceC>, void> {
+        if (UNLIKELY(history.size() < 2)) {
+            assert(false && "undoMove called without a move to undo");
+            if constexpr (RetAll)
+                return HistoryEntry<PieceC>{};
+            else
+                return;
+        }
         auto &st = state();
         pieces_list[st.incr_sqs[0]] = st.incr_pc[0];
         pieces_list[st.incr_sqs[1]] = st.incr_pc[1];
@@ -470,6 +483,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      * @returns `true` if the square is attacked by the given colour, `false` otherwise.
      */
     [[nodiscard]] inline bool isAttacked(Square sq, Color by) const noexcept {
+        if (!chess::is_valid(sq))
+            return false;
         const Bitboard occ_bb = occ();
 
         // pieces(pt, by) already returns state().pieces[pt] & state().occ[by], so both
@@ -497,6 +512,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      * @returns true if the square is attacked by the specified color, false otherwise.
      */
     [[nodiscard]] inline bool isAttacked(Square sq, Color by, Bitboard occupied) const noexcept {
+        if (!chess::is_valid(sq))
+            return false;
         const Bitboard diag_attackers = pieces(PieceType::BISHOP, by) | pieces(PieceType::QUEEN, by);
         const Bitboard ortho_attackers = pieces(PieceType::ROOK, by) | pieces(PieceType::QUEEN, by);
 
@@ -522,7 +539,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     template <PieceType pt> inline void placePiece(Square sq, Color c) {
         if constexpr (pt != NO_PIECE_TYPE) {
             auto &st = state();
-            Bitboard v = 1ULL << sq;
+            Bitboard v = square_bb(sq);
             st.pieces[pt] |= v;
             st.occ[c] |= v;
             pieces_list[sq] = make_piece<PieceC>(pt, c);
@@ -536,7 +553,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     template <PieceType pt> inline void removePiece(Square sq, Color c) {
         if constexpr (pt != NO_PIECE_TYPE) {
             auto &st = state();
-            Bitboard v = ~(1ULL << sq);
+            Bitboard v = ~square_bb(sq);
             st.pieces[pt] &= v;
             st.occ[c] &= v;
             pieces_list[sq] = PieceC::NO_PIECE;
@@ -550,7 +567,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     HOTFUNC FORCEINLINE void placePiece(PieceType pt, Square sq, Color c) {
         bool a = pt == KING;
         auto &st = state();
-        Bitboard v = 1ULL << sq;
+        Bitboard v = square_bb(sq);
         st.pieces[pt] |= v;
         st.occ[c] |= v;
         pieces_list[sq] = make_piece<PieceC>(pt, c);
@@ -563,7 +580,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         bool a = pt == KING;
         if (pt != NO_PIECE_TYPE) {
             auto &st = state();
-            Bitboard v = ~(1ULL << sq);
+            Bitboard v = ~square_bb(sq);
             st.pieces[pt] &= v;
             st.occ[c] &= v;
             pieces_list[sq] = PieceC::NO_PIECE;
@@ -582,7 +599,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     [[nodiscard]] inline Bitboard occ() const { return state().occ[0] | state().occ[1]; }
 
     /// @brief Piece on a square.
-    NO_SIDE_EFFECTS FORCEINLINE FLATTEN PieceC piece_on(Square s) const {
+    FORCEINLINE FLATTEN PieceC piece_on(Square s) const {
 #if defined(_CHESSLIB_ERROR_MODE_ASSERT)
         assert(chess::is_valid(s) && "sq is out-of-bounds");
 #elif defined(_CHESSLIB_ERROR_MODE_THROW)
@@ -593,7 +610,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         return pieces_list[s];
 #else
         PieceC _p2 = PieceC::NO_PIECE;
-        Bitboard mask = (1ULL << s);
+        Bitboard mask = square_bb(s);
         if (((state().occ[WHITE] | state().occ[BLACK]) & mask) == 0) {
             _p2 = PieceC::NO_PIECE;
         } else {
@@ -634,7 +651,10 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      * @returns The square of the lowest-indexed piece.
      */
     template <PieceType pt> [[nodiscard]] inline Square square(Color c) const {
-        return static_cast<Square>(lsb(pieces<pt>(c)));
+        const Bitboard bb = pieces<pt>(c);
+        if (!bb)
+            return SQ_NONE;
+        return static_cast<Square>(lsb(bb));
     }
     /**
      * Retrieve the square occupied by the king for the given color.
@@ -656,9 +676,14 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Construct from a FEN string.
     inline _Position(std::string fen = START_FEN, bool chess960 = false, FENParsingMode xfen = MODE_AUTO) {
-        history.reserve(6144);
+        history.reserve(100);
         history.emplace_back();
-        setFEN(fen, chess960, xfen);
+        // A failed setFEN leaves the position safely finalised (see setFEN). Invalid
+        // optional fields (e.g. castling rights) are tolerated while the board and
+        // side to move stay usable; only an unparseable board/side is fatal, which
+        // leaves the restored state with no side to move.
+        if (!setFEN(fen, chess960, xfen) && state().turn == COLOR_NB)
+            throw std::invalid_argument("invalid FEN: " + fen);
     }
 
     /// @brief Check whether a move is a capture.
@@ -960,10 +985,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
   public:
     /// @brief Copy constructor (deep copy of position state).
     inline _Position(const _Position &other)
-        : history(other.history), _chess960(other._chess960),
-          castling_meta_{ other.castling_meta_[0], other.castling_meta_[1] },
+        : _chess960(other._chess960), castling_meta_{ other.castling_meta_[0], other.castling_meta_[1] },
           castling_rights_lost_king_{ other.castling_rights_lost_king_ },
           castling_rights_lost_rook_{ other.castling_rights_lost_rook_ } {
+        // Preserve the history reserve so doMove() never allocates inside a perft worker.
+        history.reserve(std::max<size_t>(100, other.history.size()));
+        history = other.history;
         std::copy(std::begin(other.pieces_list), std::end(other.pieces_list), std::begin(pieces_list));
         // Copy cached attack/pin/check masks from the source position so the copy
         // is an exact snapshot. This avoids subtle inconsistencies with incremental saved state

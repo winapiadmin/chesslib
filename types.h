@@ -26,8 +26,10 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 /// @file types.h
 /// @brief Core chess type definitions: squares, pieces, colours, move encoding, and ValueList.
 #if defined(__clang__) || defined(__GNUC__)
@@ -182,6 +184,13 @@ constexpr Square flip_sq(const Square sq) { return square_mirror(sq); }
 constexpr bool is_valid(const Rank r, const File f) { return 0 <= r && r <= 7 && 0 <= f && f <= 7; }
 /// @brief Check if a square index is valid (0..63).
 constexpr NO_SIDE_EFFECTS bool is_valid(const Square s) { return 0 <= s && s < 64; }
+
+/// @brief Bitboard containing only the given square.
+/// @param s Square to convert.
+/// @return `1ULL << s`, or 0 when @p s is not a valid board square (e.g. SQ_NONE).
+constexpr inline Bitboard square_bb(const Square s) noexcept {
+    return is_valid(s) ? (1ULL << static_cast<int>(s)) : 0ULL;
+}
 
 /// @brief Extract the file from a square.
 constexpr File file_of(const Square s) {
