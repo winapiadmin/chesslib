@@ -986,8 +986,7 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
         const bool kingSide = to > from;
         const Square kingTo = castling_king_square(side_to_move(), kingSide);
         const Square rookTo = castling_rook_square(side_to_move(), kingSide);
-        const Bitboard occAfter =
-            (occ() ^ square_bb(from) ^ square_bb(to)) | square_bb(kingTo) | square_bb(rookTo);
+        const Bitboard occAfter = (occ() ^ square_bb(from) ^ square_bb(to)) | square_bb(kingTo) | square_bb(rookTo);
         return (attacks::rook(rookTo, occAfter) & square_bb(ksq)) ? CheckType::DISCOVERY_CHECK : CheckType::NO_CHECK;
     }
     }
