@@ -972,8 +972,15 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
     }
 
     case Move::CASTLING: {
-        const Square rookTo = relative_square(side_to_move(), to > from ? SQ_F1 : SQ_D1);
-        return (attacks::rook(ksq, occ()) & square_bb(rookTo)) ? CheckType::DISCOVERY_CHECK : CheckType::NO_CHECK;
+        // The encoded destination is the rook's *starting* square. Check the
+        // rook's post-castling position against post-move occupancy; the king
+        // may have been the only piece blocking the rook's new line.
+        const bool kingSide = to > from;
+        const Square kingTo = castling_king_square(side_to_move(), kingSide);
+        const Square rookTo = castling_rook_square(side_to_move(), kingSide);
+        const Bitboard occAfter =
+            (occ() ^ square_bb(from) ^ square_bb(to)) | square_bb(kingTo) | square_bb(rookTo);
+        return (attacks::rook(rookTo, occAfter) & square_bb(ksq)) ? CheckType::DISCOVERY_CHECK : CheckType::NO_CHECK;
     }
     }
 

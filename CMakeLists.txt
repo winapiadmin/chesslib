@@ -371,10 +371,18 @@ if(BUILD_TESTING)
     # -O0 and skip LTO for it alone. Every other target keeps full
     # optimization.
 
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR
+       (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
+        CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC"))
+        set(_chesslib_chess960_compile_options "/Od")
+    else()
+        set(_chesslib_chess960_compile_options "-O0")
+    endif()
+
     set_source_files_properties(
         chess960_tests.cpp
         PROPERTIES
-            COMPILE_OPTIONS "-O0"
+            COMPILE_OPTIONS "${_chesslib_chess960_compile_options}"
     )
 
     set_target_properties(
