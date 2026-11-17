@@ -550,8 +550,8 @@ TEST_CASE("Pinned pieces may move along the pin line") {
 TEST_CASE("Distant slider check mask includes every blocking square") {
     // A check on the e-file must be blockable on every square between the king
     // and the checking rook, not just on the endpoints nearest each piece.
-    const Bitboard expected_mask = (1ULL << SQ_E2) | (1ULL << SQ_E3) | (1ULL << SQ_E4) | (1ULL << SQ_E5) |
-                                   (1ULL << SQ_E6) | (1ULL << SQ_E7) | (1ULL << SQ_E8);
+    const Bitboard expected_mask = (1ULL << SQ_E2) | (1ULL << SQ_E3) | (1ULL << SQ_E4) | (1ULL << SQ_E5) | (1ULL << SQ_E6) |
+                                   (1ULL << SQ_E7) | (1ULL << SQ_E8);
     REQUIRE(movegen::between(SQ_E1, SQ_E8) == expected_mask);
 
     const char *fen = "k3r3/R7/8/8/8/8/R7/4K3 w - - 0 1";
