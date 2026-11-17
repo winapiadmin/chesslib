@@ -70,6 +70,13 @@ cmake --build build --target perft_example
 ./build/perft_example --depth 6 --threads 1
 ```
 
+On Windows (Release, with multi-configuration generator such as Visual Studio):
+
+```powershell
+cmake --build build --config Release --target perft_example
+.\build\Release\perft_example.exe --depth 6 --threads 1
+```
+
 ## License
 
 This project is licensed under the GNU General Public License v3.0. See the [LICENSE](LICENSE) file for details.

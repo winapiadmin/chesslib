@@ -814,7 +814,11 @@ static void uci_loop() {
                     if (tokens[i] == "perft" && i + 1 < tokens.size()) {
 
                         parsing_value = tokens[i + 1];
-                        depth = std::stoi(parsing_value);
+                        size_t parsed_chars = 0;
+                        const long parsed_depth = std::stol(parsing_value, &parsed_chars);
+                        if (parsed_chars != parsing_value.size() || parsed_depth < 0 || parsed_depth > std::numeric_limits<int>::max())
+                            throw std::invalid_argument("invalid depth");
+                        depth = static_cast<int>(parsed_depth);
 
                         perft_cmd = true;
 

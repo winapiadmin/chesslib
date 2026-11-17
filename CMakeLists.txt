@@ -42,7 +42,14 @@ endif()
 option(ENABLE_LTO "Enable Link-Time Optimization" ON)
 
 if(ENABLE_LTO)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+    cmake_policy(SET CMP0069 NEW)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT _ipo_supported OUTPUT _ipo_output)
+    if(_ipo_supported)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+    else()
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
+    endif()
 endif()
 
 # --- Core Library ---
@@ -312,8 +319,11 @@ add_executable(perft_example
     perft_example.cpp
 )
 
+find_package(Threads REQUIRED)
+
 target_link_libraries(perft_example PRIVATE
     chesslib
+    Threads::Threads
 )
 
 # --- Enable CTest integration ---

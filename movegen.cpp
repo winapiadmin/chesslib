@@ -513,7 +513,7 @@ void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bitboard _
 
     Bitboard enemyAttacks = pos.enemy_attacks();
 
-    Bitboard moves = kingAttacks & ~myOcc & ~enemyAttacks;
+    Bitboard moves = kingAttacks & ~myOcc & ~enemyAttacks & ~enemy_king_bb;
     if constexpr (capturesOnly)
         moves &= occ_opp;
     record_moves(out, kingSq, moves);

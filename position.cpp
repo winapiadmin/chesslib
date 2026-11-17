@@ -935,8 +935,16 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
 
     if (Bitboard sniper = getSniper(this, ksq, oc)) {
         const auto sq = static_cast<Square>(pop_lsb(sniper));
-        return (!(movegen::between(ksq, sq) & toBB) || move.type_of() == Move::CASTLING) ? CheckType::DISCOVERY_CHECK
-                                                                                         : CheckType::NO_CHECK;
+        if (!(movegen::between(ksq, sq) & toBB) || move.type_of() == Move::CASTLING)
+            return CheckType::DISCOVERY_CHECK;
+        Bitboard attacks = 0ull;
+        if (pt == BISHOP || pt == QUEEN)
+            attacks |= attacks::bishop(to, oc);
+        if (pt == ROOK || pt == QUEEN)
+            attacks |= attacks::rook(to, oc);
+        if (attacks & square_bb(ksq))
+            return CheckType::DIRECT_CHECK;
+        return CheckType::NO_CHECK;
     }
 
     switch (move.type_of()) {
