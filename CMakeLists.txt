@@ -305,6 +305,17 @@ target_compile_definitions(chesslib PUBLIC
     "$<$<CONFIG:MinSizeRel>:NDEBUG>"
 )
 
+# --- Standalone perft example ---
+# Independent of BUILD_TESTING: the README documents building this target, and it
+# is useful even when the doctest-based test suite is disabled.
+add_executable(perft_example
+    perft_example.cpp
+)
+
+target_link_libraries(perft_example PRIVATE
+    chesslib
+)
+
 # --- Enable CTest integration ---
 include(CTest)
 
@@ -331,14 +342,6 @@ if(BUILD_TESTING)
 
     add_executable(NonImportantTests
         non_core_tests.cpp
-    )
-
-    add_executable(perft_example
-        perft_example.cpp
-    )
-
-    target_link_libraries(perft_example PRIVATE
-        chesslib
     )
 
     target_link_libraries(test_normal PRIVATE
