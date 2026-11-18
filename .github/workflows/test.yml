@@ -21,17 +21,26 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           ref: ${{ github.head_ref }}
-          persist-credentials: true # commit
-      - name: Install clang-format
-        run: sudo apt-get update && sudo apt-get install -y clang-format
+          persist-credentials: true
+
+      - name: Install clang-format-22
+        run: |
+          python -m pip install --user clang-tools
+          TOOL_BIN="$HOME/.local/bin"
+          echo "$TOOL_BIN" >> "$GITHUB_PATH"
+          export PATH="$TOOL_BIN:$PATH"
+          clang-tools install clang-format --version 22 --directory "$TOOL_BIN"
 
       - name: Run clang-format
-        run: clang-format -i $(git ls-files '*.cpp' '*.hpp' '*.h' '*.c')
+        run: |
+          git ls-files -z '*.cpp' '*.hpp' '*.h' '*.c' | xargs -0 -r clang-format -i
 
       - name: Commit and push changes
         id: auto-commit
         if: github.actor != 'github-actions[bot]' && github.event.pull_request.head.repo.full_name == github.repository
         uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9
+        with:
+          commit_message: "style: apply clang-format-22"
 
   build:
     needs: format

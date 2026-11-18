@@ -27,37 +27,42 @@
 namespace chess::movegen {
 
 /// @brief Generate en-passant captures for the given colour.
-template <typename T, Color c, typename ListT> HOTFUNC void genEP(const _Position<T, void> &, ListT &);
+template <typename T, Color c, typename ListT> void genEP(const _Position<T, void> &, ListT &, Bitboard);
 
 /// @brief Generate double-pawn pushes (from the starting rank).
 template <typename T, Color c, typename ListT>
-HOTFUNC void genPawnDoubleMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard);
+void genPawnDoubleMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard, Bitboard);
 
 /// @brief Generate single-pawn moves (pushes and captures).
 template <typename T, Color c, bool capturesOnly, typename ListT>
-HOTFUNC void genPawnSingleMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard, Bitboard);
+void genPawnSingleMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard, Bitboard, Bitboard);
 
 /// @brief Generate knight moves.
 template <typename T, Color c, bool capturesOnly, typename ListT>
-HOTFUNC void genKnightMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard);
+void genKnightMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard, Bitboard);
 
 /// @brief Generate king moves.
 template <typename T, Color c, bool capturesOnly, typename ListT>
-HOTFUNC void genKingMoves(const _Position<T, void> &, ListT &, Bitboard);
+void genKingMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard);
 
 /// @brief Generate sliding-piece moves (bishop, rook, queen).
 template <typename T, Color c, PieceType pt, bool capturesOnly, typename ListT>
-HOTFUNC void genSlidingMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard, Bitboard);
+void genSlidingMoves(const _Position<T, void> &, ListT &, Bitboard, Bitboard, Bitboard, Bitboard);
 
-/// @brief Precomputed between-square bitboards.
-/// @details squares_between_bb[sq1][sq2] contains a bitboard of all squares
-///          strictly between sq1 and sq2 (excluding both endpoints).
-extern std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB;
+/// @brief Access the lazily initialized between-square bitboards.
+[[nodiscard]] const std::array<std::array<Bitboard, 64>, 64> &squares_between_bb() noexcept;
 
 /// @brief Look up the squares between two squares.
-/// @param sq1 First square.
-/// @param sq2 Second square.
-/// @return Bitboard of squares between sq1 and sq2, excluding sq1 and sq2.
-///         Returns 1ULL << sq2 if the squares are not on the same line.
-[[nodiscard]] inline Bitboard between(Square sq1, Square sq2) noexcept { return SQUARES_BETWEEN_BB[sq1][sq2]; }
+/// @param sq1 First square. Never included in the result.
+/// @param sq2 Second square. Always included in the result.
+/// @return The squares strictly between sq1 and sq2, **plus sq2 itself**, for any pair
+///         that shares a rank, file or diagonal. For a pair that does not, the result is
+///         just 1ULL << sq2.
+/// @note The trailing sq2 bit is load-bearing for pin handling: between(king, sniper)
+///       is used as the pin *line*, and must therefore cover every square a pinned piece
+///       may move to, including capturing the pinning slider. Callers that instead want
+///       only the occupied squares between the two (for example to count blockers for the
+///       "exactly one blocker" pin test) must mask sq2 off, or the blocker count is off by
+///       one and pin detection silently never fires.
+[[nodiscard]] inline Bitboard between(Square sq1, Square sq2) noexcept { return squares_between_bb()[sq1][sq2]; }
 } // namespace chess::movegen

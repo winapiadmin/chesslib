@@ -1,3 +1,4 @@
+#include "position.h"
 /*
   a chess library (bonus: you can integrate more piece types!) which
   supports Chess960 and is decently fast enough
@@ -20,17 +21,21 @@
 /// @file position.cpp
 /// @brief Position implementation: doMove, undoMove, setFEN, FEN export, and validation.
 
-#include "position.h"
 #include "movegen.h"
 #include "moves_io.h"
+#include "position.h"
 #include "printers.h"
 #include "zobrist.h"
 #include <algorithm>
+#include <array>
 #include <cassert>
+#include <charconv>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <utility>
+#include <vector>
 
 #if defined(_CHESSLIB_ERROR_MODE_THROW)
 #define INVALID_ARG_IF(c, exception)                                                                                           \
@@ -59,6 +64,17 @@ namespace chess {
 
 namespace {
 
+/// @brief Minimal scope-exit helper (C++17 has no std::scope_exit).
+template <typename F> struct ScopeExit {
+    F fn;
+    bool active = true;
+    ~ScopeExit() {
+        if (active)
+            fn();
+    }
+};
+template <typename F> ScopeExit<F> make_scope_exit(F fn) { return ScopeExit<F>{ std::move(fn) }; }
+
 /// @brief Precomputed mask for the pawn that would deliver an en-passant capture.
 /// @details ep_pawn_mask[sq] has the capturing-pawn square set for the given EP target square.
 constexpr Bitboard ep_pawn_mask_for(Square sq) {
@@ -66,7 +82,7 @@ constexpr Bitboard ep_pawn_mask_for(Square sq) {
     if (r != RANK_3 && r != RANK_6)
         return 0;
 
-    Bitboard m = 1ULL << static_cast<int>(sq);
+    Bitboard m = square_bb(sq);
     if (r == RANK_6)
         m >>= 8; // WHITE stm → shift down to rank 5
     else
@@ -74,8 +90,8 @@ constexpr Bitboard ep_pawn_mask_for(Square sq) {
     return ((m << 1) & ~attacks::MASK_FILE[0]) | ((m >> 1) & ~attacks::MASK_FILE[7]);
 }
 
-constexpr std::array<Bitboard, 64> make_ep_pawn_masks() {
-    std::array<Bitboard, 64> table{};
+constexpr std::array<Bitboard, 65> make_ep_pawn_masks() {
+    std::array<Bitboard, 65> table{};
     for (int i = 0; i < 64; ++i)
         table[i] = ep_pawn_mask_for(static_cast<Square>(i));
     return table;
@@ -84,29 +100,46 @@ constexpr std::array<Bitboard, 64> make_ep_pawn_masks() {
 constexpr auto ep_pawn_masks = make_ep_pawn_masks();
 
 } // namespace
-
 /// @brief Apply a move to the board, updating all internal state.
 /// @tparam Strict If true, asserts/checks for invalid moves.
+/// @tparam us Mover color (compile-time; must equal side_to_move()).
 /// @param move The move to execute.
-template <typename PieceC, typename T> template <bool Strict> void _Position<PieceC, T>::doMove(const Move &move) {
+template <typename PieceC, typename T>
+template <bool Strict, Color us>
+HOTFUNC void _Position<PieceC, T>::doMoveImpl(const Move &move) {
     INVALID_ARG_IF(!move.is_ok(), uci::IllegalMoveException("doMove called with invalid move"));
+    assert(us == side_to_move());
     Square from_sq = move.from_sq(), to_sq = move.to_sq();
-    Color us = side_to_move(), them = ~us;
+    constexpr Color them = ~us;
     MoveType move_type = move.type_of();
-    PieceC moving_piece = piece_on(from_sq);
-    PieceC target_piece = piece_on(to_sq);
+    // Hot path: from/to are 6-bit squares from our own movegen, always 0..63,
+    // so the is_valid() branch inside piece_on() never fires here. For the
+    // unchecked perft path (Strict=false) read pieces_list directly to avoid
+    // two predictable-but-dead branches per node. Strict=true keeps checks.
+    PieceC moving_piece, target_piece;
+    if constexpr (Strict) {
+        moving_piece = piece_on(from_sq);
+        target_piece = piece_on(to_sq);
+    } else {
+        ASSUME(::chess::is_valid(from_sq) && ::chess::is_valid(to_sq));
+        moving_piece = pieces_list[from_sq];
+        target_piece = pieces_list[to_sq];
+    }
     PieceType moving_piecetype = piece_of(moving_piece);
     PieceType target_piecetype = piece_of(target_piece);
     Color target_color = color_of(target_piece);
-    bool is_capt = move.type_of() == EN_PASSANT || (move.type_of() != CASTLING && target_piece != PieceC::NO_PIECE);
     history.push_back(state());
-    state().saved_rook_pin = _rook_pin;
-    state().saved_bishop_pin = _bishop_pin;
-    state().saved_checkers = _checkers;
-    state().saved_check_mask = _check_mask;
-    state().incr_sqs[0] = state().incr_sqs[1] = state().incr_sqs[2] = state().incr_sqs[3] = SQ_NONE;
-    state().incr_pc[0] = state().incr_pc[1] = state().incr_pc[2] = state().incr_pc[3] = PieceC::NO_PIECE;
-    state().mv = move; // Update the move in the current state
+    // Cache the just-pushed HistoryEntry once: history is never resized again until this
+    // function returns, so every state().field below is a redundant history.back() lookup.
+    auto &st = state();
+    st.saved_rook_pin = _rook_pin;
+    st.saved_bishop_pin = _bishop_pin;
+    st.saved_checkers = _checkers;
+    st.saved_check_mask = _check_mask;
+    st.saved_enemy_attacks = _enemy_attacks;
+    st.incr_sqs[0] = st.incr_sqs[1] = st.incr_sqs[2] = st.incr_sqs[3] = SQ_NONE;
+    st.incr_pc[0] = st.incr_pc[1] = st.incr_pc[2] = st.incr_pc[3] = PieceC::NO_PIECE;
+    st.mv = move; // Update the move in the current state
 #if defined(_DEBUG) || !defined(NDEBUG)
     if (target_piecetype == KING) {
         std::cerr << *this << '\n';
@@ -123,35 +156,37 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
     INVALID_ARG_IF(moving_piecetype == NO_PIECE_TYPE, uci::IllegalMoveException("Expected a piece to move."));
     {
         switch (move_type) {
-        case NORMAL:
+        case NORMAL: {
             removePiece(target_piecetype, to_sq, target_color);
             removePiece(moving_piecetype, from_sq, us);
             placePiece(moving_piecetype, to_sq, us);
-            state().incr_sqs[0] = from_sq;
-            state().incr_pc[0] = moving_piece;
-            state().incr_sqs[1] = to_sq;
-            state().incr_pc[1] = target_piece;
+            st.incr_sqs[0] = from_sq;
+            st.incr_pc[0] = moving_piece;
+            st.incr_sqs[1] = to_sq;
+            st.incr_pc[1] = target_piece;
             break;
-        case PROMOTION:
+        }
+        case PROMOTION: {
             removePiece(target_piecetype, to_sq, target_color);
             removePiece(moving_piecetype, from_sq, us);
             placePiece(move.promotion_type(), to_sq, us);
-            state().incr_sqs[0] = from_sq;
-            state().incr_pc[0] = moving_piece;
-            state().incr_sqs[1] = to_sq;
-            state().incr_pc[1] = target_piece;
+            st.incr_sqs[0] = from_sq;
+            st.incr_pc[0] = moving_piece;
+            st.incr_sqs[1] = to_sq;
+            st.incr_pc[1] = target_piece;
             break;
+        }
         case EN_PASSANT: {
             Square ep_capture_sq = to_sq + pawn_push(them);
             removePiece(moving_piecetype, from_sq, us);
             removePiece<PAWN>(ep_capture_sq, them);
             placePiece<PAWN>(to_sq, us);
-            state().incr_sqs[0] = from_sq;
-            state().incr_pc[0] = moving_piece;
-            state().incr_sqs[1] = ep_capture_sq;
-            state().incr_pc[1] = make_piece<PieceC>(PAWN, them);
-            state().incr_sqs[2] = to_sq;
-            state().incr_pc[2] = PieceC::NO_PIECE;
+            st.incr_sqs[0] = from_sq;
+            st.incr_pc[0] = moving_piece;
+            st.incr_sqs[1] = ep_capture_sq;
+            st.incr_pc[1] = make_piece<PieceC>(PAWN, them);
+            st.incr_sqs[2] = to_sq;
+            st.incr_pc[2] = PieceC::NO_PIECE;
             break;
         }
         case CASTLING: {
@@ -162,10 +197,10 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
             const PieceC prev_king_dest = piece_on(king_dest);
             const PieceC prev_rook_dest = piece_on(rook_dest);
 
-            state().incr_sqs[0] = from_sq, state().incr_pc[0] = moving_piece;
-            state().incr_sqs[1] = to_sq, state().incr_pc[1] = target_piece;
-            state().incr_sqs[2] = king_dest, state().incr_pc[2] = prev_king_dest;
-            state().incr_sqs[3] = rook_dest, state().incr_pc[3] = prev_rook_dest;
+            st.incr_sqs[0] = from_sq, st.incr_pc[0] = moving_piece;
+            st.incr_sqs[1] = to_sq, st.incr_pc[1] = target_piece;
+            st.incr_sqs[2] = king_dest, st.incr_pc[2] = prev_king_dest;
+            st.incr_sqs[3] = rook_dest, st.incr_pc[3] = prev_rook_dest;
 
             Square rook_start = is_king_side ? castling_meta_[us].rook_start_ks : castling_meta_[us].rook_start_qs;
 
@@ -179,67 +214,54 @@ template <typename PieceC, typename T> template <bool Strict> void _Position<Pie
         }
     }
     {
-        // Detect a two-square pawn push.
-        bool isDoublePush = (moving_piecetype == PAWN) && (abs(to_sq - from_sq) == 16);
-
         // Remove old EP key if it was actually included.
-        bool _ir_1 = state().enPassant != SQ_NONE && state().epIncluded;
-        state().hash ^= _ir_1 ? zobrist::RandomEP[file_of(state().enPassant)] : 0;
+        bool _ir_1 = st.enPassant != SQ_NONE && st.epIncluded;
+        st.hash ^= _ir_1 ? zobrist::RandomEP[file_of(st.enPassant)] : 0;
 
         // Default: no EP square and not included.
-        state().epIncluded = false;
+        st.epIncluded = false;
+        st.enPassant = SQ_NONE;
 
-        // If the move creates a potential EP target:
-        state().enPassant = isDoublePush ? (from_sq + pawn_push(us)) : SQ_NONE;
-        if (isDoublePush) {
-            // Now side to move is the *opponent*.
-            File f = file_of(state().enPassant);
-            state().epIncluded = (ep_pawn_masks[state().enPassant] & pieces<PAWN>(~us)) != 0;
-            state().hash ^= state().epIncluded ? zobrist::RandomEP[f] : 0;
+        // Only compute new EP square for double pawn pushes.
+        if ((moving_piecetype == PAWN) && (abs(to_sq - from_sq) == 16)) {
+            st.enPassant = from_sq + pawn_push(us);
+            File f = file_of(st.enPassant);
+            st.epIncluded = (ep_pawn_masks[st.enPassant] & pieces<PAWN, ~us>()) != 0;
+            st.hash ^= st.epIncluded ? zobrist::RandomEP[f] : 0;
         }
     }
     {
         CastlingRights clear_mask = NO_CASTLING;
-        // Moving piece
-        if (moving_piecetype == KING && from_sq == castling_meta_[us].king_start) {
-            clear_mask |= (us == WHITE ? WHITE_CASTLING : BLACK_CASTLING);
-        } else if (moving_piecetype == ROOK) {
-            if (from_sq == castling_meta_[us].rook_start_ks) {
-                clear_mask |= (us == WHITE ? WHITE_OO : BLACK_OO);
-            } else if (from_sq == castling_meta_[us].rook_start_qs) {
-                clear_mask |= (us == WHITE ? WHITE_OOO : BLACK_OOO);
-            }
-        }
-        // Captured piece
-        if (target_piecetype == ROOK) {
-            if (to_sq == castling_meta_[target_color].rook_start_ks)
-                clear_mask |= (target_color == WHITE ? WHITE_OO : BLACK_OO);
-            else if (to_sq == castling_meta_[target_color].rook_start_qs)
-                clear_mask |= (target_color == WHITE ? WHITE_OOO : BLACK_OOO);
-        }
+        if (moving_piecetype == KING)
+            clear_mask |= castling_rights_lost_king_[us][from_sq];
+        else if (moving_piecetype == ROOK)
+            clear_mask |= castling_rights_lost_rook_[us][from_sq];
+        if (target_piecetype == ROOK)
+            clear_mask |= castling_rights_lost_rook_[target_color][to_sq];
         if (clear_mask) {
-            CastlingRights prev = state().castlingRights;
-            state().castlingRights &= ~clear_mask;
-            state().hash ^= zobrist::RandomCastle[prev] ^ zobrist::RandomCastle[state().castlingRights];
+            CastlingRights prev = st.castlingRights;
+            st.castlingRights &= ~clear_mask;
+            st.hash ^= zobrist::RandomCastle[prev] ^ zobrist::RandomCastle[st.castlingRights];
         }
     }
-    state().turn = ~state().turn;
+    assert(st.turn == us);
+    st.turn = ~us;
     // Update halfmoves, fullmoves and stm
-    state().fullMoveNumber += (state().turn == WHITE);
-    state().halfMoveClock = (is_capt || moving_piecetype == PAWN) ? 0 : (state().halfMoveClock + 1);
-    state().pliesFromNull++;
-    state().hash ^= zobrist::RandomTurn;
-    rep_hashes_.push_back(state().hash);
-    refresh_attacks();
+    st.hash ^= zobrist::RandomTurn;
+    refresh_attacks_impl<~us>();
+    st.fullMoveNumber += (st.turn == WHITE);
+    bool is_capt = move_type == EN_PASSANT || (move_type != CASTLING && target_piece != PieceC::NO_PIECE);
+    st.halfMoveClock = (is_capt || moving_piecetype == PAWN) ? 0 : (st.halfMoveClock + 1);
+    st.pliesFromNull++;
     // DO NOT MIX REPETITIONS
     if constexpr (Strict) {
-        state().repetition = 0;
-        int end = std::min(rule50_count(), state().pliesFromNull);
+        st.repetition = 0;
+        int end = std::min(static_cast<int>(st.halfMoveClock), static_cast<int>(st.pliesFromNull));
         if (end >= 4) {
-            Key cur_hash = hash();
+            Key cur_hash = st.hash;
             for (int i = 4; i <= end; i += 2) {
-                if (rep_hashes_[rep_hashes_.size() - 1 - i] == cur_hash)
-                    state().repetition++;
+                if (history[history.size() - 1 - i].hash == cur_hash)
+                    st.repetition++;
             }
         }
     }
@@ -259,8 +281,51 @@ template <typename PieceC, typename T>
  * @return `true` if parsing succeeds, `false` otherwise.
  */
 bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENParsingMode mode) {
+    // Transactional: parse into *this, but restore the previous state if anything fails.
+    // The history vector is swapped out (O(1)) so a failed parse leaves it intact.
+    std::vector<HistoryEntry<PieceC>> saved_history;
+    saved_history.swap(history);
+    std::array<PieceC, SQUARE_NB + 1> saved_pieces;
+    std::copy(std::begin(pieces_list), std::end(pieces_list), saved_pieces.begin());
+    const CastlingMeta saved_meta_white = castling_meta_[WHITE];
+    const CastlingMeta saved_meta_black = castling_meta_[BLACK];
+    const auto saved_king_lost = castling_rights_lost_king_;
+    const auto saved_rook_lost = castling_rights_lost_rook_;
+    const bool saved_chess960 = _chess960;
+    const Bitboard saved_rook_pin = _rook_pin, saved_bishop_pin = _bishop_pin, saved_checkers = _checkers,
+                   saved_check_mask = _check_mask, saved_pin_mask = _pin_mask, saved_enemy_attacks = _enemy_attacks;
+
+    const auto restore = [&]() {
+        history.swap(saved_history);
+        std::copy(saved_pieces.begin(), saved_pieces.end(), std::begin(pieces_list));
+        castling_meta_[WHITE] = saved_meta_white;
+        castling_meta_[BLACK] = saved_meta_black;
+        castling_rights_lost_king_ = saved_king_lost;
+        castling_rights_lost_rook_ = saved_rook_lost;
+        _chess960 = saved_chess960;
+        _rook_pin = saved_rook_pin;
+        _bishop_pin = saved_bishop_pin;
+        _checkers = saved_checkers;
+        _check_mask = saved_check_mask;
+        _pin_mask = saved_pin_mask;
+        _enemy_attacks = saved_enemy_attacks;
+    };
+
+    bool committed = false;
+    // Also restore on exceptions (THROW error mode), not just explicit failure paths.
+    auto restore_guard = make_scope_exit([&] {
+        if (!committed)
+            restore();
+    });
+
+    const auto fail = [&]() -> bool {
+        restore();
+        committed = true; // restore_guard must not swap the state a second time
+        return false;
+    };
+
     history.clear();
-    rep_hashes_.clear();
+    history.reserve(100);
     history.push_back(HistoryEntry<PieceC>());
     std::fill(std::begin(state().pieces), std::end(state().pieces), 0ULL);
     state().occ[0] = state().occ[1] = 0;
@@ -269,22 +334,45 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
     std::fill(std::begin(pieces_list), std::end(pieces_list), PieceC::NO_PIECE);
     castling_meta_[WHITE] = {};
     castling_meta_[BLACK] = {};
-    std::istringstream ss(str);
-    std::string board_fen, active_color, castling, enpassant;
-    int halfmove = 0, fullmove = 1;
-    // tolerate some fields because of handprepared positions
-    if (!(ss >> board_fen)) {
+
+    // Tokenize all fields first. Missing optional fields keep their defaults, and
+    // trailing fields are ignored (hand-prepared FENs often carry annotations).
+    std::vector<std::string> fields;
+    {
+        std::istringstream ss(str);
+        std::string token;
+        while (ss >> token)
+            fields.push_back(std::move(token));
+    }
+    if (fields.empty()) {
         INVALID_ARG_IF(false, std::runtime_error("Require a board"));
-        return false;
+        return fail();
     }
 
-    active_color = "w";
-    castling = "-";
-    enpassant = "-";
-    halfmove = 0;
-    fullmove = 1;
+    const std::string &board_fen = fields[0];
+    std::string active_color = fields.size() > 1 ? fields[1] : "w";
+    std::string castling = fields.size() > 2 ? fields[2] : "-";
+    std::string enpassant = fields.size() > 3 ? fields[3] : "-";
+    int halfmove = 0, fullmove = 1;
 
-    ss >> active_color >> castling >> enpassant >> halfmove >> fullmove;
+    const auto parse_counter = [](const std::string &field, int lo, int hi, int &out) {
+        int value = 0;
+        const char *begin = field.data();
+        const char *end = begin + field.size();
+        const auto res = std::from_chars(begin, end, value);
+        if (field.empty() || res.ec != std::errc{} || res.ptr != end || value < lo || value > hi)
+            return false;
+        out = value;
+        return true;
+    };
+    if (fields.size() > 4 && !parse_counter(fields[4], 0, 255, halfmove)) {
+        INVALID_ARG_IF(true, std::runtime_error("Invalid halfmove counter"));
+        return fail();
+    }
+    if (fields.size() > 5 && !parse_counter(fields[5], 1, 65535, fullmove)) {
+        INVALID_ARG_IF(true, std::runtime_error("Invalid fullmove counter"));
+        return fail();
+    }
     // 1. Parse board
     {
         File f = FILE_A;
@@ -296,11 +384,11 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
             if (c == '/') {
                 INVALID_ARG_IF(file_count != 8, std::runtime_error("Each rank must contain exactly 8 squares"));
                 if (file_count != 8)
-                    return false;
+                    return fail();
                 f = FILE_A;
                 INVALID_ARG_IF(r == RANK_1, std::runtime_error("Too many ranks"));
                 if (r == RANK_1)
-                    return false;
+                    return fail();
                 --r;
                 file_count = 0;
                 ++rank_count;
@@ -311,18 +399,18 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
             if (c >= '1' && c <= '8') {
                 INVALID_ARG_IF(prev_digit, std::runtime_error("Compressed streaks of empty squares required"));
                 if (prev_digit)
-                    return false;
+                    return fail();
                 int empty_squares = c - '0';
                 file_count += empty_squares;
                 INVALID_ARG_IF(file_count > 8, std::runtime_error("Too many squares on a rank"));
                 if (file_count > 8)
-                    return false;
+                    return fail();
                 f = static_cast<File>(static_cast<uint8_t>(f) + empty_squares);
                 prev_digit = true;
             } else {
                 INVALID_ARG_IF(!chess::is_valid(r, f), std::runtime_error("Invalid file/rank position"));
                 if (!chess::is_valid(r, f))
-                    return false;
+                    return fail();
                 switch (c) {
                 case 'p':
                     placePiece<PAWN>(make_sq(r, f), BLACK);
@@ -362,7 +450,7 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
                     break;
                 default:
                     INVALID_ARG_IF(true, std::runtime_error("Invalid FEN character"));
-                    return false;
+                    return fail();
                 }
 
                 ++file_count;
@@ -374,7 +462,7 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
         INVALID_ARG_IF(file_count != 8, std::runtime_error("Last rank must have 8 squares"));
         INVALID_ARG_IF(rank_count != 7, std::runtime_error("FEN must contain exactly 8 ranks"));
         if (file_count != 8 || rank_count != 7)
-            return false;
+            return fail();
     }
 
     // 2. Turn
@@ -386,17 +474,21 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
     } else {
         INVALID_ARG_IF(active_color != "w" && active_color != "b",
                        std::runtime_error("Expected white or black, got something else."));
-        return false;
+        return fail();
     }
 
     // 3. Castling rights
+    // Invalid castling fields make setFEN() fail, but the board and side to move
+    // are still committed so callers can use the otherwise-valid placement (many
+    // test positions intentionally carry bogus castling rights).
+    bool castling_ok = true;
     state().castlingRights = NO_CASTLING;
     if (castling != "-") {
         bool result_castling = true;
         for (Color color : { WHITE, BLACK }) {
             auto findRookQS = [&](Square king_sq, Color color_) -> Square {
                 Rank r = rank_of(king_sq);
-                for (int f = file_of(king_sq) - 1; f >= FILE_A; --f) {
+                for (int f = FILE_A; f < file_of(king_sq); ++f) {
                     Square sq = make_sq(r, static_cast<File>(f));
                     PieceC p = pieces_list[sq];
                     if (p != PieceC::NO_PIECE && type_of(p) == ROOK && color_of(p) == color_)
@@ -407,7 +499,7 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
 
             auto findRookKS = [&](Square king_sq, Color color_) -> Square {
                 Rank r = rank_of(king_sq);
-                for (int f = file_of(king_sq) + 1; f <= FILE_H; ++f) {
+                for (int f = FILE_H; f > file_of(king_sq); --f) {
                     Square sq = make_sq(r, static_cast<File>(f));
                     PieceC p = pieces_list[sq];
                     if (p != PieceC::NO_PIECE && type_of(p) == ROOK && color_of(p) == color_)
@@ -472,63 +564,52 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
                         result_castling = false;
                         return;
                     }
-                    if (rook_ks == SQ_NONE) {
+                    Square rook_sq = chess960 ? rook_ks : make_sq(rank_of(king_sq), FILE_H);
+                    if (rook_sq == SQ_NONE || pieces_list[rook_sq] == PieceC::NO_PIECE ||
+                        type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != WHITE) {
                         result_castling = false;
                         return;
                     }
-                    if (rank_of(king_sq) != rank_of(rook_ks)) {
-                        result_castling = false;
-                        return;
-                    }
-                    setKS(rook_ks);
+                    setKS(rook_sq);
                 } else if (c == 'Q' && color == WHITE) {
                     INVALID_ARG_IF(chess960 && !allow_xfen, std::runtime_error("xfen into shredder fen parser"));
                     if (chess960 && !allow_xfen) {
                         result_castling = false;
                         return;
                     }
-                    if (rook_qs == SQ_NONE) {
+                    Square rook_sq = chess960 ? rook_qs : make_sq(rank_of(king_sq), FILE_A);
+                    if (rook_sq == SQ_NONE || pieces_list[rook_sq] == PieceC::NO_PIECE ||
+                        type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != WHITE) {
                         result_castling = false;
                         return;
                     }
-                    if (rank_of(king_sq) != rank_of(rook_qs)) {
-                        result_castling = false;
-                        return;
-                    }
-                    setQS(rook_qs);
+                    setQS(rook_sq);
                 } else if (c == 'k' && color == BLACK) {
                     INVALID_ARG_IF(chess960 && !allow_xfen, std::runtime_error("xfen into shredder fen parser"));
                     if (chess960 && !allow_xfen) {
                         result_castling = false;
                         return;
                     }
-                    if (rook_ks == SQ_NONE) {
+                    Square rook_sq = chess960 ? rook_ks : make_sq(rank_of(king_sq), FILE_H);
+                    if (rook_sq == SQ_NONE || pieces_list[rook_sq] == PieceC::NO_PIECE ||
+                        type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != BLACK) {
                         result_castling = false;
                         return;
                     }
-                    if (rank_of(king_sq) != rank_of(rook_ks)) {
-                        result_castling = false;
-                        return;
-                    }
-                    setKS(rook_ks);
+                    setKS(rook_sq);
                 } else if (c == 'q' && color == BLACK) {
                     INVALID_ARG_IF(chess960 && !allow_xfen, std::runtime_error("xfen into shredder fen parser"));
-                    INVALID_ARG_IF(rook_qs == SQ_NONE, std::runtime_error("Black queenside rook not exist"));
-                    INVALID_ARG_IF(rank_of(king_sq) != rank_of(rook_qs),
-                                   std::runtime_error("Black queenside rook not in the same rank as black king"));
                     if (chess960 && !allow_xfen) {
                         result_castling = false;
                         return;
                     }
-                    if (rook_qs == SQ_NONE) {
+                    Square rook_sq = chess960 ? rook_qs : make_sq(rank_of(king_sq), FILE_A);
+                    if (rook_sq == SQ_NONE || pieces_list[rook_sq] == PieceC::NO_PIECE ||
+                        type_of(pieces_list[rook_sq]) != ROOK || color_of(pieces_list[rook_sq]) != BLACK) {
                         result_castling = false;
                         return;
                     }
-                    if (rank_of(king_sq) != rank_of(rook_qs)) {
-                        result_castling = false;
-                        return;
-                    }
-                    setQS(rook_qs);
+                    setQS(rook_sq);
                 }
 
                 else if (c >= 'A' && c <= 'H' && color == WHITE) {
@@ -574,8 +655,14 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
 
             for (char x : castling)
                 apply(x);
-            if (!result_castling)
-                return false;
+            if (!result_castling) {
+                // Drop the partially parsed rights but keep the parsed board.
+                state().castlingRights = NO_CASTLING;
+                castling_meta_[WHITE] = {};
+                castling_meta_[BLACK] = {};
+                castling_ok = false;
+                break;
+            }
         }
     }
     state().hash ^= zobrist::RandomCastle[state().castlingRights];
@@ -589,7 +676,7 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
             const auto rook_to = castling_rook_square(c, true);
             castling_meta_[c].castling_paths[true] =
                 (movegen::between(rook_from, rook_to) | movegen::between(king_from, king_to)) &
-                ~((1ULL << king_from) | (1ULL << rook_from));
+                ~(square_bb(king_from) | square_bb(rook_from));
         }
         // queen
         if (castlingRights() & (c & QUEEN_SIDE)) {
@@ -599,7 +686,7 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
             const auto rook_to = castling_rook_square(c, false);
             castling_meta_[c].castling_paths[false] =
                 (movegen::between(rook_from, rook_to) | movegen::between(king_from, king_to)) &
-                ~((1ULL << king_from) | (1ULL << rook_from));
+                ~(square_bb(king_from) | square_bb(rook_from));
         }
     }
 
@@ -616,25 +703,27 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
     } else {
         INVALID_ARG_IF(enpassant != "-", std::runtime_error("Invalid en passant FEN field"));
         if (enpassant != "-")
-            return false;
+            return fail();
     }
 
     // 5. Halfmove clock
     INVALID_ARG_IF(halfmove < 0 || fullmove < 1, std::runtime_error("Invalid halfmove and/or fullmove counters"));
     if (halfmove < 0 || fullmove < 1)
-        return false;
+        return fail();
     state().halfMoveClock = static_cast<uint8_t>(halfmove);
 
     // 6. Fullmove number
     state().fullMoveNumber = fullmove;
-    rep_hashes_.push_back(state().hash);
+    rebuild_castling_rights_lost();
     if (popcount(pieces(WHITE, KING)) == 1 && popcount(pieces(BLACK, KING)) == 1) {
         refresh_attacks();
     } else {
         _rook_pin = _bishop_pin = _checkers = _check_mask = 0;
         _pin_mask = 0;
+        _enemy_attacks = 0;
     }
-    return true;
+    committed = true;
+    return castling_ok;
 }
 
 /// @brief Export the position as a FEN string.
@@ -818,7 +907,9 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
     const Square from = move.from();
     const Square to = move.to();
     const Square ksq = king_sq(~side_to_move());
-    const Bitboard toBB = 1ULL << (to);
+    if (!chess::is_valid(ksq))
+        return CheckType::NO_CHECK;
+    const Bitboard toBB = square_bb(to);
     const PieceType pt = piece_of(at(from));
 
     Bitboard fromKing = 0ull;
@@ -839,13 +930,21 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
         return CheckType::DIRECT_CHECK;
 
     // Discovery check
-    const Bitboard fromBB = 1ULL << (from);
+    const Bitboard fromBB = square_bb(from);
     const Bitboard oc = occ() ^ fromBB;
 
     if (Bitboard sniper = getSniper(this, ksq, oc)) {
         const auto sq = static_cast<Square>(pop_lsb(sniper));
-        return (!(movegen::between(ksq, sq) & toBB) || move.type_of() == Move::CASTLING) ? CheckType::DISCOVERY_CHECK
-                                                                                         : CheckType::NO_CHECK;
+        if (!(movegen::between(ksq, sq) & toBB) || move.type_of() == Move::CASTLING)
+            return CheckType::DISCOVERY_CHECK;
+        Bitboard attacks = 0ull;
+        if (pt == BISHOP || pt == QUEEN)
+            attacks |= attacks::bishop(to, oc);
+        if (pt == ROOK || pt == QUEEN)
+            attacks |= attacks::rook(to, oc);
+        if (attacks & square_bb(ksq))
+            return CheckType::DIRECT_CHECK;
+        return CheckType::NO_CHECK;
     }
 
     switch (move.type_of()) {
@@ -877,12 +976,18 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
 
     case Move::ENPASSANT: {
         Square capSq = make_sq(file_of(to), rank_of(from));
-        return (getSniper(this, ksq, (oc ^ (1ULL << capSq)) | toBB)) ? CheckType::DISCOVERY_CHECK : CheckType::NO_CHECK;
+        return (getSniper(this, ksq, (oc ^ square_bb(capSq)) | toBB)) ? CheckType::DISCOVERY_CHECK : CheckType::NO_CHECK;
     }
 
     case Move::CASTLING: {
-        const Square rookTo = relative_square(side_to_move(), to > from ? SQ_F1 : SQ_D1);
-        return (attacks::rook(ksq, occ()) & (1ULL << rookTo)) ? CheckType::DISCOVERY_CHECK : CheckType::NO_CHECK;
+        // The encoded destination is the rook's *starting* square. Check the
+        // rook's post-castling position against post-move occupancy; the king
+        // may have been the only piece blocking the rook's new line.
+        const bool kingSide = to > from;
+        const Square kingTo = castling_king_square(side_to_move(), kingSide);
+        const Square rookTo = castling_rook_square(side_to_move(), kingSide);
+        const Bitboard occAfter = (occ() ^ square_bb(from) ^ square_bb(to)) | square_bb(kingTo) | square_bb(rookTo);
+        return (attacks::rook(rookTo, occAfter) & square_bb(ksq)) ? CheckType::DISCOVERY_CHECK : CheckType::NO_CHECK;
     }
     }
 
@@ -890,12 +995,132 @@ template <typename PieceC, typename T> CheckType _Position<PieceC, T>::givesChec
     return CheckType::NO_CHECK; // Prevent a compiler warning
 }
 
+template <typename PieceC, typename T> template <Color c> HOTFUNC void _Position<PieceC, T>::refresh_attacks_impl() {
+    const auto &st = state();
+    assert(st.turn == c);
+    constexpr Color them = ~c;
+    const Square ksq = st.kings[c];
+    if (!chess::is_valid(ksq) || !chess::is_valid(st.kings[them])) {
+        // Kingless positions (allowed by setFEN) have no meaningful pin/check data.
+        // Reset to conservative values instead of indexing attack tables out of bounds.
+        _rook_pin = _bishop_pin = _checkers = 0;
+        _pin_mask = 0;
+        _enemy_attacks = 0;
+        _check_mask = ~0ULL;
+        return;
+    }
+    ASSUME(ksq >= SQ_A1 && ksq <= SQ_H8);
+    const Bitboard occ_all = st.occ[0] | st.occ[1];
+    const Bitboard occ_us = st.occ[c];
+    const Bitboard occ_them = st.occ[them];
+    const Bitboard occ_without_king = occ_all ^ square_bb(ksq);
+
+    Bitboard bishop_pin = 0, rook_pin = 0, checkers = 0;
+
+    // Pawn and knight checkers
+    checkers |= (attacks::pawn(c, ksq) & (st.pieces[PAWN] & occ_them));
+    checkers |= (attacks::knight(ksq) & (st.pieces[KNIGHT] & occ_them));
+
+    // Precomputed equivalent of attacks::bishop(ksq, 0) / attacks::rook(ksq, 0): the
+    // empty-occupancy magic index is constant per square, so this reads a 512-byte table
+    // instead of probing the 800 KiB RookAttacks table twice per node.
+    const Bitboard king_diags = attacks::diag_from_square(ksq);
+    const Bitboard king_ranks = attacks::ortho_from_square(ksq);
+
+    Bitboard ea = 0;
+
+    // Separate loops per slider class. The merged loop this replaces paid a 3-way
+    // branch on piece type for every enemy slider; splitting the sets removes that
+    // branch and lets each loop's magic lookups issue independently.
+    // Queens appear in both the diagonal and the orthogonal pass because they attack
+    // along both ray families; their bishop/rook pair is computed once and reused,
+    // exactly as the merged loop did.
+    {
+        Bitboard b = st.pieces[BISHOP] & occ_them;
+        while (b) {
+            const Square s = static_cast<Square>(pop_lsb(b));
+            const Bitboard sqBB = square_bb(s);
+            ea |= attacks::bishop(s, occ_without_king);
+            if (king_diags & sqBB) {
+                const Bitboard btw = movegen::between(ksq, s);
+                const Bitboard blockers = btw & occ_all & ~sqBB;
+                if (!blockers)
+                    checkers |= sqBB;
+                else if (!(blockers & (blockers - 1)) && (blockers & occ_us))
+                    bishop_pin |= btw;
+            }
+        }
+    }
+    {
+        Bitboard r = st.pieces[ROOK] & occ_them;
+        while (r) {
+            const Square s = static_cast<Square>(pop_lsb(r));
+            const Bitboard sqBB = square_bb(s);
+            ea |= attacks::rook(s, occ_without_king);
+            if (king_ranks & sqBB) {
+                const Bitboard btw = movegen::between(ksq, s);
+                const Bitboard blockers = btw & occ_all & ~sqBB;
+                if (!blockers)
+                    checkers |= sqBB;
+                else if (!(blockers & (blockers - 1)) && (blockers & occ_us))
+                    rook_pin |= btw;
+            }
+        }
+    }
+    {
+        Bitboard q = st.pieces[QUEEN] & occ_them;
+        while (q) {
+            const Square s = static_cast<Square>(pop_lsb(q));
+            const Bitboard sqBB = square_bb(s);
+            ea |= attacks::bishop(s, occ_without_king) | attacks::rook(s, occ_without_king);
+            if (king_diags & sqBB) {
+                const Bitboard btw = movegen::between(ksq, s);
+                const Bitboard blockers = btw & occ_all & ~sqBB;
+                if (!blockers)
+                    checkers |= sqBB;
+                else if (!(blockers & (blockers - 1)) && (blockers & occ_us))
+                    bishop_pin |= btw;
+            }
+            if (king_ranks & sqBB) {
+                const Bitboard btw = movegen::between(ksq, s);
+                const Bitboard blockers = btw & occ_all & ~sqBB;
+                if (!blockers)
+                    checkers |= sqBB;
+                else if (!(blockers & (blockers - 1)) && (blockers & occ_us))
+                    rook_pin |= btw;
+            }
+        }
+    }
+
+    // Pawn, knight, king attacks
+    ea |= attacks::knight(st.pieces[KNIGHT] & occ_them);
+    Bitboard p = st.pieces[PAWN] & occ_them;
+    ea |= (them == WHITE) ? ((p & ~attacks::MASK_FILE[FILE_A]) << 7) | ((p & ~attacks::MASK_FILE[FILE_H]) << 9)
+                          : ((p & ~attacks::MASK_FILE[FILE_H]) >> 7) | ((p & ~attacks::MASK_FILE[FILE_A]) >> 9);
+    ea |= attacks::king(st.kings[them]);
+
+    _enemy_attacks = ea;
+    _bishop_pin = bishop_pin;
+    _rook_pin = rook_pin;
+    _pin_mask = rook_pin | bishop_pin;
+    _checkers = checkers;
+
+    if (!_checkers) {
+        _check_mask = ~0ULL;
+    } else if ((_checkers & (_checkers - 1)) == 0) {
+        Square sq = static_cast<Square>(lsb(_checkers));
+        _check_mask = square_bb(sq) | movegen::between(ksq, sq);
+    } else {
+        _check_mask = 0ULL;
+    }
+}
+
 /// @brief Compute Zobrist hash for the current position.
 template <typename PieceC, typename T> uint64_t _Position<PieceC, T>::zobrist() const {
     uint64_t hash = 0;
     for (int sq = 0; sq < 64; ++sq) {
         auto p = piece_on(static_cast<Square>(sq));
-        hash ^= (p == PieceC::NO_PIECE) ? 0 : zobrist::RandomPiece[enum_idx<PieceC>()][static_cast<int>(p)][sq];
+        hash ^= (p == PieceC::NO_PIECE) ? 0 : zobrist::RandomPieceFlat[enum_idx<PieceC>()][static_cast<int>(p) * 64 + sq];
     }
     hash ^= (state().turn == WHITE) ? zobrist::RandomTurn : 0;
     hash ^= zobrist::RandomCastle[state().castlingRights];
@@ -904,7 +1129,7 @@ template <typename PieceC, typename T> uint64_t _Position<PieceC, T>::zobrist() 
         return hash;
     {
         const File f = file_of(ep_sq);
-        Bitboard ep_mask = (1ULL << ep_sq);
+        Bitboard ep_mask = square_bb(ep_sq);
         const Color stm = side_to_move();
         ep_mask = (stm == WHITE) ? (ep_mask >> 8) : (ep_mask << 8);
         ep_mask = ((ep_mask << 1) & ~attacks::MASK_FILE[0]) | ((ep_mask >> 1) & ~attacks::MASK_FILE[7]);
@@ -931,7 +1156,7 @@ template <typename PieceC, typename T> Square _Position<PieceC, T>::_valid_ep_sq
         return SQ_NONE;
     Rank ep_rank;
     ep_rank = side_to_move() == WHITE ? RANK_6 : RANK_3;
-    const Bitboard mask = 1ULL << ep_square();
+    const Bitboard mask = square_bb(ep_square());
     Bitboard pawn_mask = mask >> 8;
     Bitboard org_pawn_mask = mask << 8;
     if (side_to_move() == BLACK)
@@ -1024,10 +1249,10 @@ bool _Position<PieceC, T>::is_insufficient_material() const {
 }
 /// @brief Compute the set of castling rights that are physically valid on the board.
 template <typename PieceC, typename T> CastlingRights _Position<PieceC, T>::clean_castling_rights() const {
-    const Bitboard cr_BOO = 1ULL << static_cast<int>(castling_meta_[BLACK].rook_start_ks);
-    const Bitboard cr_BOOO = 1ULL << static_cast<int>(castling_meta_[BLACK].rook_start_qs);
-    const Bitboard cr_WOO = 1ULL << static_cast<int>(castling_meta_[WHITE].rook_start_ks);
-    const Bitboard cr_WOOO = 1ULL << static_cast<int>(castling_meta_[WHITE].rook_start_qs);
+    const Bitboard cr_BOO = square_bb(castling_meta_[BLACK].rook_start_ks);
+    const Bitboard cr_BOOO = square_bb(castling_meta_[BLACK].rook_start_qs);
+    const Bitboard cr_WOO = square_bb(castling_meta_[WHITE].rook_start_ks);
+    const Bitboard cr_WOOO = square_bb(castling_meta_[WHITE].rook_start_qs);
     Bitboard castling = 0;
     // mappings
     castling |= (castlingRights() & WHITE_OO) ? cr_WOO : 0;
@@ -1042,9 +1267,9 @@ template <typename PieceC, typename T> CastlingRights _Position<PieceC, T>::clea
     white_castling &= (cr_WOO | cr_WOOO);
     black_castling &= (cr_BOO | cr_BOOO);
     // king exists in e1/e8 depending on color
-    if (!(occ(WHITE) & pieces(KING) & (1ULL << castling_meta_[WHITE].king_start)))
+    if (!(occ(WHITE) & pieces(KING) & square_bb(castling_meta_[WHITE].king_start)))
         white_castling = 0;
-    if (!(occ(BLACK) & pieces(KING) & (1ULL << castling_meta_[BLACK].king_start)))
+    if (!(occ(BLACK) & pieces(KING) & square_bb(castling_meta_[BLACK].king_start)))
         black_castling = 0;
     castling = white_castling | black_castling;
     // Re-map
@@ -1059,20 +1284,22 @@ template <typename PieceC, typename T> CastlingRights _Position<PieceC, T>::clea
 #define INSTANTIATE(PieceC) \
 template bool _Position<PieceC, void>::setFEN(const std::string &, bool, FENParsingMode); \
 template std::string _Position<PieceC, void>::fen(bool) const; \
-template void _Position<PieceC, void>::doMove<false>(const Move &move); \
-template void _Position<PieceC, void>::doMove<true>(const Move &move); \
+template void _Position<PieceC, void>::doMoveImpl<false, WHITE>(const Move &move); \
+template void _Position<PieceC, void>::doMoveImpl<false, BLACK>(const Move &move); \
+template void _Position<PieceC, void>::doMoveImpl<true, WHITE>(const Move &move); \
+template void _Position<PieceC, void>::doMoveImpl<true, BLACK>(const Move &move); \
 template uint64_t _Position<PieceC, void>::zobrist() const; \
 template Move _Position<PieceC, void>::parse_uci(std::string) const; \
 template Move _Position<PieceC, void>::push_uci(std::string); \
 template bool _Position<PieceC, void>::is_valid<false>() const; \
 template bool _Position<PieceC, void>::is_valid<true>() const; \
 template CheckType _Position<PieceC, void>::givesCheck(Move) const; \
-template bool _Position<PieceC, void>::is_insufficient_material() const;
+template bool _Position<PieceC, void>::is_insufficient_material() const; \
+template void _Position<PieceC, void>::refresh_attacks_impl<WHITE>(); \
+template void _Position<PieceC, void>::refresh_attacks_impl<BLACK>();
 // clang-format off
 INSTANTIATE(PolyglotPiece)
 INSTANTIATE(EnginePiece)
 INSTANTIATE(ContiguousMappingPiece)
 #undef INSTANTIATE
 } // namespace chess
-
-

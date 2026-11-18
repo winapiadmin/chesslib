@@ -1,4 +1,5 @@
-#  a chess library (bonus: you can integrate more piece types!) which 
+#
+#  a chess library (bonus: you can integrate more piece types!) which
 #  supports Chess960 and is decently fast enough
 #  Copyright (C) 2025-2026  winapiadmin
 #
@@ -15,85 +16,434 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
+
 cmake_minimum_required(VERSION 3.14)
 project(chesslib LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# --- Default build type ---
+# Without this an unconfigured build (`cmake -S . -B build`) gets no -O flag AND no
+# NDEBUG. That is not merely slow: position.cpp and movegen.cpp gate diagnostics on
+# `#if defined(_DEBUG) || !defined(NDEBUG)`, so an unconfigured build compiles in a
+# std::cerr dump of the whole board and the whole move history on every king capture.
+# A single-config generator with no CMAKE_BUILD_TYPE is a near-certain misconfiguration,
+# so default it to RelWithDebInfo rather than silently producing a -O0 build.
+get_property(_chesslib_is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(NOT _chesslib_is_multi_config AND NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Build type" FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+        Debug Release RelWithDebInfo MinSizeRel)
+    message(STATUS "CMAKE_BUILD_TYPE was unset; defaulting to RelWithDebInfo")
+endif()
+
+# --- Link-Time Optimization ---
+option(ENABLE_LTO "Enable Link-Time Optimization" ON)
+
+if(ENABLE_LTO)
+    cmake_policy(SET CMP0069 NEW)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT _ipo_supported OUTPUT _ipo_output)
+    if(_ipo_supported)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+    else()
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION FALSE)
+    endif()
+endif()
+
 # --- Core Library ---
 set(SOURCES
     position.cpp
-    attacks.cpp "zobrist.cpp"
- "moves_io.cpp" "printers.cpp" "movegen.cpp")
+    attacks.cpp
+    zobrist.cpp
+    moves_io.cpp
+    printers.cpp
+    movegen.cpp
+)
+
 add_library(chesslib STATIC ${SOURCES})
-target_include_directories(chesslib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_compile_definitions(chesslib PRIVATE GENERATE_AT_RUNTIME)
-set(CHESSLIB_ERROR_MODE "THROW" CACHE STRING "ASSERT|THROW|NONE")
-set_property(CACHE CHESSLIB_ERROR_MODE PROPERTY STRINGS ASSERT THROW NONE)
+
+target_include_directories(chesslib PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# --- Error handling ---
+set(CHESSLIB_ERROR_MODE "THROW" CACHE STRING
+    "Error handling mode: ASSERT, THROW, or NONE"
+)
+
+set_property(CACHE CHESSLIB_ERROR_MODE PROPERTY STRINGS
+    ASSERT
+    THROW
+    NONE
+)
 
 if(NOT CHESSLIB_ERROR_MODE MATCHES "^(ASSERT|THROW|NONE)$")
-    message(FATAL_ERROR "Invalid ERROR_MODE: ${CHESSLIB_ERROR_MODE}")
+    message(FATAL_ERROR
+        "Invalid CHESSLIB_ERROR_MODE='${CHESSLIB_ERROR_MODE}'. "
+        "Expected ASSERT, THROW, or NONE."
+    )
 endif()
+
 # --- Compiler tuning ---
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
-    # clang-cl: forward GCC/Clang style constexpr flags via /clang:
-    target_compile_options(chesslib PRIVATE
-      /clang:-march=native
-      /clang:-mtune=native
-    )
-  else()
-    # native clang++ on *nix or Windows
-    target_compile_options(chesslib PRIVATE
-      -march=native -mtune=native
-    )
-  endif()
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-	target_compile_options(chesslib PRIVATE -march=native -mtune=native)
+#
+# Native architecture detection deliberately performs a compile+run test.
+# This avoids blindly trusting -march=native when running inside a VM,
+# container, CI environment, or other setup where CPUID may advertise
+# instructions that user-space cannot actually execute.
+#
+# Override with:
+#
+#   -DCHESSLIB_NATIVE_ARCH_RUNS=ON
+#   -DCHESSLIB_NATIVE_ARCH_RUNS=OFF
+#
+# AUTO performs the compile+run test.
+#
 
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  set(ARCH_FLAG "/arch:AVX2" CACHE STRING "MSVC architecture flag (/arch:SSE2, /arch:AVX, /arch:AVX2, /arch:AVX512)")
-  target_compile_options(chesslib PRIVATE ${ARCH_FLAG})
+set(CHESSLIB_NATIVE_ARCH_RUNS "AUTO" CACHE STRING
+    "Native architecture probe: AUTO, ON, or OFF"
+)
+
+set_property(CACHE CHESSLIB_NATIVE_ARCH_RUNS PROPERTY STRINGS
+    AUTO
+    ON
+    OFF
+)
+
+if(NOT CHESSLIB_NATIVE_ARCH_RUNS MATCHES "^(AUTO|ON|OFF)$")
+    message(FATAL_ERROR
+        "Invalid CHESSLIB_NATIVE_ARCH_RUNS='${CHESSLIB_NATIVE_ARCH_RUNS}'. "
+        "Expected AUTO, ON, or OFF."
+    )
 endif()
 
-target_compile_definitions(chesslib PUBLIC _CHESSLIB_ERROR_MODE_${CHESSLIB_ERROR_MODE})
-target_compile_definitions(chesslib INTERFACE
+include(CheckCXXSourceRuns)
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR
+   (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
+    CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC"))
+
+    # Portable max-NPS choice: cap MSVC-frontend native at AVX2 (x86-64-v3).
+    # /arch:AVX512 is deliberately NOT used: the AUTO probe false-positives
+    # with clang-cl (probe binary passes without AVX512, full build then emits
+    # AVX512 and dies with ILLEGAL_INSTRUCTION on AVX2 CPUs such as Coffee
+    # Lake), AVX512 auto-vectorization throttles clocks for this integer
+    # workload, and the AVX-512 movegen splat needs VBMI2+VNNI which
+    # /arch:AVX512 does not enable anyway (scalar path is used either way).
+    # AVX2 enables BMI2/PEXT for magic bitboards and runs everywhere v3+.
+    set(_chesslib_native_flags
+        /arch:AVX2
+    )
+
+else()
+
+    set(_chesslib_native_flags
+        -march=native
+        -mtune=native
+    )
+
+endif()
+
+# Convert CMake lists to human-readable compiler flag strings.
+string(REPLACE ";" " "
+    _chesslib_native_flags_str
+    "${_chesslib_native_flags}"
+)
+
+# --- Architecture detection ---
+
+if(CHESSLIB_NATIVE_ARCH_RUNS STREQUAL "AUTO")
+
+    message(STATUS
+        "chesslib: probing native architecture support: "
+        "${_chesslib_native_flags_str}"
+    )
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES "^(Clang|GNU|MSVC)$")
+
+        set(CMAKE_REQUIRED_FLAGS
+            "${_chesslib_native_flags_str}"
+        )
+
+        set(_chesslib_native_probe_source [=[
+            #include <immintrin.h>
+
+            int main(int argc, char **)
+            {
+                volatile int runtime_value = argc;
+
+            #if defined(__AVX2__) || defined(_M_AVX2)
+                __m256i a = _mm256_set1_epi32(runtime_value);
+                __m256i b = _mm256_add_epi32(a, a);
+                int values[8];
+                _mm256_storeu_si256(reinterpret_cast<__m256i *>(values), b);
+
+                int sum = 0;
+                for (int value : values)
+                    sum += value;
+                if (sum != runtime_value * 16)
+                    return 1;
+            #endif
+
+            #if defined(__AVX512F__)
+                __m512i a512 = _mm512_set1_epi32(runtime_value);
+                __m512i b512 = _mm512_add_epi32(a512, a512);
+                if (_mm512_reduce_add_epi32(b512) != runtime_value * 32)
+                    return 1;
+            #endif
+
+            #if defined(__BMI2__)
+                if (_pext_u64(0xFF00ULL, 0xFF00ULL) != 0xFFULL)
+                    return 1;
+            #endif
+
+                return 0;
+            }
+        ]=])
+
+        if(CMAKE_CROSSCOMPILING AND NOT CMAKE_CROSSCOMPILING_EMULATOR)
+            set(_chesslib_native_arch_probe_result "0")
+            message(STATUS "chesslib: skipping native architecture run probe while cross-compiling without an emulator")
+        else()
+            check_cxx_source_runs(
+                "${_chesslib_native_probe_source}"
+                _chesslib_native_arch_probe_result
+            )
+        endif()
+
+        unset(CMAKE_REQUIRED_FLAGS)
+
+        if("${_chesslib_native_arch_probe_result}" STREQUAL "1")
+            set(_chesslib_native_arch_runs "1")
+        else()
+            set(_chesslib_native_arch_runs "0")
+        endif()
+
+    else()
+
+        message(WARNING
+            "chesslib: compiler '${CMAKE_CXX_COMPILER_ID}' is not "
+            "supported by the native architecture self-test; "
+            "using compiler-default architecture flags."
+        )
+
+        set(_chesslib_native_arch_runs "0")
+
+    endif()
+
+elseif(CHESSLIB_NATIVE_ARCH_RUNS STREQUAL "ON")
+
+    message(STATUS
+        "chesslib: native architecture detection forced ON by user"
+    )
+
+    set(_chesslib_native_arch_runs "1")
+
+else()
+
+    message(STATUS
+        "chesslib: native architecture detection forced OFF by user"
+    )
+
+    set(_chesslib_native_arch_runs "0")
+
+endif()
+
+# --- Select architecture flags ---
+
+if("${_chesslib_native_arch_runs}" STREQUAL "1")
+
+    target_compile_options(chesslib PUBLIC
+        ${_chesslib_native_flags}
+    )
+
+    message(STATUS
+        "chesslib: using native architecture flags: "
+        "${_chesslib_native_flags_str}"
+    )
+
+else()
+
+    message(WARNING
+        "chesslib: '${_chesslib_native_flags_str}' failed a compile+run "
+        "self-test on this build machine (crashed, or the probe could not "
+        "be executed at all, e.g. cross-compiling) -- using compiler-default "
+        "architecture flags."
+    )
+
+    message(STATUS
+        "chesslib: using compiler-default architecture flags"
+    )
+
+endif()
+
+# --- MSVC-frontend inline/intrinsic tuning (portable, behavior-preserving) ---
+# CMake's RelWithDebInfo defaults to /Ob1 (inline __inline only). Measured
+# +5% perft NPS from /Ob2 (inline any suitable) + /Oi (intrinsics) on
+# clang-cl with no ISA change. Guarded to MSVC-frontend compilers only;
+# GNU-like builds already use -O2/-O3 defaults.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR
+   (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
+    CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC"))
+    # PRIVATE, not PUBLIC: only chesslib's own TUs get /Ob2+/Oi. Propagating
+    # /Oi to dependents (doctest-based tests) triggers duplicate-symbol
+    # ReadNoFence64/ReadPointerNoFence link errors with lld-link.
+    target_compile_options(chesslib PRIVATE
+        "$<$<CONFIG:Release>:/Ob2;/Oi>"
+        "$<$<CONFIG:RelWithDebInfo>:/Ob2;/Oi>"
+        "$<$<CONFIG:MinSizeRel>:/Ob1;/Oi>"
+    )
+endif()
+
+# --- Public error mode ---
+target_compile_definitions(chesslib PUBLIC
+    _CHESSLIB_ERROR_MODE_${CHESSLIB_ERROR_MODE}
+)
+
+# --- Release-style configurations ---
+# PUBLIC, not INTERFACE: chesslib's own translation units need NDEBUG too, otherwise
+# the `#if defined(_DEBUG) || !defined(NDEBUG)` diagnostics in position.cpp and
+# movegen.cpp stay compiled in. Relying on CMAKE_CXX_FLAGS_<CONFIG> alone only works
+# for CMake's built-in config names.
+target_compile_definitions(chesslib PUBLIC
     "$<$<CONFIG:Release>:NDEBUG>"
     "$<$<CONFIG:RelWithDebInfo>:NDEBUG>"
     "$<$<CONFIG:MinSizeRel>:NDEBUG>"
 )
+
+# --- Standalone perft example ---
+# Independent of BUILD_TESTING: the README documents building this target, and it
+# is useful even when the doctest-based test suite is disabled.
+add_executable(perft_example
+    perft_example.cpp
+)
+
+find_package(Threads REQUIRED)
+
+target_link_libraries(perft_example PRIVATE
+    chesslib
+    Threads::Threads
+)
+
 # --- Enable CTest integration ---
 include(CTest)
 
 if(BUILD_TESTING)
+
     include(FetchContent)
+
     FetchContent_Declare(
         doctest
         GIT_REPOSITORY https://github.com/doctest/doctest.git
         GIT_TAG v2.5.2
     )
+
     FetchContent_MakeAvailable(doctest)
 
-    # --- Test executable ---
-    add_executable(test_normal tests.cpp)
-    add_executable(test_chess960 chess960_tests.cpp)
-    add_executable(NonImportantTests non_core_tests.cpp)
+    # --- Test executables ---
+    add_executable(test_normal
+        tests.cpp
+    )
 
-    target_link_libraries(test_normal PRIVATE chesslib doctest::doctest)
-    target_link_libraries(NonImportantTests PRIVATE chesslib doctest::doctest)
-    target_link_libraries(test_chess960 PRIVATE chesslib doctest::doctest)
+    add_executable(test_chess960
+        chess960_tests.cpp
+    )
 
-    add_test(NAME test_normal COMMAND test_normal --abort-after=1)
-    add_test(NAME test_api COMMAND NonImportantTests --abort-after=1)
-    add_test(NAME test_chess960 COMMAND test_chess960 --abort-after=1)
-    if (UNIX AND CMAKE_BUILD_TYPE MATCHES "Debug")
-        set(SANITIZERS "" CACHE STRING "sanitizers such as undefined,address")
-    
-        if (NOT "${SANITIZERS}" STREQUAL "")
-            add_compile_options(-fsanitize=${SANITIZERS} -fno-omit-frame-pointer)
-            add_link_options(-fsanitize=${SANITIZERS})
+    add_executable(NonImportantTests
+        non_core_tests.cpp
+    )
+
+    target_link_libraries(test_normal PRIVATE
+        chesslib
+        doctest::doctest
+    )
+
+    target_link_libraries(NonImportantTests PRIVATE
+        chesslib
+        doctest::doctest
+    )
+
+    target_link_libraries(test_chess960 PRIVATE
+        chesslib
+        doctest::doctest
+    )
+
+    # chess960_tests.cpp is a single ~5800-line TEST_CASE with thousands
+    # of sequential perft assertions. GCC's/Clang's per-function optimizer
+    # passes scale badly with function size. Optimizing this one TU
+    # (verified at -Og/-O1/-O2/-O3, with and without -fno-inline) pushes
+    # cc1plus past 4 GB RSS and gets OOM-killed on memory-constrained
+    # build machines/CI runners. Only -O0 stayed under that on a 3.9 GB
+    # test host.
+    #
+    # This file only needs to run correctly, not quickly, so pin it to
+    # -O0 and skip LTO for it alone. Every other target keeps full
+    # optimization.
+
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR
+       (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
+        CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC"))
+        set(_chesslib_chess960_compile_options "/Od")
+    else()
+        set(_chesslib_chess960_compile_options "-O0")
+    endif()
+
+    set_source_files_properties(
+        chess960_tests.cpp
+        PROPERTIES
+            COMPILE_OPTIONS "${_chesslib_chess960_compile_options}"
+    )
+
+    set_target_properties(
+        test_chess960
+        PROPERTIES
+            INTERPROCEDURAL_OPTIMIZATION FALSE
+    )
+
+    # test_chess960 opts out of IPO because its large test TU exceeds
+    # memory limits with LTO. Keep the library archive native as well so
+    # non-IPO consumers do not need an LTO linker plugin to read it.
+    set_property(
+        TARGET chesslib
+        PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE
+    )
+
+    add_test(
+        NAME test_normal
+        COMMAND test_normal --abort-after=1
+    )
+
+    add_test(
+        NAME test_api
+        COMMAND NonImportantTests --abort-after=1
+    )
+
+    add_test(
+        NAME test_chess960
+        COMMAND test_chess960 --abort-after=1
+    )
+
+    # --- Sanitizers ---
+    if(UNIX AND CMAKE_BUILD_TYPE MATCHES "Debug")
+
+        set(SANITIZERS "" CACHE STRING
+            "Sanitizers, e.g. undefined,address"
+        )
+
+        if(NOT "${SANITIZERS}" STREQUAL "")
+
+            add_compile_options(
+                -fsanitize=${SANITIZERS}
+                -fno-omit-frame-pointer
+            )
+
+            add_link_options(
+                -fsanitize=${SANITIZERS}
+            )
+
         endif()
+
     endif()
 
 endif()

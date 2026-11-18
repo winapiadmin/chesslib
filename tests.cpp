@@ -27,6 +27,7 @@
 #include <random>
 #include <sstream>
 using namespace chess;
+const Position global_checked_position("4k3/8/8/8/8/8/4r3/4K3 w - - 0 1");
 // --------- Color assertions ----------
 static_assert(color_of(PolyglotPiece::BPAWN) == BLACK, "BPAWN should be BLACK");
 static_assert(color_of(PolyglotPiece::BKNIGHT) == BLACK, "BKNIGHT should be BLACK");
@@ -261,8 +262,6 @@ template <typename T, MoveGenType mt, Color c, bool EnableDiv = false> uint64_t 
 auto split_testcases(std::vector<TestEntry<std::string, perft_t>> &entries) {
     std::vector<TestEntry<std::string, perft_t>> optimized;
 
-    std::sort(entries.begin(), entries.end(), [](const auto &a, const auto &b) { return a.info.nodes < b.info.nodes; });
-
     std::vector<TestEntry<std::string, perft_t>> bucket1, bucket2, bucket3;
     for (const auto &e : entries) {
         if (e.info.nodes <= 1'000'000)
@@ -299,7 +298,12 @@ void check_perft_type(TestEntry<std::string, perft_t> &entry, uint64_t &nodes, d
     auto end_time = high_resolution_clock::now();
     elapsed += duration<double>(end_time - start_time).count();
     nodes += entry.info.nodes;
-    if (entry.info.nodes < 5e6) {
+#if IS_RELEASE
+#define lim 1e8
+#else
+#define lim 5e6
+#endif
+    if (entry.info.nodes < lim) {
         _Position<T> pos2 = pos;
         REQUIRE(pos.fen() == pos2.fen());
         start_time = high_resolution_clock::now();
@@ -318,6 +322,8 @@ template <MoveGenType mt = MoveGenType::ALL, bool EnableDiv = false>
 void check_perfts(std::vector<TestEntry<std::string, perft_t>> &entries) {
     uint64_t nodes = 0;
     double elapsed = 0;
+
+    std::stable_sort(entries.begin(), entries.end(), [](const auto &a, const auto &b) { return a.info.nodes < b.info.nodes; });
 #if !IS_RELEASE
     entries = split_testcases(entries);
 #endif
@@ -351,8 +357,8 @@ template <bool ISROOK> [[nodiscard]] inline Bitboard sliderAttacks(Square sq, Bi
         Rank r = pr + off_r;
         for (; is_valid(r, f); f += off_f, r += off_r) {
             const auto index = make_sq(f, r);
-            attacks |= 1ULL << index;
-            if (occupied & (1ULL << index))
+            attacks |= square_bb(index);
+            if (occupied & square_bb(index))
                 break;
         }
     }
@@ -375,11 +381,17 @@ TEST_CASE("attacks") {
         }
     }
 }
+
+TEST_CASE("Namespace-scope position initializes tables before use") {
+    REQUIRE(global_checked_position.is_check());
+    REQUIRE(global_checked_position.hash() == global_checked_position.zobrist());
+}
+
 TEST_CASE("Castling move making FEN rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8") {
     std::string fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
     Position position(fen);
     REQUIRE(position.hash() == 0x4f874e21f78d3590);
-    position.doMove<false>(Move::make<CASTLING>(SQ_E1, SQ_H1));
+    position.doMove(Move::make<CASTLING>(SQ_E1, SQ_H1));
     REQUIRE(position.hash() == position.zobrist());
     REQUIRE(position.hash() == 0x31F235158B7EEE80);
     REQUIRE(position.fen() == "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQ1RK1 b - - 2 8");
@@ -388,7 +400,7 @@ TEST_CASE("EP move making FEN 8/5k1K/8/8/4Pp2/8/8/8 b - e3 0 1") {
     std::string fen = "8/5k1K/8/8/4Pp2/8/8/8 b - e3 0 1";
     Position position(fen);
     REQUIRE(position.hash() == 0x775d0e2acc42db8c);
-    position.doMove<false>(Move::make<EN_PASSANT>(SQ_F4, SQ_E3));
+    position.doMove(Move::make<EN_PASSANT>(SQ_F4, SQ_E3));
     REQUIRE(position.hash() == position.zobrist());
     REQUIRE(position.hash() == 0x3ec71faae73cfbed);
     REQUIRE(position.fen() == "8/5k1K/8/8/8/4p3/8/8 w - - 0 2");
@@ -455,6 +467,120 @@ TEST_CASE("Move making pin update") {
         REQUIRE(pin_maskAND0x8000000000000ULL != 0);
         REQUIRE(pin_mask == 0x8040201000000ULL);
     }
+}
+
+/// @brief Assert a UCI move is generated for @p fen.
+static void require_legal(const char *fen, const char *uci) {
+    Position p(fen);
+    Movelist moves;
+    p.legals(moves);
+    const int want =
+        (int(parse_square(std::string_view(uci).substr(0, 2))) << 6) | int(parse_square(std::string_view(uci).substr(2, 2)));
+    bool found = false;
+    for (const Move &m : moves)
+        found |= (m.from_to() == want);
+    CAPTURE(fen);
+    CAPTURE(uci);
+    REQUIRE(found);
+}
+
+/// @brief Assert a UCI move is NOT generated for @p fen.
+static void require_illegal(const char *fen, const char *uci) {
+    Position p(fen);
+    Movelist moves;
+    p.legals(moves);
+    const int unwanted =
+        (int(parse_square(std::string_view(uci).substr(0, 2))) << 6) | int(parse_square(std::string_view(uci).substr(2, 2)));
+    for (const Move &m : moves) {
+        CAPTURE(fen);
+        CAPTURE(uci);
+        REQUIRE(m.from_to() != unwanted);
+    }
+}
+
+// The pin masks must carry the WHOLE pin line (every square a pinned piece may move to,
+// including the pinning slider), not merely the pinned piece's square. A pin mask that
+// holds only the occupied blocker makes pinned pieces lose every move along the pin,
+// while a blocker count that forgets to exclude the sniper itself silently disables pin
+// detection altogether and permits moves that leave the king in check. Both failure modes
+// are illegal-move bugs, not wrong-move-count bugs, so they are asserted concretely here.
+TEST_CASE("Pinned pieces may move along the pin line") {
+    // King a1, rook b1, black rook h1: the rook is pinned along the first rank.
+    const char *rank_pin = "7k/8/8/8/8/8/8/KR5r w - - 0 1";
+    require_legal(rank_pin, "b1c1");   // slide along the pin line
+    require_legal(rank_pin, "b1h1");   // capture the pinner
+    require_illegal(rank_pin, "b1b8"); // leaving the pin line
+    require_illegal(rank_pin, "b1a1"); // onto own king
+
+    // King a1, bishop c3, black bishop f6: pinned on the a1-h8 diagonal.
+    const char *diag_slider = "7k/8/5b2/8/8/2B5/8/K7 w - - 0 1";
+    require_legal(diag_slider, "c3b2");
+    require_legal(diag_slider, "c3d4");
+    require_legal(diag_slider, "c3f6"); // capture the pinner
+    require_illegal(diag_slider, "c3d2");
+    require_illegal(diag_slider, "c3e1");
+
+    // King a1, pawn a2, black rook a8: pawn pinned on the a-file, so straight pushes
+    // stay legal while every capture off the file is not.
+    const char *file_pawn = "7k/r7/8/8/8/8/P7/K7 w - - 0 1";
+    require_legal(file_pawn, "a2a3");
+    require_legal(file_pawn, "a2a4");   // double push along the pin file
+    require_illegal(file_pawn, "a2b3"); // capture off the pin file
+
+    // King a1, pawn c3, black bishop f6: a pawn cannot move along a diagonal, so being
+    // pinned on one leaves it with no legal move at all.
+    const char *diag_pawn = "7k/8/5b2/8/8/2P5/8/K7 w - - 0 1";
+    require_illegal(diag_pawn, "c3c4");
+    require_illegal(diag_pawn, "c3b4");
+    require_illegal(diag_pawn, "c3d4");
+
+    // King a1 with own rook c1 and knight e1 between it and the black rook h1: two own
+    // pieces on the line means neither is pinned, so both may leave the first rank.
+    const char *not_pinned = "7k/8/8/8/8/8/8/K1R1N2r w - - 0 1";
+    require_legal(not_pinned, "c1c8");
+    require_legal(not_pinned, "c1d1");
+    require_legal(not_pinned, "e1f3");
+
+    // The white king is checked by both the rook on e2 and knight on c2. Capturing
+    // the rook with the rook from h2 leaves the knight check unresolved.
+    const char *double_check = "4k3/8/8/8/8/8/2n1r2R/4K3 w - - 0 1";
+    require_illegal(double_check, "h2e2");
+}
+
+TEST_CASE("Distant slider check mask includes every blocking square") {
+    // A check on the e-file must be blockable on every square between the king
+    // and the checking rook, not just on the endpoints nearest each piece.
+    const Bitboard expected_mask = square_bb(SQ_E2) | square_bb(SQ_E3) | square_bb(SQ_E4) | square_bb(SQ_E5) |
+                                   square_bb(SQ_E6) | square_bb(SQ_E7) | square_bb(SQ_E8);
+    REQUIRE(movegen::between(SQ_E1, SQ_E8) == expected_mask);
+
+    const char *fen = "k3r3/R7/8/8/8/8/R7/4K3 w - - 0 1";
+    require_legal(fen, "a7e7");
+    require_legal(fen, "a2e2");
+    require_illegal(fen, "a7d7");
+}
+
+TEST_CASE("FEN fullmove counter must be positive") {
+    Position p;
+#if defined(_CHESSLIB_ERROR_MODE_THROW)
+    REQUIRE_THROWS(p.setFEN("4k3/8/8/8/8/8/8/4K3 w - - 0 0"));
+#elif defined(_CHESSLIB_ERROR_MODE_NONE)
+    REQUIRE_FALSE(p.setFEN("4k3/8/8/8/8/8/8/4K3 w - - 0 0"));
+#endif
+}
+
+TEST_CASE("Unchecked moves update position counters") {
+    Position p("4k3/8/8/8/8/8/8/R3K3 w - - 7 1");
+
+    p.doMove<false>(Move(SQ_A1, SQ_A2));
+    REQUIRE(p.rule50_count() == 8);
+    REQUIRE(p.ply() == 1);
+    REQUIRE(p.fullmoveNumber() == 1);
+
+    p.doMove<false>(Move(SQ_E8, SQ_E7));
+    REQUIRE(p.rule50_count() == 9);
+    REQUIRE(p.ply() == 2);
+    REQUIRE(p.fullmoveNumber() == 2);
 }
 
 TEST_CASE("Experienced bugs in this repo") {

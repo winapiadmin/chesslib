@@ -25,16 +25,16 @@
 #include "fwd_decl.h"
 #include <algorithm>
 #include <cassert>
+#include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 /// @file types.h
 /// @brief Core chess type definitions: squares, pieces, colours, move encoding, and ValueList.
 #if defined(__clang__) || defined(__GNUC__)
 #define LIKELY(k) __builtin_expect(!!(k), 1)
-#define UNLIKELY(k) __builtin_expect(!!(k), 1)
-#elif __has_cpp_attribute(likely)
-#define LIKELY(k) [[likely(k)]]
-#define UNLIKELY(k) [[unlikely(k)]]
+#define UNLIKELY(k) __builtin_expect(!!(k), 0)
 #else
 #define LIKELY(k) k
 #define UNLIKELY(k) k
@@ -51,7 +51,11 @@
 #define FLATTEN __attribute__((flatten))
 /// @def FORCEINLINE
 /// @brief Make callers inline this function
+#ifdef PROFILING
+#define FORCEINLINE inline
+#else
 #define FORCEINLINE __attribute__((always_inline))
+#endif
 /// @def NO_SIDE_EFFECTS
 /// @brief Marks a function has no side effects
 #define NO_SIDE_EFFECTS __attribute__((const))
@@ -62,7 +66,11 @@
 #if defined(_MSC_VER)
 /// @def FORCEINLINE
 /// @brief Make callers inline this function
+#ifdef PROFILING
+#define FORCEINLINE inline
+#else
 #define FORCEINLINE __forceinline
+#endif
 /// @def NO_SIDE_EFFECTS
 /// @brief Make a function has no side effects
 #define NO_SIDE_EFFECTS __declspec(noalias)
@@ -175,7 +183,14 @@ constexpr Square flip_sq(const Square sq) { return square_mirror(sq); }
 /// @brief Check if a rank/file pair describes a valid board square.
 constexpr bool is_valid(const Rank r, const File f) { return 0 <= r && r <= 7 && 0 <= f && f <= 7; }
 /// @brief Check if a square index is valid (0..63).
-constexpr bool is_valid(const Square s) { return 0 <= s && s < 64; }
+constexpr NO_SIDE_EFFECTS bool is_valid(const Square s) { return 0 <= s && s < 64; }
+
+/// @brief Bitboard containing only the given square.
+/// @param s Square to convert.
+/// @return `1ULL << s`, or 0 when @p s is not a valid board square (e.g. SQ_NONE).
+constexpr inline Bitboard square_bb(const Square s) noexcept {
+    return is_valid(s) ? (1ULL << static_cast<int>(s)) : 0ULL;
+}
 
 /// @brief Extract the file from a square.
 constexpr File file_of(const Square s) {
@@ -607,23 +622,28 @@ template <typename T, std::size_t MaxSize> class ValueList {
     inline size_type size() const { return size_; }
 
     inline void push_back(const T &value) {
-        assert(size_ < MaxSize);
+        ASSUME(size_ < MaxSize);
         values_[size_++] = value;
     }
 
     inline T pop() {
-        assert(size_ > 0);
+        ASSUME(size_ > 0);
         return values_[--size_];
     }
 
     inline void pop_back() {
-        assert(size_ > 0);
+        ASSUME(size_ > 0);
         size_--;
     }
     inline T front() const {
-        assert(size_ > 0);
+        ASSUME(size_ > 0);
         return values_[0];
     }
+
+    /// @brief Whether @p count more elements can be appended.
+    /// @param count Number of elements about to be written.
+    /// @return true if `size() + count <= MaxSize`.
+    inline bool has_room(size_type count) const noexcept { return size_ + count <= MaxSize; }
 
     /// @brief Indexed access. UB if index >= MaxSize.
     inline T &operator[](size_type index) { return values_[index]; }

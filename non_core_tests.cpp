@@ -1491,9 +1491,9 @@ TEST_CASE("Material and position queries") {
     {
         Position p;
         CHECK(p.ply() == 0);
-        p.doMove<false>(Move(SQ_E2, SQ_E4));
+        p.doMove(Move(SQ_E2, SQ_E4));
         CHECK(p.ply() == 1);
-        p.doMove<false>(Move(SQ_E7, SQ_E5));
+        p.doMove(Move(SQ_E7, SQ_E5));
         CHECK(p.ply() == 2);
         p.undoMove();
         CHECK(p.ply() == 1);
@@ -1656,41 +1656,41 @@ TEST_CASE("Square and bitboard utilities") {
 
     // shift()
     using namespace attacks;
-    Bitboard b = 1ULL << SQ_E4;
-    CHECK(shift<NORTH>(b) == (1ULL << SQ_E5));
-    CHECK(shift<SOUTH>(b) == (1ULL << SQ_E3));
-    CHECK(shift<EAST>(b) == (1ULL << SQ_F4));
-    CHECK(shift<WEST>(b) == (1ULL << SQ_D4));
+    Bitboard b = square_bb(SQ_E4);
+    CHECK(shift<NORTH>(b) == square_bb(SQ_E5));
+    CHECK(shift<SOUTH>(b) == square_bb(SQ_E3));
+    CHECK(shift<EAST>(b) == square_bb(SQ_F4));
+    CHECK(shift<WEST>(b) == square_bb(SQ_D4));
 
     // Edge: shift from a-file west should be zero
-    Bitboard a1 = 1ULL << SQ_A1;
+    Bitboard a1 = square_bb(SQ_A1);
     CHECK(shift<WEST>(a1) == 0);
     CHECK(shift<SOUTH>(a1) == 0);
 
     // Edge: shift from h-file east should be zero
-    Bitboard h8 = 1ULL << SQ_H8;
+    Bitboard h8 = square_bb(SQ_H8);
     CHECK(shift<EAST>(h8) == 0);
     CHECK(shift<NORTH>(h8) == 0);
 
     // pawnLeftAttacks / pawnRightAttacks
-    Bitboard wpawns = 1ULL << SQ_E4;
-    CHECK(pawnLeftAttacks<WHITE>(wpawns) == (1ULL << SQ_D5));
-    CHECK(pawnRightAttacks<WHITE>(wpawns) == (1ULL << SQ_F5));
+    Bitboard wpawns = square_bb(SQ_E4);
+    CHECK(pawnLeftAttacks<WHITE>(wpawns) == square_bb(SQ_D5));
+    CHECK(pawnRightAttacks<WHITE>(wpawns) == square_bb(SQ_F5));
 
-    Bitboard bpawns = 1ULL << SQ_E5;
-    CHECK(pawnLeftAttacks<BLACK>(bpawns) == (1ULL << SQ_F4));
-    CHECK(pawnRightAttacks<BLACK>(bpawns) == (1ULL << SQ_D4));
+    Bitboard bpawns = square_bb(SQ_E5);
+    CHECK(pawnLeftAttacks<BLACK>(bpawns) == square_bb(SQ_F4));
+    CHECK(pawnRightAttacks<BLACK>(bpawns) == square_bb(SQ_D4));
 
     // knight(Bitboard) bulk attacks
-    Bitboard knights = (1ULL << SQ_E4) | (1ULL << SQ_A1);
+    Bitboard knights = square_bb(SQ_E4) | square_bb(SQ_A1);
     Bitboard kAttacks = knight(knights);
-    CHECK((kAttacks & (1ULL << SQ_G5)));
-    CHECK((kAttacks & (1ULL << SQ_C5)));
-    CHECK((kAttacks & (1ULL << SQ_G3)));
-    CHECK((kAttacks & (1ULL << SQ_C3)));
+    CHECK((kAttacks & square_bb(SQ_G5)));
+    CHECK((kAttacks & square_bb(SQ_C5)));
+    CHECK((kAttacks & square_bb(SQ_G3)));
+    CHECK((kAttacks & square_bb(SQ_C3)));
     // from SQ_A1
-    CHECK((kAttacks & (1ULL << SQ_B3)));
-    CHECK((kAttacks & (1ULL << SQ_C2)));
+    CHECK((kAttacks & square_bb(SQ_B3)));
+    CHECK((kAttacks & square_bb(SQ_C2)));
 
     // queen() = bishop | rook
     Bitboard empty = 0;

@@ -22,54 +22,13 @@
 #include "types.h"
 #include "zobrist.h"
 #include <algorithm>
+#include <array>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 /// @file position.h
 namespace chess {
-namespace attacks {
-
-/// @brief Scan for attacks along a ray and identify checkers and pins.
-/// @tparam RayDir Direction index of the ray to scan.
-/// @tparam FirstIncreases Whether the ray direction corresponds to increasing square indices (e.g. north/east) or decreasing
-/// (south/west).
-/// @param ksq King's square.
-/// @param occ_masked Occupancy bitboard masked to the ray (i.e. only squares on the ray are considered occupied).
-/// @param slider_mask Bitboard of potential slider attackers (rooks for orthogonal rays, bishops for diagonal rays).
-/// @param occ_us Occupancy bitboard of the attacking side (used to detect pinned pieces).
-/// @param checkers Output bitboard to accumulate discovered checkers.
-/// @param pin_bb Output bitboard to accumulate discovered pinned pieces (bits set for squares of pinned pieces, not the
-/// attackers).
-/// @details This function uses the precomputed ray bitboards to efficiently find the first occupied square along the ray and
-/// determine if it's a checker or a pinned piece. If the first occupied square is an enemy slider, it's a checker. If it's a
-/// friendly piece, we check if there's another enemy slider behind it on the same ray, which would indicate that the friendly
-/// piece is pinned.
-/// @note This function assumes that the occupancy bitboards have already been masked to only include pieces on the relevant
-/// ray, which allows it to use simple bit operations to find the first blocker and potential attackers without needing to
-/// iterate over squares.
-template <int RayDir, bool FirstIncreases>
-inline void
-scan_attacks_ray(Square ksq, Bitboard occ_masked, Bitboard slider_mask, Bitboard occ_us, Bitboard &checkers, Bitboard &pin_bb) {
-    const auto &ray = attacks::RAYS[RayDir][ksq];
-    Bitboard occ_on_ray = ray & occ_masked;
-    if (!occ_on_ray)
-        return;
-
-    int first_sq = FirstIncreases ? lsb(occ_on_ray) : msb(occ_on_ray);
-    Bitboard first_bb = 1ULL << first_sq;
-    if (first_bb & slider_mask) {
-        checkers |= first_bb;
-    } else if (first_bb & occ_us) {
-        Bitboard after = FirstIncreases ? occ_on_ray & ~((first_bb) | (first_bb - 1)) : occ_on_ray & (first_bb - 1);
-        if (after) {
-            int attacker_sq = FirstIncreases ? lsb(after) : msb(after);
-            if ((1ULL << attacker_sq) & slider_mask)
-                pin_bb |= movegen::between(ksq, static_cast<Square>(attacker_sq));
-        }
-    }
-}
-} // namespace attacks
 /**
  * Stores complete and incremental position state for supporting undo operations.
  *
@@ -78,39 +37,41 @@ scan_attacks_ray(Square ksq, Bitboard occ_masked, Bitboard slider_mask, Bitboard
  * (changed squares and pieces). Cached attack masks are saved to avoid recomputation
  * on undo.
  */
-template <typename Piece> struct alignas(64) HistoryEntry {
-    Bitboard pieces[7]{};        ///< Bitboards per piece type.
-    Bitboard occ[COLOR_NB]{};    ///< Occupancy per colour.
-    Color turn = COLOR_NB;       ///< Side to move.
-    Move mv = Move::none();      ///< The move that led to this position.
-    Key hash = 0;                ///< Zobrist hash.
-    uint8_t halfMoveClock = 0;   ///< Half-move clock for 50/75-move rule.
-    uint16_t fullMoveNumber = 1; ///< Full-move number (starts at 1).
-    /// @brief Whether en-passant presence was included in the Zobrist hash.
-    bool epIncluded = false;
-    /// @brief Repetition counter originating from this saved state.
-    int8_t repetition = 0; ///< Repetition counter from this position.
-    /// @brief Number of plies since last null move.
-    uint8_t pliesFromNull = 0;
+#pragma pack(push, 16)
+template <typename Piece> struct HistoryEntry {
+    Bitboard pieces[7]{};     ///< Bitboards per piece type.
+    Bitboard occ[COLOR_NB]{}; ///< Occupancy per colour.
+    /// @name Cached attack data (saved to avoid recomputation on undo)
+    /// @{
+    Bitboard saved_rook_pin{};      ///< Saved rook pin mask.
+    Bitboard saved_bishop_pin{};    ///< Saved bishop pin mask.
+    Bitboard saved_checkers{};      ///< Saved checkers bitboard.
+    Bitboard saved_check_mask{};    ///< Saved check mask.
+    Bitboard saved_enemy_attacks{}; ///< Saved enemy attack bitboard.
+    /// @}
+    /// @brief Incremental squares changed by the move (for undo).
+    Square incr_sqs[4] = { SQ_NONE, SQ_NONE, SQ_NONE, SQ_NONE };
+    /// @brief Incremental piece values for undo (parallel to incr_sqs).
+    Piece incr_pc[4] = { Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE };
+    Key hash = 0;          ///< Zobrist hash.
+    Color turn = COLOR_NB; ///< Side to move.
+    Move mv{};             ///< The move that led to this position.
     /// @brief En-passant target square.
     Square enPassant = SQ_NONE; ///< En-passant target square.
     /// @brief King's square for each colour in this saved state.
     Square kings[COLOR_NB] = { SQ_NONE, SQ_NONE };
     /// @brief Castling rights bitmask at this saved state.
     CastlingRights castlingRights; ///< Castling rights bitmask.
-    /// @brief Incremental squares changed by the move (for undo).
-    Square incr_sqs[4] = { SQ_NONE, SQ_NONE, SQ_NONE, SQ_NONE };
-    /// @brief Incremental piece values for undo (parallel to incr_sqs).
-    Piece incr_pc[4] = { Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE, Piece::NO_PIECE };
-    /// @name Cached attack data (saved to avoid recomputation on undo)
-    /// @{
-    Bitboard saved_rook_pin{};   ///< Saved rook pin mask.
-    Bitboard saved_bishop_pin{}; ///< Saved bishop pin mask.
-    Bitboard saved_checkers{};   ///< Saved checkers bitboard.
-    Bitboard saved_check_mask{}; ///< Saved check mask.
-    /// @}
+    /// @brief Whether en-passant presence was included in the Zobrist hash.
+    bool epIncluded = false;
+    /// @brief Repetition counter originating from this saved state.
+    int8_t repetition = 0; ///< Repetition counter from this position.
+    /// @brief Number of plies since last null move.
+    uint8_t pliesFromNull = 0;
+    uint8_t halfMoveClock = 0;   ///< Half-move clock for 50/75-move rule.
+    uint16_t fullMoveNumber = 1; ///< Full-move number (starts at 1).
 };
-
+#pragma pack(pop)
 /// @enum CheckType
 enum class CheckType { NO_CHECK, DIRECT_CHECK, DISCOVERY_CHECK };
 
@@ -180,12 +141,12 @@ template <typename MoveGenType> constexpr MoveGenType operator|(MoveGenType a, M
 template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_enum<PieceC>::value>> class _Position {
   private:
     std::vector<HistoryEntry<PieceC>> history;
-    std::vector<Key> rep_hashes_;
     Bitboard _rook_pin{};
     Bitboard _bishop_pin{};
     Bitboard _checkers{};
     Bitboard _check_mask{};
     Bitboard _pin_mask{};
+    Bitboard _enemy_attacks{};
     PieceC pieces_list[SQUARE_NB + 1] = {
         PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE,
         PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE, PieceC::NO_PIECE,
@@ -209,6 +170,28 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         Square rook_start_qs = SQ_NONE;           ///< Rook start for queenside castling.
         std::array<Bitboard, 2> castling_paths{}; ///< Castling path bitboards [ks, qs].
     } castling_meta_[2]{};
+
+    /// @brief Per-square castling rights to clear for king moves, indexed by [color][square].
+    std::array<std::array<CastlingRights, 64>, 2> castling_rights_lost_king_{};
+    /// @brief Per-square castling rights to clear for rook moves/captures, indexed by [color][square].
+    std::array<std::array<CastlingRights, 64>, 2> castling_rights_lost_rook_{};
+
+    /// @brief Rebuild castling rights lost tables from current castling_meta_.
+    void rebuild_castling_rights_lost() {
+        castling_rights_lost_king_[0].fill(NO_CASTLING);
+        castling_rights_lost_king_[1].fill(NO_CASTLING);
+        castling_rights_lost_rook_[0].fill(NO_CASTLING);
+        castling_rights_lost_rook_[1].fill(NO_CASTLING);
+        for (Color c : { WHITE, BLACK }) {
+            auto &m = castling_meta_[c];
+            if (m.king_start != SQ_NONE)
+                castling_rights_lost_king_[c][m.king_start] = (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING);
+            if (m.rook_start_ks != SQ_NONE)
+                castling_rights_lost_rook_[c][m.rook_start_ks] = (c == WHITE ? WHITE_OO : BLACK_OO);
+            if (m.rook_start_qs != SQ_NONE)
+                castling_rights_lost_rook_[c][m.rook_start_qs] = (c == WHITE ? WHITE_OOO : BLACK_OOO);
+        }
+    }
 
   public:
     /// @brief Standard starting FEN for classical chess.
@@ -238,27 +221,61 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         if constexpr (effectivePieces == 0 && modeBits != 0)
             return;
 
+        // Without a king there are no legal moves (and several generators would
+        // index attack tables with SQ_NONE). setFEN permits kingless placements,
+        // so guard here rather than in every generator.
+        if (UNLIKELY(king_sq(c) == SQ_NONE))
+            return;
+        const Bitboard occ_all = occ();
+        if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::KING)) {
+            movegen::genKingMoves<PieceC, c, captureOnly, ListT>(*this, out, _pin_mask, occ_all);
+        }
+        if (_check_mask == 0)
+            return;
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::PAWN)) {
-            movegen::genPawnSingleMoves<PieceC, c, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask);
+            movegen::genPawnSingleMoves<PieceC, c, captureOnly, ListT>(*this,
+                                                                       out,
+                                                                       _rook_pin,
+                                                                       _bishop_pin,
+                                                                       _check_mask,
+                                                                       occ_all);
             if constexpr (includeQuiet)
-                movegen::genPawnDoubleMoves<PieceC, c, ListT>(*this, out, _pin_mask, _check_mask);
-            if constexpr (includeCaps)
-                movegen::genEP<PieceC, c, ListT>(*this, out);
+                movegen::genPawnDoubleMoves<PieceC, c, ListT>(*this, out, _pin_mask, _check_mask, occ_all);
+            // Hoist genEP's SQ_NONE early-return here to avoid a call on the
+            // ~80% of nodes with no EP square (VTune: genEP 0.24s, mostly
+            // call overhead + early return). Equivalent: genEP returns
+            // immediately for SQ_NONE.
+            if constexpr (includeCaps) {
+                if (ep_square() != SQ_NONE)
+                    movegen::genEP<PieceC, c, ListT>(*this, out, occ_all);
+            }
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::KNIGHT)) {
-            movegen::genKnightMoves<PieceC, c, captureOnly, ListT>(*this, out, _pin_mask, _check_mask);
-        }
-        if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::KING)) {
-            movegen::genKingMoves<PieceC, c, captureOnly, ListT>(*this, out, _pin_mask);
+            movegen::genKnightMoves<PieceC, c, captureOnly, ListT>(*this, out, _pin_mask, _check_mask, occ_all);
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::BISHOP)) {
-            movegen::genSlidingMoves<PieceC, c, BISHOP, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask);
+            movegen::genSlidingMoves<PieceC, c, BISHOP, captureOnly, ListT>(*this,
+                                                                            out,
+                                                                            _rook_pin,
+                                                                            _bishop_pin,
+                                                                            _check_mask,
+                                                                            occ_all);
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::ROOK)) {
-            movegen::genSlidingMoves<PieceC, c, ROOK, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask);
+            movegen::genSlidingMoves<PieceC, c, ROOK, captureOnly, ListT>(*this,
+                                                                          out,
+                                                                          _rook_pin,
+                                                                          _bishop_pin,
+                                                                          _check_mask,
+                                                                          occ_all);
         }
         if constexpr (effectivePieces & static_cast<uint16_t>(MoveGenType::QUEEN)) {
-            movegen::genSlidingMoves<PieceC, c, QUEEN, captureOnly, ListT>(*this, out, _rook_pin, _bishop_pin, _check_mask);
+            movegen::genSlidingMoves<PieceC, c, QUEEN, captureOnly, ListT>(*this,
+                                                                           out,
+                                                                           _rook_pin,
+                                                                           _bishop_pin,
+                                                                           _check_mask,
+                                                                           occ_all);
         }
     }
 
@@ -285,27 +302,48 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     }
 
     /// @brief Execute a move on the board.
-    /// @tparam Strict If true, validates that the move is legal.
-    template <bool Strict = true> void doMove(const Move &move);
-    /// @brief Snake-case alias for doMove().
+    /// @tparam Strict If true, use checked piece access and update repetition bookkeeping.
+    /// @details Use the same Strict value for every move applied to a Position instance.
+    /// Mixing `doMove<true>` and `doMove<false>` on one instance leaves its repetition
+    /// bookkeeping incomplete. This tiny dispatcher routes once on side-to-move to the
+    /// color-specialized doMoveImpl. It is force-inlined; the heavy implementations
+    /// stay out-of-line in position.cpp.
+    template <bool Strict = true> HOTFUNC FORCEINLINE void doMove(const Move &move) {
+        if (side_to_move() == WHITE)
+            doMoveImpl<Strict, WHITE>(move);
+        else
+            doMoveImpl<Strict, BLACK>(move);
+    }
+    /// @brief Color-specialized move execution (private impl, see position.cpp).
+    /// @tparam us Mover color (compile-time; must equal side_to_move()).
+    template <bool Strict, Color us> HOTFUNC void doMoveImpl(const Move &move);
+    /// @brief Snake-case alias for doMove(); keep Strict consistent per Position instance.
     template <bool Strict = true> void do_move(const Move &move) { doMove<Strict>(move); }
 
     /// @brief Undo the last move. Returns saved HistoryEntry when RetAll=true.
     /// @tparam RetAll If true, return the popped HistoryEntry.
     /// @return The saved state if RetAll, otherwise void.
     template <bool RetAll = false> inline auto undoMove() -> std::conditional_t<RetAll, HistoryEntry<PieceC>, void> {
-        pieces_list[state().incr_sqs[0]] = state().incr_pc[0];
-        pieces_list[state().incr_sqs[1]] = state().incr_pc[1];
-        pieces_list[state().incr_sqs[2]] = state().incr_pc[2];
-        pieces_list[state().incr_sqs[3]] = state().incr_pc[3];
-        rep_hashes_.pop_back();
-        _rook_pin = state().saved_rook_pin;
-        _bishop_pin = state().saved_bishop_pin;
-        _checkers = state().saved_checkers;
-        _check_mask = state().saved_check_mask;
+        if (UNLIKELY(history.size() < 2)) {
+            assert(false && "undoMove called without a move to undo");
+            if constexpr (RetAll)
+                return HistoryEntry<PieceC>{};
+            else
+                return;
+        }
+        auto &st = state();
+        pieces_list[st.incr_sqs[0]] = st.incr_pc[0];
+        pieces_list[st.incr_sqs[1]] = st.incr_pc[1];
+        pieces_list[st.incr_sqs[2]] = st.incr_pc[2];
+        pieces_list[st.incr_sqs[3]] = st.incr_pc[3];
+        _rook_pin = st.saved_rook_pin;
+        _bishop_pin = st.saved_bishop_pin;
+        _checkers = st.saved_checkers;
+        _check_mask = st.saved_check_mask;
         _pin_mask = _rook_pin | _bishop_pin;
+        _enemy_attacks = st.saved_enemy_attacks;
         if constexpr (RetAll) {
-            HistoryEntry<PieceC> state_ = state();
+            HistoryEntry<PieceC> state_ = st;
             history.pop_back();
             return state_;
         } else {
@@ -324,22 +362,23 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      */
     inline void doNullMove() {
         history.push_back(state());
-        state().saved_rook_pin = _rook_pin;
-        state().saved_bishop_pin = _bishop_pin;
-        state().saved_checkers = _checkers;
-        state().saved_check_mask = _check_mask;
-        state().incr_sqs[0] = state().incr_sqs[1] = state().incr_sqs[2] = state().incr_sqs[3] = SQ_NONE;
-        state().incr_pc[0] = state().incr_pc[1] = state().incr_pc[2] = state().incr_pc[3] = PieceC::NO_PIECE;
-        state().hash ^= (ep_square() != SQ_NONE && state().epIncluded) ? zobrist::RandomEP[file_of(ep_square())] : 0;
-        state().epIncluded = false;
-        state().enPassant = SQ_NONE;
-        state().turn = ~state().turn;
-        state().hash ^= zobrist::RandomTurn;
-        rep_hashes_.push_back(state().hash);
-        state().fullMoveNumber += (state().turn == WHITE);
-        state().pliesFromNull = state().repetition = 0;
-        state().mv = Move::null();
-        state().halfMoveClock++;
+        auto &st = state();
+        st.saved_rook_pin = _rook_pin;
+        st.saved_bishop_pin = _bishop_pin;
+        st.saved_checkers = _checkers;
+        st.saved_check_mask = _check_mask;
+        st.saved_enemy_attacks = _enemy_attacks;
+        st.incr_sqs[0] = st.incr_sqs[1] = st.incr_sqs[2] = st.incr_sqs[3] = SQ_NONE;
+        st.incr_pc[0] = st.incr_pc[1] = st.incr_pc[2] = st.incr_pc[3] = PieceC::NO_PIECE;
+        st.hash ^= (ep_square() != SQ_NONE && st.epIncluded) ? zobrist::RandomEP[file_of(ep_square())] : 0;
+        st.epIncluded = false;
+        st.enPassant = SQ_NONE;
+        st.turn = ~st.turn;
+        st.hash ^= zobrist::RandomTurn;
+        st.fullMoveNumber += (st.turn == WHITE);
+        st.pliesFromNull = st.repetition = 0;
+        st.mv = Move::null();
+        st.halfMoveClock++;
         refresh_attacks();
     }
     /// @brief Perform a null move (pass the turn).
@@ -444,15 +483,18 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      * @returns `true` if the square is attacked by the given colour, `false` otherwise.
      */
     [[nodiscard]] inline bool isAttacked(Square sq, Color by) const noexcept {
+        if (!chess::is_valid(sq))
+            return false;
         const Bitboard occ_bb = occ();
-        const Bitboard us_bb = occ(by);
 
+        // pieces(pt, by) already returns state().pieces[pt] & state().occ[by], so both
+        // unions below are occupancy-masked by `by`; no extra & occ(by) is needed.
         Bitboard diag_attackers = pieces(PieceType::BISHOP, by) | pieces(PieceType::QUEEN, by);
         Bitboard ortho_attackers = pieces(PieceType::ROOK, by) | pieces(PieceType::QUEEN, by);
 
         return (attacks::pawn(~by, sq) & pieces(PieceType::PAWN, by)) ||
                (attacks::knight(sq) & pieces(PieceType::KNIGHT, by)) || (attacks::king(sq) & pieces(PieceType::KING, by)) ||
-               (attacks::bishop(sq, occ_bb) & diag_attackers & us_bb) || (attacks::rook(sq, occ_bb) & ortho_attackers & us_bb);
+               (attacks::bishop(sq, occ_bb) & diag_attackers) || (attacks::rook(sq, occ_bb) & ortho_attackers);
     }
     /**
      * Checks if a square is attacked by the given color.
@@ -470,6 +512,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      * @returns true if the square is attacked by the specified color, false otherwise.
      */
     [[nodiscard]] inline bool isAttacked(Square sq, Color by, Bitboard occupied) const noexcept {
+        if (!chess::is_valid(sq))
+            return false;
         const Bitboard diag_attackers = pieces(PieceType::BISHOP, by) | pieces(PieceType::QUEEN, by);
         const Bitboard ortho_attackers = pieces(PieceType::ROOK, by) | pieces(PieceType::QUEEN, by);
 
@@ -494,50 +538,54 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     /// @brief Place a piece on the board (compile-time piece type).
     template <PieceType pt> inline void placePiece(Square sq, Color c) {
         if constexpr (pt != NO_PIECE_TYPE) {
-            Bitboard v = 1ULL << sq;
-            state().pieces[pt] |= v;
-            state().occ[c] |= v;
+            auto &st = state();
+            Bitboard v = square_bb(sq);
+            st.pieces[pt] |= v;
+            st.occ[c] |= v;
             pieces_list[sq] = make_piece<PieceC>(pt, c);
-            state().hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][(int)pieces_list[sq]][sq];
+            st.hash ^= zobrist::RandomPieceFlat[enum_idx<PieceC>()][(int)pieces_list[sq] * 64 + sq];
             if constexpr (pt == KING)
-                state().kings[c] = sq;
+                st.kings[c] = sq;
         }
     }
 
     /// @brief Remove a piece from the board (compile-time piece type).
     template <PieceType pt> inline void removePiece(Square sq, Color c) {
         if constexpr (pt != NO_PIECE_TYPE) {
-            Bitboard v = ~(1ULL << sq);
-            state().pieces[pt] &= v;
-            state().occ[c] &= v;
+            auto &st = state();
+            Bitboard v = ~square_bb(sq);
+            st.pieces[pt] &= v;
+            st.occ[c] &= v;
             pieces_list[sq] = PieceC::NO_PIECE;
-            state().hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][static_cast<int>(make_piece<PieceC>(pt, c))][sq];
+            st.hash ^= zobrist::RandomPieceFlat[enum_idx<PieceC>()][static_cast<int>(make_piece<PieceC>(pt, c)) * 64 + sq];
             if constexpr (pt == KING)
-                state().kings[c] = SQ_NONE;
+                st.kings[c] = SQ_NONE;
         }
     }
 
     /// @brief Place a piece (runtime piece type).
-    inline void placePiece(PieceType pt, Square sq, Color c) {
+    HOTFUNC FORCEINLINE void placePiece(PieceType pt, Square sq, Color c) {
         bool a = pt == KING;
-        Bitboard v = 1ULL << sq;
-        state().pieces[pt] |= v;
-        state().occ[c] |= v;
+        auto &st = state();
+        Bitboard v = square_bb(sq);
+        st.pieces[pt] |= v;
+        st.occ[c] |= v;
         pieces_list[sq] = make_piece<PieceC>(pt, c);
-        state().hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][(int)pieces_list[sq]][sq];
-        state().kings[c] = a ? sq : state().kings[c];
+        st.hash ^= zobrist::RandomPieceFlat[enum_idx<PieceC>()][(int)pieces_list[sq] * 64 + sq];
+        st.kings[c] = a ? sq : st.kings[c];
     }
 
     /// @brief Remove a piece (runtime piece type).
-    inline void removePiece(PieceType pt, Square sq, Color c) {
+    HOTFUNC FORCEINLINE void removePiece(PieceType pt, Square sq, Color c) {
         bool a = pt == KING;
         if (pt != NO_PIECE_TYPE) {
-            Bitboard v = ~(1ULL << sq);
-            state().pieces[pt] &= v;
-            state().occ[c] &= v;
+            auto &st = state();
+            Bitboard v = ~square_bb(sq);
+            st.pieces[pt] &= v;
+            st.occ[c] &= v;
             pieces_list[sq] = PieceC::NO_PIECE;
-            state().hash ^= zobrist::RandomPiece[enum_idx<PieceC>()][static_cast<int>(make_piece<PieceC>(pt, c))][sq];
-            state().kings[c] = a ? SQ_NONE : state().kings[c];
+            st.hash ^= zobrist::RandomPieceFlat[enum_idx<PieceC>()][static_cast<int>(make_piece<PieceC>(pt, c)) * 64 + sq];
+            st.kings[c] = a ? SQ_NONE : st.kings[c];
         }
     }
 
@@ -551,7 +599,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     [[nodiscard]] inline Bitboard occ() const { return state().occ[0] | state().occ[1]; }
 
     /// @brief Piece on a square.
-    NO_SIDE_EFFECTS FORCEINLINE FLATTEN PieceC piece_on(Square s) const {
+    FORCEINLINE FLATTEN PieceC piece_on(Square s) const {
 #if defined(_CHESSLIB_ERROR_MODE_ASSERT)
         assert(chess::is_valid(s) && "sq is out-of-bounds");
 #elif defined(_CHESSLIB_ERROR_MODE_THROW)
@@ -562,7 +610,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         return pieces_list[s];
 #else
         PieceC _p2 = PieceC::NO_PIECE;
-        Bitboard mask = (1ULL << s);
+        Bitboard mask = square_bb(s);
         if (((state().occ[WHITE] | state().occ[BLACK]) & mask) == 0) {
             _p2 = PieceC::NO_PIECE;
         } else {
@@ -603,7 +651,10 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
      * @returns The square of the lowest-indexed piece.
      */
     template <PieceType pt> [[nodiscard]] inline Square square(Color c) const {
-        return static_cast<Square>(lsb(pieces<pt>(c)));
+        const Bitboard bb = pieces<pt>(c);
+        if (!bb)
+            return SQ_NONE;
+        return static_cast<Square>(lsb(bb));
     }
     /**
      * Retrieve the square occupied by the king for the given color.
@@ -621,12 +672,18 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     /// @brief Combined pin mask.
     [[nodiscard]] inline Bitboard pin_mask() const { return _pin_mask; }
 
+    [[nodiscard]] inline Bitboard enemy_attacks() const { return _enemy_attacks; }
+
     /// @brief Construct from a FEN string.
     inline _Position(std::string fen = START_FEN, bool chess960 = false, FENParsingMode xfen = MODE_AUTO) {
-        history.reserve(6144);
+        history.reserve(100);
         history.emplace_back();
-        rep_hashes_.reserve(6144);
-        setFEN(fen, chess960, xfen);
+        // A failed setFEN leaves the position safely finalised (see setFEN). Invalid
+        // optional fields (e.g. castling rights) are tolerated while the board and
+        // side to move stay usable; only an unparseable board/side is fatal, which
+        // leaves the restored state with no side to move.
+        if (!setFEN(fen, chess960, xfen) && state().turn == COLOR_NB)
+            throw std::invalid_argument("invalid FEN: " + fen);
     }
 
     /// @brief Check whether a move is a capture.
@@ -741,7 +798,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     bool is_insufficient_material() const;
 
     /// @brief Whether a colour has any non-pawn, non-king material.
-    inline bool hasNonPawnMaterial(Color c) const { return bool(us(c) & ~(pieces(PAWN) | pieces(KING)) & occ(c)); }
+    // us(c) is occ(c), so the trailing occ(c) would be a no-op.
+    inline bool hasNonPawnMaterial(Color c) const { return bool(us(c) & ~(pieces(PAWN) | pieces(KING))); }
 
     /// @brief Whether the side to move is in check.
     inline bool is_check() const { return checkers() != 0LL; }
@@ -821,7 +879,8 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         atks |= (attacks::rook(square, occupied) & (pieces<ROOK>(color) | queens));
         atks |= (attacks::king(square) & pieces<KING>(color));
 
-        return atks & occ(color);
+        // Every term above is already masked by occ(color) via pieces<pt>(color).
+        return atks;
     }
 
     /// @brief Check whether any square on path is attacked (for castling through check).
@@ -835,16 +894,20 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
 
     /// @brief Whether the current side is checkmated.
     inline bool is_checkmate() const {
-        Movelist moves;
+        if (!is_check())
+            return false;
+        CountOnlyList moves;
         legals(moves);
-        return is_check() && !moves.size();
+        return moves.size_ == 0;
     }
 
     /// @brief Whether the current side is stalemated.
     inline bool is_stalemate() const {
-        Movelist moves;
+        if (is_check())
+            return false;
+        CountOnlyList moves;
         legals(moves);
-        return !is_check() && !moves.size();
+        return moves.size_ == 0;
     }
 
     /// @brief Compute the material-only key (excludes turn, EP, castling).
@@ -888,93 +951,33 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
     [[nodiscard]] inline Bitboard get_castling_path(Color c, bool isKingSide) const { return getCastlingPath(c, isKingSide); }
     /**
      * Retrieve the castling metadata for a color.
-     * @return The castling metadata for the specified color.
+     * @return A const reference to the castling metadata for the specified color. The
+     *         reference is valid for the lifetime of this position; note that doMove()
+     *         never mutates castling_meta_, only castlingRights(), so it stays valid
+     *         across make/unmake.
      */
-    [[nodiscard]] inline auto getCastlingMetadata(Color c) const { return castling_meta_[c]; }
+    [[nodiscard]] inline const CastlingMeta &getCastlingMetadata(Color c) const { return castling_meta_[c]; }
     /**
      * Castling metadata for a color.
      * @param c Color.
      */
-    [[nodiscard]] inline auto get_castling_metadata(Color c) const { return getCastlingMetadata(c); }
+    [[nodiscard]] inline const CastlingMeta &get_castling_metadata(Color c) const { return getCastlingMetadata(c); }
 
   private:
-    /// @brief Compute pin masks for the king at sq.
-    void pinMasks(Color c, Square sq, Bitboard &rook_pin, Bitboard &bishop_pin) const {
-        Bitboard occ_opp = occ(~c);
-        Bitboard occ_us = occ(c);
-        Bitboard opp_queens = pieces(QUEEN, ~c) & occ_opp;
-
-        Bitboard opp_bishops = (pieces<BISHOP>(~c) | opp_queens);
-        Bitboard bishop_atks = attacks::slider<BISHOP>(sq, occ_opp) & opp_bishops;
-
-        Bitboard opp_rooks = (pieces<ROOK>(~c) | opp_queens);
-        Bitboard rook_atks = attacks::slider<ROOK>(sq, occ_opp) & opp_rooks;
-
-        rook_pin = 0;
-        bishop_pin = 0;
-        while (bishop_atks) {
-            auto possible = movegen::between(sq, Square(pop_lsb(bishop_atks)));
-            Bitboard tmp = possible & occ_us;
-            if (tmp && (tmp & (tmp - 1)) == 0)
-                bishop_pin |= possible;
-        }
-        while (rook_atks) {
-            auto possible = movegen::between(sq, Square(pop_lsb(rook_atks)));
-            Bitboard tmp = possible & occ_us;
-            if (tmp && (tmp & (tmp - 1)) == 0)
-                rook_pin |= possible;
-        }
-    }
-
     /**
      * Recompute cached pins, checkers, and check mask for the side to move.
      *
      * Detects pinned pieces and checking pieces, then updates the check mask accordingly.
      */
-    inline void refresh_attacks() {
-        const Color c = side_to_move();
-        const Square ksq = kingSq(c);
-        const Bitboard occ_all = occ();
-        const Bitboard occ_us = occ(c);
-
-        Bitboard bishop_pin = 0, rook_pin = 0, checkers = 0;
-
-        // Directional scan from the king: check each ray for first/second occupied squares.
-        // This avoids iterating over all enemy sliders and calling movegen::between() per piece.
-        const Bitboard diag_sliders = pieces<BISHOP>(~c) | pieces<QUEEN>(~c);
-        const Bitboard ortho_sliders = pieces<ROOK>(~c) | pieces<QUEEN>(~c);
-
-        // Use precomputed rays and direction-aware nearest-blocker extraction.
-        const Bitboard occ_masked = occ_all;
-        // Diagonals: NE,NW,SE,SW
-        attacks::scan_attacks_ray<attacks::RD_NE, true>(ksq, occ_masked, diag_sliders, occ_us, checkers, bishop_pin);
-        attacks::scan_attacks_ray<attacks::RD_NW, true>(ksq, occ_masked, diag_sliders, occ_us, checkers, bishop_pin);
-        attacks::scan_attacks_ray<attacks::RD_SE, false>(ksq, occ_masked, diag_sliders, occ_us, checkers, bishop_pin);
-        attacks::scan_attacks_ray<attacks::RD_SW, false>(ksq, occ_masked, diag_sliders, occ_us, checkers, bishop_pin);
-
-        // Orthogonals: N,S,E,W
-        attacks::scan_attacks_ray<attacks::RD_NORTH, true>(ksq, occ_masked, ortho_sliders, occ_us, checkers, rook_pin);
-        attacks::scan_attacks_ray<attacks::RD_SOUTH, false>(ksq, occ_masked, ortho_sliders, occ_us, checkers, rook_pin);
-        attacks::scan_attacks_ray<attacks::RD_EAST, true>(ksq, occ_masked, ortho_sliders, occ_us, checkers, rook_pin);
-        attacks::scan_attacks_ray<attacks::RD_WEST, false>(ksq, occ_masked, ortho_sliders, occ_us, checkers, rook_pin);
-
-        // Pawn and knight checkers (precomputed tables, no magic lookups)
-        checkers |= (attacks::pawn(c, ksq) & pieces<PAWN>(~c));
-        checkers |= (attacks::knight(ksq) & pieces<KNIGHT>(~c));
-
-        _bishop_pin = bishop_pin;
-        _rook_pin = rook_pin;
-        _pin_mask = rook_pin | bishop_pin;
-        _checkers = checkers;
-        if (!_checkers) {
-            _check_mask = ~0ULL;
-        } else if ((_checkers & (_checkers - 1)) == 0) {
-            auto sq = static_cast<Square>(lsb(_checkers));
-            _check_mask = 1ULL << sq | movegen::between(ksq, sq);
-        } else {
-            _check_mask = 0ULL;
-        }
+    HOTFUNC FORCEINLINE void refresh_attacks() {
+        if (state().turn == WHITE)
+            refresh_attacks_impl<WHITE>();
+        else
+            refresh_attacks_impl<BLACK>();
     }
+    /// @brief Color-specialized attack refresh (private impl, see position.cpp).
+    /// @tparam c Side to move (compile-time; must equal state().turn).
+    template <Color c> HOTFUNC void refresh_attacks_impl();
 
     inline const auto &state() const { return history.back(); }
     inline auto &state() { return history.back(); }
@@ -982,8 +985,12 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
   public:
     /// @brief Copy constructor (deep copy of position state).
     inline _Position(const _Position &other)
-        : history(other.history), rep_hashes_(other.rep_hashes_), _chess960(other._chess960),
-          castling_meta_{ other.castling_meta_[0], other.castling_meta_[1] } {
+        : _chess960(other._chess960), castling_meta_{ other.castling_meta_[0], other.castling_meta_[1] },
+          castling_rights_lost_king_{ other.castling_rights_lost_king_ },
+          castling_rights_lost_rook_{ other.castling_rights_lost_rook_ } {
+        // Preserve the history reserve so doMove() never allocates inside a perft worker.
+        history.reserve(std::max<size_t>(100, other.history.size()));
+        history = other.history;
         std::copy(std::begin(other.pieces_list), std::end(other.pieces_list), std::begin(pieces_list));
         // Copy cached attack/pin/check masks from the source position so the copy
         // is an exact snapshot. This avoids subtle inconsistencies with incremental saved state
@@ -993,6 +1000,7 @@ template <typename PieceC = EnginePiece, typename = std::enable_if_t<is_piece_en
         _checkers = other._checkers;
         _check_mask = other._check_mask;
         _pin_mask = other._pin_mask;
+        _enemy_attacks = other._enemy_attacks;
     }
     // @brief get size of history
     // @return size of history

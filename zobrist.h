@@ -27,7 +27,11 @@ namespace chess::zobrist {
 
 /// @brief Random values for piece-square XOR.
 /// @details Indexed as RandomPiece[piece_enum_idx][piece_value][square].
-extern std::array<uint64_t, 64> *RandomPiece[];
+extern const std::array<uint64_t, 64> *RandomPiece[];
+
+/// @brief Flat Zobrist piece table (avoids pointer chain indirection).
+using RandomPieceFlatTable = std::array<std::array<uint64_t, 16 * 64>, 3>;
+extern const RandomPieceFlatTable RandomPieceFlat;
 
 /// @brief Random values for castling rights (indexed by CastlingRights bitmask, 0-15).
 extern uint64_t RandomCastle[16];
@@ -36,5 +40,5 @@ extern uint64_t RandomCastle[16];
 extern uint64_t RandomEP[9];
 
 /// @brief Random value XORed when it is black's turn to move.
-extern uint64_t RandomTurn;
+constexpr uint64_t RandomTurn = 0xF8D626AAAF278509;
 } // namespace chess::zobrist

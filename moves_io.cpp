@@ -337,7 +337,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
         // 9) Build candidate filter and scan legal moves
         Move matched = Move::null();
         bool found = false;
-        // Bitboard to_mask = (1ULL << to_square) & ~pos.occ(pos.side_to_move()); // mask excluding own pieces on destination
+        // Bitboard to_mask = square_bb(to_square) & ~pos.occ(pos.side_to_move()); // mask excluding own pieces on destination
 
         // If pawn and no disambiguation file, restrict pawns to dest file (avoid ambiguous pawn non-file forms)
         // This matches python-chess behavior described earlier.
@@ -360,7 +360,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
             from_mask &= attacks::MASK_RANK[dis_rank];
         if (has_src_square) {
             // If fully specified source given, narrow to that square only.
-            from_mask &= (1ULL << src_square);
+            from_mask &= square_bb(src_square);
         }
 
         for (Move m : moves) {
@@ -384,7 +384,7 @@ template <typename T, typename P> Move parseSan(const _Position<T, P> &pos, std:
                 continue;
 
             // match from_mask (disambiguation and pawn filtering)
-            if (((1ULL << m.from_sq()) & from_mask) == 0)
+            if ((square_bb(m.from_sq()) & from_mask) == 0)
                 continue;
 
             // Everything matches -> accept candidate
@@ -463,12 +463,12 @@ template <typename T, typename P> std::string moveToSan(const _Position<T, P> &p
         pos.legals(moves);
         Bitboard others = 0;
         Bitboard from_mask = pos.pieces(piece_type, pos.side_to_move());
-        from_mask &= ~(1ULL << move.from_sq());
-        Bitboard to_mask = 1ULL << move.to_sq();
+        from_mask &= ~square_bb(move.from_sq());
+        Bitboard to_mask = square_bb(move.to_sq());
         for (const Move &candidate : moves) {
-            Bitboard cand_from_bb = 1ULL << candidate.from_sq();
+            Bitboard cand_from_bb = square_bb(candidate.from_sq());
             // Only consider other pieces of same type that can move to the same destination.
-            if ((cand_from_bb & from_mask) && ((1ULL << candidate.to_sq()) & to_mask))
+            if ((cand_from_bb & from_mask) && (square_bb(candidate.to_sq()) & to_mask))
                 others |= cand_from_bb;
         }
 
@@ -477,7 +477,7 @@ template <typename T, typename P> std::string moveToSan(const _Position<T, P> &p
             const char RANK_NAMES[] = { '1', '2', '3', '4', '5', '6', '7', '8' };
             bool need_file = false, need_rank = false;
             for (Square sq = SQ_A1; sq < SQ_NONE; ++sq) {
-                if (others & (1ULL << sq)) {
+                if (others & square_bb(sq)) {
                     if (file_of(sq) == file_of(move.from_sq()))
                         need_rank = true;
                     if (rank_of(sq) == rank_of(move.from_sq()))
@@ -513,16 +513,13 @@ template <typename T, typename P> std::string moveToSan(const _Position<T, P> &p
 appendCheck:
     if (!suffix)
         return san;
-    _Position<T> p = pos;
-    p.do_move(move);
-    const bool _check = p.is_check();
-    Movelist moves;
-    p.legals(moves);
-    // Checkmate: no legal moves and in check; Stalemate: no legal moves and not in check
-    if (moves.size() == 0 && _check)
-        san += "#";
-    else if (_check)
-        san += "+";
+    if (pos.gives_check(move) != CheckType::NO_CHECK) {
+        _Position<T> p = pos;
+        p.do_move(move);
+        CountOnlyList moves;
+        p.legals(moves);
+        san += (moves.size_ == 0) ? "#" : "+";
+    }
     return san;
 }
 #define INSTANTITATE(PieceC)                                                                                                   \

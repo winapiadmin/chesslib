@@ -6,6 +6,7 @@
 !*.h
 !CMakeLists.txt
 !README.md
+!THIRD_PARTY_NOTICES.md
 !LICENSE
 !.gitignore
 !.gitattributes

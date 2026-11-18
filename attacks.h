@@ -23,7 +23,6 @@
 #include "types.h"
 #include <array>
 #include <immintrin.h>
-#include <vector>
 
 /// @file attacks.h
 /// @brief Precomputed attack tables and magic-bitboard lookup functions.
@@ -229,22 +228,102 @@ template <Color c> [[nodiscard]] constexpr Bitboard pawn(const Bitboard pawns) {
     return (h1 << 16) | (h1 >> 16) | (h2 << 8) | (h2 >> 8);
 }
 
-/// @brief Look up bishop attacks via magic bitboard (defined in attacks.cpp).
-/// @param sq Bishop square.
-/// @param occupied Occupancy bitboard.
-/// @return Bitboard of squares attacked.
-[[nodiscard]] Bitboard bishop(Square sq, Bitboard occupied);
+#ifdef __BMI2__
+/// @brief Software fallback for the PEXT instruction (for constexpr evaluation).
+constexpr uint64_t software_pext_u64(uint64_t val, uint64_t mask) {
+    uint64_t result = 0;
+    uint64_t bit_position = 0;
+    for (uint64_t bit = 1; bit != 0; bit <<= 1) {
+        if (mask & bit) {
+            if (val & bit)
+                result |= 1ULL << bit_position;
+            ++bit_position;
+        }
+    }
+    return result;
+}
+/// @brief Magic table entry for PEXT-based (BMI2) lookups.
+struct Magic {
+    Bitboard mask;
+    int index;
+    constexpr Bitboard operator()(Bitboard b) const {
+        if (is_constant_evaluated())
+            return software_pext_u64(b, mask);
+        return _pext_u64(b, mask);
+    }
+};
+#else
+/// @brief Magic table entry for classical (multiply-and-shift) lookups.
+struct Magic {
+    Bitboard mask;
+    Bitboard magic;
+    size_t index;
+    Bitboard shift;
+    constexpr Bitboard operator()(Bitboard b) const { return (((b & mask)) * magic) >> shift; }
+};
+#endif
 
-/// @brief Look up rook attacks via magic bitboard (defined in attacks.cpp).
-/// @param sq Rook square.
-/// @param occupied Occupancy bitboard.
-/// @return Bitboard of squares attacked.
-[[nodiscard]] Bitboard rook(Square sq, Bitboard occupied);
+/// @brief Magic-bitboard tables, initialized on first use.
+struct MagicTables {
+    std::array<Magic, 64> bishop_table{};
+    std::array<Bitboard, 0x1480> bishop_attacks{};
+    std::array<Magic, 64> rook_table{};
+    std::array<Bitboard, 0x19000> rook_attacks{};
+    std::array<Bitboard, 64> bishop_masks{};
+    std::array<int, 64> bishop_index_base{};
+    std::array<Bitboard, 64> rook_masks{};
+    std::array<int, 64> rook_index_base{};
+#ifndef __BMI2__
+    std::array<Bitboard, 64> bishop_magic_factors{};
+    std::array<Bitboard, 64> bishop_shifts{};
+    std::array<Bitboard, 64> rook_magic_factors{};
+    std::array<Bitboard, 64> rook_shifts{};
+#endif
+    std::array<Bitboard, 64> diag_from_square{};
+    std::array<Bitboard, 64> ortho_from_square{};
+};
+
+const MagicTables &initialize_magic_tables();
+
+inline const MagicTables &magic_tables() {
+    static const MagicTables &tables = initialize_magic_tables();
+    return tables;
+}
+
+/// @brief Diagonals through a square, ignoring blockers.
+[[nodiscard]] inline Bitboard diag_from_square(Square sq) { return magic_tables().diag_from_square[static_cast<size_t>(sq)]; }
+/// @brief Ranks and files through a square, ignoring blockers.
+[[nodiscard]] inline Bitboard ortho_from_square(Square sq) { return magic_tables().ortho_from_square[static_cast<size_t>(sq)]; }
+
+/// @brief Look up bishop attacks via magic bitboard.
+[[nodiscard]] inline Bitboard bishop(Square sq, Bitboard occupied) {
+    const int i = (int)sq;
+#if defined(__BMI2__)
+    const auto &tables = magic_tables();
+    return tables.bishop_attacks[tables.bishop_index_base[i] + static_cast<int>(_pext_u64(occupied, tables.bishop_masks[i]))];
+#else
+    const auto &tables = magic_tables();
+    return tables.bishop_attacks[tables.bishop_index_base[i] +
+                                 static_cast<int>(((occupied & tables.bishop_masks[i]) * tables.bishop_magic_factors[i]) >>
+                                                  tables.bishop_shifts[i])];
+#endif
+}
+
+/// @brief Look up rook attacks via magic bitboard.
+[[nodiscard]] inline Bitboard rook(Square sq, Bitboard occupied) {
+    const int i = (int)sq;
+#if defined(__BMI2__)
+    const auto &tables = magic_tables();
+    return tables.rook_attacks[tables.rook_index_base[i] + static_cast<int>(_pext_u64(occupied, tables.rook_masks[i]))];
+#else
+    const auto &tables = magic_tables();
+    return tables.rook_attacks[tables.rook_index_base[i] +
+                               static_cast<int>(((occupied & tables.rook_masks[i]) * tables.rook_magic_factors[i]) >>
+                                                tables.rook_shifts[i])];
+#endif
+}
 
 /// @brief Compute queen attacks (bishop | rook).
-/// @param sq Queen square.
-/// @param occupied Occupancy bitboard.
-/// @return Bitboard of squares attacked.
 [[nodiscard]] inline Bitboard queen(Square sq, Bitboard occupied) { return bishop(sq, occupied) | rook(sq, occupied); }
 
 /// @brief Look up king attacks for a single square.
@@ -267,11 +346,5 @@ template <PieceType pt> [[nodiscard]] inline Bitboard slider(Square sq, Bitboard
     if constexpr (pt == PieceType::QUEEN)
         return queen(sq, occupied);
 }
-
-// Ray direction indices for precomputed ray bitboards
-enum RayDir : int { RD_NORTH = 0, RD_SOUTH = 1, RD_EAST = 2, RD_WEST = 3, RD_NE = 4, RD_NW = 5, RD_SE = 6, RD_SW = 7 };
-
-/// @brief Precomputed rays from each square in 8 directions.
-extern const std::array<std::array<Bitboard, 64>, 8> RAYS;
 
 } // namespace chess::attacks

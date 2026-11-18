@@ -31,9 +31,32 @@
 
 namespace chess {
 
+#if defined(_MSC_VER)
+#define RESTRICT __restrict
+#elif defined(__GNUC__) || defined(__clang__)
+#define RESTRICT __restrict__
+#else
+#define RESTRICT
+#endif
+
 namespace _chess {
 
-#if defined(__AVX512F__) && defined(__AVX512VNNI__) && defined(__AVX512VBMI2__)
+#if defined(__AVX512BW__)
+namespace detail {
+/// @brief Lane mask selecting the low @p n of 32 16-bit lanes.
+/// @param n Number of active lanes, 0..32.
+constexpr __mmask32 lowLanes(uint32_t n) noexcept { return static_cast<__mmask32>(n >= 32u ? ~0u : ((1u << n) - 1u)); }
+} // namespace detail
+#endif
+
+// NOTE: __AVX512BW__ is required here because splat_moves() masks its store down to the
+// number of live lanes with _mm512_mask_storeu_epi16, which is a BW instruction. Every CPU
+// with AVX512VBMI2 also has AVX512BW, so this costs nothing in practice; requiring it
+// explicitly means a hypothetical VBMI2-without-BW part falls through to the portable
+// scalar path instead of failing to build.
+#if defined(__AVX512F__) && defined(__AVX512BW__) && defined(__AVX512VNNI__) && defined(__AVX512VBMI2__)
+// This branch's masked stores need the caller's precomputed move count.
+#define CHESSLIB_SPLAT_NEEDS_COUNT 1
 
 // clang-format off
 const __m512i AllSquares = _mm512_set_epi8(
@@ -48,17 +71,23 @@ template <Direction offset> /**
                              * @tparam offset Direction offset from destination to origin squares.
                              * @param moveList Output buffer where move objects are written.
                              * @param to_bb Bitboard of destination squares (at most 8 bits set).
-                             * @return Pointer advanced by popcount(to_bb).
+                             * @param n Number of moves to write, i.e. popcount(to_bb). Passed in
+                             *        because the caller has already computed it.
+                             * @return Pointer advanced by @p n.
                              */
-inline Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
-    assert(popcount(to_bb) <= 8); // <= 8 pawns per side
+inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb, int n) {
+    assert(n == popcount(to_bb) && n <= 8); // <= 8 pawns per side
 
     const __m128i toSquares = _mm_cvtepi8_epi16(_mm512_castsi512_si128(_mm512_maskz_compress_epi8(to_bb, AllSquares)));
     const __m128i fromSquares = _mm_subs_epi16(toSquares, _mm_set1_epi16(offset));
     const __m128i moves = _mm_or_si128(_mm_slli_epi16(fromSquares, 6), _mm_slli_epi16(toSquares, 0));
 
-    _mm_storeu_si128(reinterpret_cast<__m128i *>(moveList), moves);
-    return moveList + popcount(to_bb);
+    if (n > 0) {
+        _mm512_mask_storeu_epi16(reinterpret_cast<__m512i *>(moveList),
+                                 detail::lowLanes(static_cast<uint32_t>(n)),
+                                 _mm512_castsi128_si512(moves));
+    }
+    return moveList + n;
 }
 
 /**
@@ -69,18 +98,34 @@ inline Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
  * @param to_bb Bitboard of destination squares (popcount must not exceed 32).
  * @return Pointer advanced by the number of moves written.
  */
-inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
-    assert(popcount(to_bb) <= 32); // Q can attack up to 27 squares
+inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb, int n) {
+    assert(n == popcount(to_bb) && n <= 32); // Q can attack up to 27 squares
 
     const __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
     const __m512i toSquares = _mm512_cvtepi8_epi16(_mm512_castsi512_si256(_mm512_maskz_compress_epi8(to_bb, AllSquares)));
     const __m512i moves = _mm512_or_si512(fromVec, _mm512_slli_epi16(toSquares, 0));
 
-    _mm512_storeu_si512(moveList, moves);
-    return moveList + popcount(to_bb);
+    // Store only the lanes that hold moves. An unconditional _mm512_storeu_si512 would
+    // write 32 Move slots even when far fewer are valid, which overruns values_[MaxSize]
+    // once size_ exceeds capacity - 32. Measured high-water mark (size_ at the moment of
+    // a splat) over the test corpus's 271-legal-move position is 260, i.e. this branch
+    // is within 8 slots of the limit; a position with more legal moves would trip it.
+    _mm512_mask_storeu_epi16(reinterpret_cast<__m512i *>(moveList), detail::lowLanes(static_cast<uint32_t>(n)), moves);
+    return moveList + n;
 }
 
-#elif defined(__AVX512BW__)
+#elif defined(__AVX512BW__) && defined(__AVX512VBMI2__)
+// This branch's masked stores also need the caller's precomputed move count.
+#define CHESSLIB_SPLAT_NEEDS_COUNT 1
+
+// NOTE: this branch's write_moves() uses _mm512_maskz_compress_epi16, which is an
+// AVX512VBMI2 instruction (VPCOMPRESSW) despite operating on the "BW" (byte/word) data
+// type — AVX512BW alone does not provide it. Guarding on __AVX512BW__ alone used to let
+// this branch get selected (and fail to compile) on real Skylake-X/Cascade Lake/Cooper
+// Lake Xeons, which have AVX512BW+AVX512VNNI but lack AVX512VBMI2. Those CPUs are common
+// in cloud/CI fleets, so a bare `-march=native` build would break there. Requiring
+// AVX512VBMI2 here means such CPUs now correctly fall through to the portable scalar path
+// below instead of failing the build.
 template <int Offset = 0> struct alignas(64) SplatTable {
     std::array<uint16_t, 64> data;
     constexpr int clamp64(int x) { return (x < 0) ? 0 : (x > 63 ? 63 : x); }
@@ -107,13 +152,31 @@ template <int Offset> constexpr SplatTable<Offset> SPLAT_PAWN_TABLE{};
  * @param vector 512-bit vector of move data in 16-bit lanes.
  * @return Pointer to the next available position in the output buffer.
  */
-static inline Move *write_moves(Move *moveList, uint32_t mask, __m512i vector) {
-    // Avoid _mm512_mask_compressstoreu_epi16() as it's 256 uOps on Zen4
-    _mm512_storeu_si512(reinterpret_cast<__m512i *>(moveList), _mm512_maskz_compress_epi16(mask, vector));
-    return moveList + popcount(mask);
+static inline Move *write_moves(Move *RESTRICT moveList, uint32_t mask, __m512i vector) {
+    // Avoid _mm512_mask_compressstoreu_epi16() as it's 256 uOps on Zen4. A plain
+    // _mm512_storeu_si512() would be cheaper still but always writes 32 Move slots
+    // regardless of how many are valid. That is not merely wasted bandwidth: the second
+    // store lands at moveList + popcount(low half), so whenever
+    //     size_ + popcount(to_bb & 0xFFFFFFFF) + 32 > Movelist capacity
+    // it writes past values_[MaxSize]. Measured under Intel SDE with
+    //     -mavx512f -mavx512bw -mavx512vbmi2 (no -mavx512vnni)
+    // it overruns by up to 62 bytes / 31 Move slots once size_ reaches the high 280s.
+    // Masking the store to popcount(mask) lanes removes the overrun and the dead lanes.
+    //
+    // Reachability: every -march that GCC accepts which defines __AVX512VBMI2__ also
+    // defines __AVX512VNNI__ (icelake-client/server, tigerlake, rocketlake,
+    // sapphirerapids, emeraldrapids, graniterapids[-d], diamondrapids, znver4, znver5),
+    // so -march=native picks the branch above and not this one. This branch only compiles
+    // when someone passes the ISA flags by hand, or from a future -march that adds
+    // VBMI2 without VNNI. Kept correct regardless.
+    const uint32_t n = static_cast<uint32_t>(popcount(mask));
+    _mm512_mask_storeu_epi16(reinterpret_cast<__m512i *>(moveList),
+                             detail::lowLanes(n),
+                             _mm512_maskz_compress_epi16(mask, vector));
+    return moveList + n;
 }
 
-inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
+inline Move *splat_moves(Move *RESTRICT moveList, Square from, Bitboard to_bb, int n) {
     const auto *table = reinterpret_cast<const __m512i *>(SPLAT_TABLE.data.data());
     __m512i fromVec = _mm512_set1_epi16(Move(from, SQUARE_ZERO).raw());
     // two 32-lane blocks (0..31, 32..63)
@@ -121,18 +184,25 @@ inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
     moveList =
         write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), _mm512_or_si512(_mm512_load_si512(table + 1), fromVec));
 
+    (void)n;
     return moveList;
 }
 
-template <Direction offset> inline Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
+template <Direction offset> inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb, int n) {
     const auto *table = reinterpret_cast<const __m512i *>(SPLAT_PAWN_TABLE<offset>.data.data());
     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 0), _mm512_load_si512(table + 0));
     moveList = write_moves(moveList, static_cast<uint32_t>(to_bb >> 32), _mm512_load_si512(table + 1));
 
+    (void)n;
     return moveList;
 }
 #else
-template <Direction offset> inline Move *splat_pawn_moves(Move *moveList, Bitboard to_bb) {
+// The portable scalar loop derives the count from the returned pointer and must
+// NOT pay for a dead POPCNT.
+#define CHESSLIB_SPLAT_NEEDS_COUNT 0
+
+template <Direction offset> inline Move *splat_pawn_moves(Move *RESTRICT moveList, Bitboard to_bb, int n) {
+    (void)n; // implied by the loop below
     while (to_bb) {
         auto to = static_cast<Square>(pop_lsb(to_bb));
 #if defined(_DEBUG) || !defined(NDEBUG)
@@ -146,7 +216,8 @@ template <Direction offset> inline Move *splat_pawn_moves(Move *moveList, Bitboa
     return moveList;
 }
 
-inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
+inline Move *splat_moves(Move *RESTRICT moveList, Square from, Bitboard to_bb, int n) {
+    (void)n; // implied by the loop below
     while (to_bb)
         *moveList++ = Move(from, static_cast<Square>(pop_lsb(to_bb)));
     return moveList;
@@ -165,8 +236,18 @@ inline Move *splat_moves(Move *moveList, Square from, Bitboard to_bb) {
  */
 template <typename ListT> inline void record_moves(ListT &list, Square from, Bitboard targets) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
-        _chess::splat_moves(list.data() + list.size_, from, targets);
-        list.size_ += popcount(targets);
+#if CHESSLIB_SPLAT_NEEDS_COUNT
+        const auto n = static_cast<size_t>(popcount(targets));
+        assert(list.has_room(n) && "Movelist capacity exceeded");
+        _chess::splat_moves(list.data() + list.size_, from, targets, static_cast<int>(n));
+        list.size_ += n;
+#else
+        assert(list.has_room(static_cast<size_t>(popcount(targets))) && "Movelist capacity exceeded");
+        Move *const base = list.data();
+        Move *const out = base + list.size_;
+        Move *const end = _chess::splat_moves(out, from, targets, 0);
+        list.size_ = static_cast<size_t>(end - base);
+#endif
     } else if constexpr (std::is_same_v<ListT, CountOnlyList>) {
         list.size_ += popcount(targets);
     } else {
@@ -189,6 +270,7 @@ template <Direction offset,
                            */
 inline void record_promotions(ListT &list, Bitboard dests) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
+        assert(list.has_room(4 * popcount(dests)) && "Movelist capacity exceeded");
         while (dests) {
             Square to = static_cast<Square>(pop_lsb(dests));
             Square from = static_cast<Square>(to - offset);
@@ -213,8 +295,18 @@ template <Direction offset, typename ListT> /**
                                              */
 inline void record_pawn_moves(ListT &list, Bitboard targets) {
     if constexpr (std::is_same_v<ListT, Movelist>) {
-        _chess::splat_pawn_moves<offset>(list.data() + list.size_, targets);
-        list.size_ += popcount(targets);
+#if CHESSLIB_SPLAT_NEEDS_COUNT
+        const auto n = static_cast<size_t>(popcount(targets));
+        assert(list.has_room(n) && "Movelist capacity exceeded");
+        _chess::splat_pawn_moves<offset>(list.data() + list.size_, targets, static_cast<int>(n));
+        list.size_ += n;
+#else
+        assert(list.has_room(static_cast<size_t>(popcount(targets))) && "Movelist capacity exceeded");
+        Move *const base = list.data();
+        Move *const out = base + list.size_;
+        Move *const end = _chess::splat_pawn_moves<offset>(out, targets, 0);
+        list.size_ = static_cast<size_t>(end - base);
+#endif
     } else if constexpr (std::is_same_v<ListT, CountOnlyList>) {
         // CountOnlyList doesn't store moves; just increase the counter.
         list.size_ += popcount(targets);
@@ -227,7 +319,7 @@ namespace chess {
 template <typename T, Color c, typename ListT> /**
                                                 * @brief Generates all legal en passant captures for the moving side.
                                                 */
-HOTFUNC void movegen::genEP(const _Position<T, void> &pos, ListT &mv) {
+void movegen::genEP(const _Position<T, void> &pos, ListT &mv, Bitboard occ_all) {
 
     const Square king_sq = pos.king_sq(c);
     const Square ep_sq = pos.ep_square();
@@ -239,23 +331,27 @@ HOTFUNC void movegen::genEP(const _Position<T, void> &pos, ListT &mv) {
         return;
 
     const Square ep_pawn_sq = ep_sq - pawn_push(c);
-    const Bitboard ep_mask = (1ULL << ep_pawn_sq) | (1ULL << ep_sq);
+    const Bitboard ep_mask = square_bb(ep_pawn_sq) | square_bb(ep_sq);
 
-    Bitboard occ_all = pos.occ();
+    const Bitboard enemy_bq = pos.template pieces<BISHOP, ~c>() | pos.template pieces<QUEEN, ~c>();
+
+    const Bitboard enemy_rq = pos.template pieces<ROOK, ~c>() | pos.template pieces<QUEEN, ~c>();
+    ASSUME(popcount(candidates) <= 2);
     while (candidates) {
         Square from = static_cast<Square>(pop_lsb(candidates));
 
         // Remove the EP pawn and this attacker from occupancy
-        Bitboard occ_temp = occ_all ^ ((1ULL << from) | ep_mask);
+        Bitboard occ_temp = occ_all ^ (square_bb(from) | ep_mask);
 
         // attackers check
         Bitboard atks = 0;
-        atks |= attacks::bishop(king_sq, occ_temp) & (pos.template pieces<BISHOP, ~c>() | pos.template pieces<QUEEN, ~c>());
-        atks |= attacks::rook(king_sq, occ_temp) & (pos.template pieces<ROOK, ~c>() | pos.template pieces<QUEEN, ~c>());
-        atks &= pos.occ(~c);
-        if (!atks) {
-            mv.push_back(Move::make<EN_PASSANT>(from, ep_sq));
-        }
+        if (attacks::bishop(king_sq, occ_temp) & enemy_bq)
+            continue;
+
+        if (attacks::rook(king_sq, occ_temp) & enemy_rq)
+            continue;
+
+        mv.push_back(Move::make<EN_PASSANT>(from, ep_sq));
     }
 }
 template <typename T, Color c, typename ListT>
@@ -264,11 +360,11 @@ template <typename T, Color c, typename ListT>
  *
  * Respects pin constraints and check evasion requirements.
  */
-HOTFUNC void movegen::genPawnDoubleMoves(const _Position<T, void> &pos, ListT &moves, Bitboard pin_mask, Bitboard check_mask) {
+void movegen::genPawnDoubleMoves(
+    const _Position<T, void> &pos, ListT &moves, Bitboard pin_mask, Bitboard check_mask, Bitboard all_occ) {
     constexpr Bitboard RANK_2 = (c == WHITE) ? attacks::MASK_RANK[1] : attacks::MASK_RANK[6];
     constexpr Direction UP = pawn_push(c);
 
-    Bitboard all_occ = pos.occ();
     Bitboard pawns = pos.template pieces<PAWN, c>() & RANK_2;
 
     // Split pin types
@@ -304,16 +400,20 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
  * @param _bishop_pin Bitmask of pawns pinned along bishop lines (diagonal).
  * @param _check_mask Bitmask of squares that moves must target to be legal (check evasion).
  */
-HOTFUNC void movegen::genPawnSingleMoves(
-    const _Position<T, void> &pos, ListT &moves, Bitboard _rook_pin, Bitboard _bishop_pin, Bitboard _check_mask) {
+void movegen::genPawnSingleMoves(const _Position<T, void> &pos,
+                                 ListT &moves,
+                                 Bitboard _rook_pin,
+                                 Bitboard _bishop_pin,
+                                 Bitboard _check_mask,
+                                 Bitboard occ_all) {
     constexpr auto UP = relative_direction(c, NORTH);
     constexpr auto UP_LEFT = relative_direction(c, NORTH_WEST);
     constexpr auto UP_RIGHT = relative_direction(c, NORTH_EAST);
     constexpr auto RANK_PROMO = attacks::MASK_RANK[relative_rank(c, RANK_8)];
 
     const auto pawns = pos.template pieces<PAWN, c>();
-    const auto occ_opp = pos.occ(~c);
-    const auto occ_all = pos.occ();
+    const Bitboard enemy_king = square_bb(pos.kingSq(~c));
+    const auto occ_opp = pos.occ(~c) & ~enemy_king;
     // These pawns can maybe take Left or Right
     const Bitboard pawns_lr = pawns & ~_rook_pin;
     const Bitboard unpinned_pawns_lr = pawns_lr & ~_bishop_pin;
@@ -371,14 +471,16 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
  * @param _pin_mask Bitboard of pinned pieces; pinned knights are excluded.
  * @param _check_mask Bitboard indicating squares that resolve checks.
  */
-HOTFUNC void movegen::genKnightMoves(const _Position<T, void> &pos, ListT &list, Bitboard _pin_mask, Bitboard _check_mask) {
+void movegen::genKnightMoves(
+    const _Position<T, void> &pos, ListT &list, Bitboard _pin_mask, Bitboard _check_mask, Bitboard occ_all) {
     Bitboard knights = pos.template pieces<KNIGHT, c>() & ~_pin_mask;
+    Bitboard enemy_king = square_bb(pos.kingSq(~c));
+    Bitboard mask1 = ~(pos.occ(c) | enemy_king) & _check_mask;
+    if constexpr (capturesOnly)
+        mask1 &= pos.occ(~c);
     while (knights) {
         Square x = static_cast<Square>(pop_lsb(knights));
-        Bitboard moves = attacks::knight(x) & ~pos.occ(c);
-        moves &= _check_mask;
-        if constexpr (capturesOnly)
-            moves &= pos.occ(~c);
+        Bitboard moves = attacks::knight(x) & mask1;
         record_moves(list, x, moves);
     }
 }
@@ -394,41 +496,24 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
  * @param out The move list to record moves into.
  * @param _pin_mask Bitboard of pinned pieces; used to filter illegal castling moves.
  */
-HOTFUNC void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bitboard _pin_mask) {
+void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bitboard _pin_mask, Bitboard occ_all) {
     constexpr Color them = ~c;
     const Square kingSq = pos.king_sq(c);
+    if (UNLIKELY(kingSq == SQ_NONE))
+        return;
+    ASSUME(kingSq >= SQ_A1 && kingSq <= SQ_H8);
     const Bitboard myOcc = pos.occ(c);
-    const Bitboard occ_opp = pos.occ(~c);
-
+    const Bitboard enemy_king_bb = pos.template pieces<KING, them>();
+    const Bitboard occ_opp = pos.occ(~c) & ~enemy_king_bb;
+    const Bitboard kingAttacks = attacks::king(kingSq);
     if constexpr (capturesOnly) {
-        Bitboard targets = attacks::king(kingSq) & occ_opp;
-        if (UNLIKELY(!targets)) {
+        if (UNLIKELY(!(kingAttacks & occ_opp)))
             return;
-        }
     }
 
-    const Bitboard occAll = pos.occ();
-    const Bitboard occWithoutKing = occAll ^ 1ULL << kingSq;
-    Bitboard enemyAttacks = 0ULL;
+    Bitboard enemyAttacks = pos.enemy_attacks();
 
-    // Sliding pieces
-    {
-        Bitboard bLike = pos.template pieces<BISHOP, them>() | pos.template pieces<QUEEN, them>();
-        while (bLike)
-            enemyAttacks |= attacks::bishop(static_cast<Square>(pop_lsb(bLike)), occWithoutKing);
-    }
-    {
-        Bitboard rLike = pos.template pieces<ROOK, them>() | pos.template pieces<QUEEN, them>();
-        while (rLike)
-            enemyAttacks |= attacks::rook(static_cast<Square>(pop_lsb(rLike)), occWithoutKing);
-    }
-
-    // Knights, pawns, enemy king (precomputed tables)
-    enemyAttacks |= attacks::knight(pos.template pieces<KNIGHT, them>());
-    enemyAttacks |= attacks::pawn<them>(pos.template pieces<PAWN, them>());
-    enemyAttacks |= attacks::king(pos.king_sq(them));
-
-    Bitboard moves = attacks::king(kingSq) & ~myOcc & ~enemyAttacks;
+    Bitboard moves = kingAttacks & ~myOcc & ~enemyAttacks & ~enemy_king_bb;
     if constexpr (capturesOnly)
         moves &= occ_opp;
     record_moves(out, kingSq, moves);
@@ -436,7 +521,12 @@ HOTFUNC void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bi
         if (UNLIKELY(pos.checkers()))
             return;
 
-        Bitboard occupancy = pos.occ();
+        // NOTE: the four loads below are deliberately NOT hoisted behind a
+        // `if (castlingRights())` guard. Gating them was measured and is a ~3% net loss
+        // on castling-rich perft trees (Kiwipete, position 4): the guard branch
+        // mispredicts whenever rights are gained/lost, and it puts otherwise-independent
+        // loads on the critical path, where the out-of-order engine was previously
+        // issuing them early and overlapping them with the rest of this function.
         Bitboard enemy_attacks = enemyAttacks;
         constexpr CastlingRights kingRights = KING_SIDE & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING),
                                  queenRights = QUEEN_SIDE & (c == WHITE ? WHITE_CASTLING : BLACK_CASTLING);
@@ -444,14 +534,15 @@ HOTFUNC void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bi
         Bitboard OO_SAFE = between(kingSq, castling_king_square(c, true));
         Bitboard OOO_EMPTY = pos.get_castling_path(c, false);
         Bitboard OOO_SAFE = between(kingSq, castling_king_square(c, false));
-        Square rookKing = pos.get_castling_metadata(c).rook_start_ks, rookQueen = pos.get_castling_metadata(c).rook_start_qs;
+        const Square rookKing = pos.get_castling_metadata(c).rook_start_ks;
+        const Square rookQueen = pos.get_castling_metadata(c).rook_start_qs;
 
         if (pos.castlingRights() & kingRights &&
-            !(occupancy & OO_EMPTY || enemy_attacks & OO_SAFE || _pin_mask & 1ULL << rookKing)) {
+            !(occ_all & OO_EMPTY || enemy_attacks & OO_SAFE || _pin_mask & square_bb(rookKing))) {
             out.push_back(Move::make<CASTLING>(kingSq, rookKing));
         }
         if (pos.castlingRights() & queenRights &&
-            !(occupancy & OOO_EMPTY || enemy_attacks & OOO_SAFE || _pin_mask & 1ULL << rookQueen)) {
+            !(occ_all & OOO_EMPTY || enemy_attacks & OOO_SAFE || _pin_mask & square_bb(rookQueen))) {
             out.push_back(Move::make<CASTLING>(kingSq, rookQueen));
         }
     }
@@ -470,63 +561,72 @@ template <typename T, Color c, PieceType pt, bool capturesOnly, typename ListT>
  * @param _bishop_pin Bitboard of squares pinned along bishop lines (diagonals).
  * @param _check_mask Bitboard of legal destination squares when in check.
  */
-HOTFUNC void movegen::genSlidingMoves(
-    const _Position<T, void> &pos, ListT &moves, Bitboard _rook_pin, Bitboard _bishop_pin, Bitboard _check_mask) {
+void movegen::genSlidingMoves(const _Position<T, void> &pos,
+                              ListT &moves,
+                              Bitboard _rook_pin,
+                              Bitboard _bishop_pin,
+                              Bitboard _check_mask,
+                              Bitboard occ_all) {
+
     static_assert(pt == BISHOP || pt == ROOK || pt == QUEEN, "Sliding pieces only.");
+
     Bitboard sliders = pos.template pieces<pt, c>();
-    Bitboard occ_all = pos.occ();
-    Bitboard rook_pinners = _rook_pin;
-    Bitboard bishop_pinners = _bishop_pin;
     if constexpr (pt == BISHOP)
-        sliders &= ~rook_pinners;
+        sliders &= ~_rook_pin;
     if constexpr (pt == ROOK)
-        sliders &= ~bishop_pinners;
-    Bitboard occ_opp = pos.occ(~c);
-    Bitboard filter_list = ~pos.occ(c) & _check_mask;
+        sliders &= ~_bishop_pin;
+
+    const Bitboard occ_opp = pos.occ(~c);
+    const Bitboard enemy_king = pos.template pieces<KING, ~c>();
+    const Bitboard filter = ~(pos.occ(c) | enemy_king) & _check_mask;
+
     while (sliders) {
-        Square from = static_cast<Square>(pop_lsb(sliders));
-        Bitboard from_bb = 1ULL << from;
+        const Square from = static_cast<Square>(pop_lsb(sliders));
+        const Bitboard from_bb = square_bb(from);
 
-        Bitboard rook_hit = rook_pinners & from_bb;
-        Bitboard bishop_hit = bishop_pinners & from_bb;
-        Bitboard pin_mask = rook_hit ? rook_pinners : bishop_hit ? bishop_pinners : ~0ULL;
-
-        Bitboard filtered_pin = pin_mask & filter_list;
-        Bitboard targets;
-        // Choose attack function without std::function to avoid indirect call overhead.
-        decltype(&attacks::rook) func;
-        if (rook_hit) {
-            func = attacks::rook;
-        } else if (bishop_hit) {
-            func = attacks::bishop;
+        Bitboard pin_mask;
+        if constexpr (pt == BISHOP) {
+            pin_mask = (_bishop_pin & from_bb) ? _bishop_pin : ~0ULL;
+        } else if constexpr (pt == ROOK) {
+            pin_mask = (_rook_pin & from_bb) ? _rook_pin : ~0ULL;
         } else {
-            if constexpr (pt == BISHOP) {
-                func = attacks::bishop;
-            } else if constexpr (pt == ROOK) {
-                func = attacks::rook;
-            } else {
-                func = attacks::queen;
-            }
+            pin_mask = (_rook_pin & from_bb) ? _rook_pin : (_bishop_pin & from_bb) ? _bishop_pin : ~0ULL;
         }
-        targets = func(from, occ_all) & filtered_pin;
+        const Bitboard filtered = pin_mask & filter;
+
+        Bitboard targets;
+        if constexpr (pt == BISHOP) {
+            targets = attacks::bishop(from, occ_all) & filtered;
+        } else if constexpr (pt == ROOK) {
+            targets = attacks::rook(from, occ_all) & filtered;
+        } else {
+            const bool r = (_rook_pin & from_bb) != 0;
+            const bool b = !r && (_bishop_pin & from_bb) != 0;
+            targets = r ? attacks::rook(from, occ_all) : b ? attacks::bishop(from, occ_all) : attacks::queen(from, occ_all);
+            targets &= filtered;
+        }
+
         if constexpr (capturesOnly)
             targets &= occ_opp;
         record_moves(moves, from, targets);
     }
 }
 #define INSTANTIATE(PieceC, ListT)                                                                                             \
-    template void chess::movegen::genEP<PieceC, Color::WHITE, ListT>(const _Position<PieceC, void> &, ListT &);                \
-    template void chess::movegen::genEP<PieceC, Color::BLACK, ListT>(const _Position<PieceC, void> &, ListT &);                \
+    template void chess::movegen::genEP<PieceC, Color::WHITE, ListT>(const _Position<PieceC, void> &, ListT &, Bitboard);      \
+    template void chess::movegen::genEP<PieceC, Color::BLACK, ListT>(const _Position<PieceC, void> &, ListT &, Bitboard);      \
     template void chess::movegen::genPawnDoubleMoves<PieceC, Color::WHITE, ListT>(const _Position<PieceC, void> &,             \
                                                                                   ListT &,                                     \
+                                                                                  Bitboard,                                    \
                                                                                   Bitboard,                                    \
                                                                                   Bitboard);                                   \
     template void chess::movegen::genPawnDoubleMoves<PieceC, Color::BLACK, ListT>(const _Position<PieceC, void> &,             \
                                                                                   ListT &,                                     \
                                                                                   Bitboard,                                    \
+                                                                                  Bitboard,                                    \
                                                                                   Bitboard);                                   \
     template void chess::movegen::genPawnSingleMoves<PieceC, Color::WHITE, true, ListT>(const _Position<PieceC, void> &,       \
                                                                                         ListT &,                               \
+                                                                                        Bitboard,                              \
                                                                                         Bitboard,                              \
                                                                                         Bitboard,                              \
                                                                                         Bitboard);                             \
@@ -534,9 +634,11 @@ HOTFUNC void movegen::genSlidingMoves(
                                                                                          ListT &,                              \
                                                                                          Bitboard,                             \
                                                                                          Bitboard,                             \
+                                                                                         Bitboard,                             \
                                                                                          Bitboard);                            \
     template void chess::movegen::genPawnSingleMoves<PieceC, Color::BLACK, true, ListT>(const _Position<PieceC, void> &,       \
                                                                                         ListT &,                               \
+                                                                                        Bitboard,                              \
                                                                                         Bitboard,                              \
                                                                                         Bitboard,                              \
                                                                                         Bitboard);                             \
@@ -544,9 +646,11 @@ HOTFUNC void movegen::genSlidingMoves(
                                                                                          ListT &,                              \
                                                                                          Bitboard,                             \
                                                                                          Bitboard,                             \
+                                                                                         Bitboard,                             \
                                                                                          Bitboard);                            \
     template void chess::movegen::genSlidingMoves<PieceC, Color::WHITE, BISHOP, true, ListT>(const _Position<PieceC, void> &,  \
                                                                                              ListT &,                          \
+                                                                                             Bitboard,                         \
                                                                                              Bitboard,                         \
                                                                                              Bitboard,                         \
                                                                                              Bitboard);                        \
@@ -554,9 +658,11 @@ HOTFUNC void movegen::genSlidingMoves(
                                                                                            ListT &,                            \
                                                                                            Bitboard,                           \
                                                                                            Bitboard,                           \
+                                                                                           Bitboard,                           \
                                                                                            Bitboard);                          \
     template void chess::movegen::genSlidingMoves<PieceC, Color::WHITE, QUEEN, true, ListT>(const _Position<PieceC, void> &,   \
                                                                                             ListT &,                           \
+                                                                                            Bitboard,                          \
                                                                                             Bitboard,                          \
                                                                                             Bitboard,                          \
                                                                                             Bitboard);                         \
@@ -564,9 +670,11 @@ HOTFUNC void movegen::genSlidingMoves(
                                                                                               ListT &,                         \
                                                                                               Bitboard,                        \
                                                                                               Bitboard,                        \
+                                                                                              Bitboard,                        \
                                                                                               Bitboard);                       \
     template void chess::movegen::genSlidingMoves<PieceC, Color::WHITE, ROOK, false, ListT>(const _Position<PieceC, void> &,   \
                                                                                             ListT &,                           \
+                                                                                            Bitboard,                          \
                                                                                             Bitboard,                          \
                                                                                             Bitboard,                          \
                                                                                             Bitboard);                         \
@@ -574,9 +682,11 @@ HOTFUNC void movegen::genSlidingMoves(
                                                                                              ListT &,                          \
                                                                                              Bitboard,                         \
                                                                                              Bitboard,                         \
+                                                                                             Bitboard,                         \
                                                                                              Bitboard);                        \
     template void chess::movegen::genSlidingMoves<PieceC, Color::BLACK, BISHOP, true, ListT>(const _Position<PieceC, void> &,  \
                                                                                              ListT &,                          \
+                                                                                             Bitboard,                         \
                                                                                              Bitboard,                         \
                                                                                              Bitboard,                         \
                                                                                              Bitboard);                        \
@@ -584,9 +694,11 @@ HOTFUNC void movegen::genSlidingMoves(
                                                                                            ListT &,                            \
                                                                                            Bitboard,                           \
                                                                                            Bitboard,                           \
+                                                                                           Bitboard,                           \
                                                                                            Bitboard);                          \
     template void chess::movegen::genSlidingMoves<PieceC, Color::BLACK, QUEEN, true, ListT>(const _Position<PieceC, void> &,   \
                                                                                             ListT &,                           \
+                                                                                            Bitboard,                          \
                                                                                             Bitboard,                          \
                                                                                             Bitboard,                          \
                                                                                             Bitboard);                         \
@@ -594,9 +706,11 @@ HOTFUNC void movegen::genSlidingMoves(
                                                                                               ListT &,                         \
                                                                                               Bitboard,                        \
                                                                                               Bitboard,                        \
+                                                                                              Bitboard,                        \
                                                                                               Bitboard);                       \
     template void chess::movegen::genSlidingMoves<PieceC, Color::BLACK, ROOK, false, ListT>(const _Position<PieceC, void> &,   \
                                                                                             ListT &,                           \
+                                                                                            Bitboard,                          \
                                                                                             Bitboard,                          \
                                                                                             Bitboard,                          \
                                                                                             Bitboard);                         \
@@ -604,34 +718,43 @@ HOTFUNC void movegen::genSlidingMoves(
                                                                                              ListT &,                          \
                                                                                              Bitboard,                         \
                                                                                              Bitboard,                         \
+                                                                                             Bitboard,                         \
                                                                                              Bitboard);                        \
     template void chess::movegen::genKnightMoves<PieceC, Color::WHITE, true, ListT>(const _Position<PieceC, void> &,           \
                                                                                     ListT &,                                   \
+                                                                                    Bitboard,                                  \
                                                                                     Bitboard,                                  \
                                                                                     Bitboard);                                 \
     template void chess::movegen::genKnightMoves<PieceC, Color::BLACK, true, ListT>(const _Position<PieceC, void> &,           \
                                                                                     ListT &,                                   \
                                                                                     Bitboard,                                  \
+                                                                                    Bitboard,                                  \
                                                                                     Bitboard);                                 \
     template void chess::movegen::genKnightMoves<PieceC, Color::WHITE, false, ListT>(const _Position<PieceC, void> &,          \
                                                                                      ListT &,                                  \
+                                                                                     Bitboard,                                 \
                                                                                      Bitboard,                                 \
                                                                                      Bitboard);                                \
     template void chess::movegen::genKnightMoves<PieceC, Color::BLACK, false, ListT>(const _Position<PieceC, void> &,          \
                                                                                      ListT &,                                  \
                                                                                      Bitboard,                                 \
+                                                                                     Bitboard,                                 \
                                                                                      Bitboard);                                \
     template void chess::movegen::genKingMoves<PieceC, Color::WHITE, true, ListT>(const _Position<PieceC, void> &,             \
                                                                                   ListT &,                                     \
+                                                                                  Bitboard,                                    \
                                                                                   Bitboard);                                   \
     template void chess::movegen::genKingMoves<PieceC, Color::BLACK, true, ListT>(const _Position<PieceC, void> &,             \
                                                                                   ListT &,                                     \
+                                                                                  Bitboard,                                    \
                                                                                   Bitboard);                                   \
     template void chess::movegen::genKingMoves<PieceC, Color::WHITE, false, ListT>(const _Position<PieceC, void> &,            \
                                                                                    ListT &,                                    \
+                                                                                   Bitboard,                                   \
                                                                                    Bitboard);                                  \
     template void chess::movegen::genKingMoves<PieceC, Color::BLACK, false, ListT>(const _Position<PieceC, void> &,            \
                                                                                    ListT &,                                    \
+                                                                                   Bitboard,                                   \
                                                                                    Bitboard);
 INSTANTIATE(EnginePiece, Movelist)
 INSTANTIATE(PolyglotPiece, Movelist)

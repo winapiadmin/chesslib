@@ -45,7 +45,7 @@ std::array<uint64_t, 64> Empty = {
     0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000
 };
 /// @brief Random piece-square values indexed by PolyglotPiece (0-11).
-std::array<uint64_t, 64> _RandomPiece[12] = {
+constexpr std::array<uint64_t, 64> _RandomPiece[12] = {
     {
         0x9D39247E33776D41, 0x2AF7398005AAA5C7, 0x44DB015024623547, 0x9C15F73E62A76AE2,
         0x75834465489C0C89, 0x3290AC3A203001BF, 0x0FBBAD1F61042279, 0xE83A908FF2FB60CA,
@@ -317,7 +317,26 @@ uint64_t RandomEP[9] = {
     0xCF3145DE0ADD4289, 0xD0E4427A5514FB72, 0x77C621CC9FB3A483, 0x67A34DAC4356550B,
     0x0000000000000000
 };
-uint64_t RandomTurn = 0xF8D626AAAF278509;
-std::array<uint64_t, 64> *RandomPiece[3] = { _RandomPiece, RandomPiece_EnginePiece, RandomPiece_ContiguousMappingPiece };
+const std::array<uint64_t, 64> *RandomPiece[3] = { _RandomPiece, RandomPiece_EnginePiece, RandomPiece_ContiguousMappingPiece };
+
+constexpr int random_piece_source[3][16] = {
+    { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, -1, -1, -1, -1 },
+    { -1, 1, 3, 5, 7, 9, 11, -1, -1, 0, 2, 4, 6, 8, 10, -1 },
+    { 1, 3, 5, 7, 9, 11, 0, 2, 4, 6, 8, 10, -1, -1, -1, -1 },
+};
+
+constexpr RandomPieceFlatTable make_random_piece_flat() {
+    RandomPieceFlatTable table{};
+    for (int type = 0; type < 3; ++type)
+        for (int piece = 0; piece < 16; ++piece) {
+            const int source = random_piece_source[type][piece];
+            if (source >= 0)
+                for (int square = 0; square < 64; ++square)
+                    table[type][piece * 64 + square] = _RandomPiece[source][square];
+        }
+    return table;
+}
+
+extern constexpr RandomPieceFlatTable RandomPieceFlat = make_random_piece_flat();
 // clang-format on
 } // namespace chess::zobrist
