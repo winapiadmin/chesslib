@@ -399,6 +399,7 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
  * @param _rook_pin Bitmask of pawns pinned along rook lines (vertical/horizontal).
  * @param _bishop_pin Bitmask of pawns pinned along bishop lines (diagonal).
  * @param _check_mask Bitmask of squares that moves must target to be legal (check evasion).
+ * @param occ_all Bitboard of all occupied squares; used to block pawn pushes.
  */
 void movegen::genPawnSingleMoves(const _Position<T, void> &pos,
                                  ListT &moves,
@@ -470,6 +471,7 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
  * @param list The move list to record moves into.
  * @param _pin_mask Bitboard of pinned pieces; pinned knights are excluded.
  * @param _check_mask Bitboard indicating squares that resolve checks.
+ * @param occ_all Bitboard of all occupied squares (unused but required for signature).
  */
 void movegen::genKnightMoves(
     const _Position<T, void> &pos, ListT &list, Bitboard _pin_mask, Bitboard _check_mask, Bitboard occ_all) {
@@ -495,6 +497,7 @@ template <typename T, Color c, bool capturesOnly, typename ListT>
  * @param pos The position.
  * @param out The move list to record moves into.
  * @param _pin_mask Bitboard of pinned pieces; used to filter illegal castling moves.
+ * @param occ_all Bitboard of all occupied squares; used for castling path checks.
  */
 void movegen::genKingMoves(const _Position<T, void> &pos, ListT &out, Bitboard _pin_mask, Bitboard occ_all) {
     constexpr Color them = ~c;
@@ -560,6 +563,7 @@ template <typename T, Color c, PieceType pt, bool capturesOnly, typename ListT>
  * @param _rook_pin Bitboard of squares pinned along rook lines (vertical/horizontal).
  * @param _bishop_pin Bitboard of squares pinned along bishop lines (diagonals).
  * @param _check_mask Bitboard of legal destination squares when in check.
+ * @param occ_all Bitboard of all occupied squares; used for sliding attack generation.
  */
 void movegen::genSlidingMoves(const _Position<T, void> &pos,
                               ListT &moves,
