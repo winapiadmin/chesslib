@@ -651,6 +651,11 @@ bool _Position<PieceC, T>::setFEN(const std::string &str, bool chess960, FENPars
                 }
 
                 // ignore '-'
+                else if (c != '-' && c != 'K' && c != 'Q' && c != 'k' && c != 'q' && !(c >= 'A' && c <= 'H') &&
+                         !(c >= 'a' && c <= 'h')) {
+                    // Unknown character: reject the whole castling field.
+                    result_castling = false;
+                }
             };
 
             for (char x : castling)

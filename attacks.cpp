@@ -251,6 +251,9 @@ const MagicTables &initialize_magic_tables() {
     return tables;
 }
 
+/// @brief Namespace-scope instance so hot lookups avoid a function-local static guard.
+const MagicTables &g_magic_tables = initialize_magic_tables();
+
 } // namespace chess::attacks
 namespace chess::movegen {
 
@@ -278,8 +281,6 @@ static std::array<std::array<Bitboard, 64>, 64> generate_between() {
     return squares_between_bb;
 }
 
-const std::array<std::array<Bitboard, 64>, 64> &squares_between_bb() noexcept {
-    static const auto table = generate_between();
-    return table;
-}
+/// @brief Namespace-scope instance so between() avoids a function-local static guard.
+extern const std::array<std::array<Bitboard, 64>, 64> SQUARES_BETWEEN_BB = generate_between();
 } // namespace chess::movegen

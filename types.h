@@ -721,7 +721,7 @@ constexpr PieceType parse_pt(unsigned char c) {
     // tolower
     if (c >= 'A' && c <= 'Z')
         c += 32;
-    for (int i = 0; i < static_cast<int>(sizeof(a)); i++) {
+    for (int i = 0; i < static_cast<int>(sizeof(a)) - 1; i++) {
         if (c == a[i])
             p = i;
     }

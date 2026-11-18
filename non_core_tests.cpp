@@ -1048,6 +1048,8 @@ TEST_CASE("Fuzzer (excludes illegal, unreachable, etc. positions)") {
 
         {                            "8/8/8/8/8/8/8/8 w KQkqq - 0 1", false },
 
+        {                             "8/8/8/8/8/8/8/8 w Z - 0 1", false },
+
         // ---------------- INVALID EN PASSANT ----------------
 
         {                               "8/8/8/8/8/8/8/8 w - z9 0 1", false },
@@ -1122,6 +1124,11 @@ TEST_CASE("Move utility methods") {
     CHECK(m2.uci() == "a7a8q");
     Move m3 = Move::make<CASTLING>(SQ_E1, SQ_H1);
     CHECK(m3.uci() == "e1g1");
+
+    // parse_pt must not read past the string terminator
+    CHECK(parse_pt('\0') == NO_PIECE_TYPE);
+    CHECK(parse_pt('P') == PAWN);
+    CHECK(parse_pt('k') == KING);
 }
 
 TEST_CASE("Stream operators") {

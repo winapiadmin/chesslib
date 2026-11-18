@@ -285,10 +285,10 @@ struct MagicTables {
 
 const MagicTables &initialize_magic_tables();
 
-inline const MagicTables &magic_tables() {
-    static const MagicTables &tables = initialize_magic_tables();
-    return tables;
-}
+/// @brief Runtime-initialized magic-bitboard tables (defined in attacks.cpp).
+extern const MagicTables &g_magic_tables;
+
+inline const MagicTables &magic_tables() { return g_magic_tables; }
 
 /// @brief Diagonals through a square, ignoring blockers.
 [[nodiscard]] inline Bitboard diag_from_square(Square sq) { return magic_tables().diag_from_square[static_cast<size_t>(sq)]; }
